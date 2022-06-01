@@ -4,7 +4,7 @@ Scalable, accurate and sensitive protein group FDRs for large-scale mass spectro
 
 ## Running Picked Protein Group FDR using the GUI
 
-On Windows, you can download the `Picked_Group_FDR_GUI_windows.zip` from the latest release, unzip it and open `picked_group_fdr.exe` to start the GUI (no installation necessary).
+On Windows, you can download the `PickedGroupFDR_GUI_windows.zip` from the latest release, unzip it and open `PickedGroupFDR.exe` to start the GUI (no installation necessary).
 
 Alternatively, on all platforms, first install Picked Protein Group FDR as explained below. Then install `PyQt5` (`pip install PyQt5`) and run:
 
