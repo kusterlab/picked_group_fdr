@@ -1,0 +1,38 @@
+IMAGE ?= picked_group_fdr
+DATA ?= $(HOME)/git/picked_group_fdr/data/lfq_example/
+OUT_DIR ?= $(DATA)
+PICKED_GROUP_FDR_EXTRA_PARAMS ?= 
+
+LOCAL_DIR ?= /root/data
+OUT_DIR_LOCAL ?= $(LOCAL_DIR)/out
+MQ_EVIDENCE_FILE ?= $(LOCAL_DIR)/evidence.txt
+
+PERC_RESULT_FILES := $(shell python3 config.py $(DATA) $(LOCAL_DIR) PERC_RESULT_FILES)
+PROSIT_FLAG := $(shell python3 config.py $(DATA) $(LOCAL_DIR) PROSIT_FLAG)
+DIGEST_PARAMS := $(shell python3 config.py $(DATA) $(LOCAL_DIR) DIGEST_PARAMS)
+
+FASTA_FILE := $(notdir $(shell ls $(DATA)/*.fasta | head -n1))
+INTERACTIVE := $(shell [ -t 0 ] && echo 1)
+MEMORY_LIMIT ?= 4gb
+CPU_LIMIT ?= 1
+PERC_TEST_FDR ?= 0.01
+PERC_TRAIN_FDR ?= 0.01
+
+ifdef INTERACTIVE
+	USE_TTY= -t
+else
+	USE_TTY=
+endif
+
+DOCKER_CMD ?= docker run -i ${USE_TTY} \
+					-v "$(DATA)":/root/data/ \
+					-v "$(OUT_DIR)":/root/data/out/ \
+					--memory=$(MEMORY_LIMIT) \
+					--cpus=$(CPU_LIMIT) \
+
+check_fasta_file:
+	echo ${FASTA_FILE}
+
+# clean up err.out file when restarting a job
+rm_err_file:
+	rm -f $(DATA)err.out

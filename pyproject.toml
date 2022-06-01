@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "picked_group_fdr"
+version = "0.1.0"
+description = ""
+authors = ["Matthew The <matthew.the@tum.de>"]
+
+[tool.poetry.dependencies]
+python = "^3.6.9, <3.7.0"
+numpy = "^1.18"
+networkx = "^2.4"
+matplotlib = "^3.3.1"
+triqler = "^0.4.0"
+cython = "^0.29.21"
+llvmlite = "0.31.0"
+mokapot = "^0.3"
+dataclasses = "^0.8"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+pytest-cov = "^2.12.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
