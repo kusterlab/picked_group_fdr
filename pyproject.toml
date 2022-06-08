@@ -1,11 +1,19 @@
 [tool.poetry]
 name = "picked_group_fdr"
 version = "0.1.0"
-description = ""
+description = "Scalable, accurate and sensitive protein group FDRs for large-scale mass spectrometry experiments"
 authors = ["Matthew The <matthew.the@tum.de>"]
+license= "Apache-2.0"
+readme = "README.md"
+homepage = "https://github.com/kusterlab/picked_group_fdr"
+repository = "https://github.com/kusterlab/picked_group_fdr"
+keywords = ["mass spectrometry", "protein inference", "proteomics"]
+include = [
+  "LICENSE",
+]
 
 [tool.poetry.dependencies]
-python = "^3.6.9, <3.7.0"
+python = "^3.6.9"
 numpy = "^1.18"
 networkx = "^2.4"
 matplotlib = "^3.3.1"
