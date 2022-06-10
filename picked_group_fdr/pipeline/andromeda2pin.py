@@ -8,10 +8,17 @@ import sys
 import os
 import csv
 import getopt
+import logging
+
 import numpy as np
 
 from .. import digest
 from .. import parsers
+
+
+# hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
+logger = logging.getLogger(__package__ + "." + __file__)
+
 
 # TODO allow mqpar.xml as input
 def main(argv):
@@ -26,7 +33,7 @@ def main(argv):
           break
         else:
           if len(andromedaTargetOutFNs) == 0:
-            print("Meta file detected, interpreting each line as a path to an evidence file")
+            logger.info("Meta file detected, interpreting each line as a path to an evidence file")
           andromedaTargetOutFNs.append(line.rstrip())
   else:
     sys.exit("No input files provided")
@@ -39,13 +46,13 @@ def main(argv):
   
   if len(percInFN) > 0:
     if os.path.isfile(percInFN):
-      print(f"Found output file {percInFN}, remove this file to re-run andromeda2pin.")
+      logger.info(f"Found output file {percInFN}, remove this file to re-run andromeda2pin.")
       return
     else:
-      print("Writing results to:", percInFN)
+      logger.info(f"Writing results to: {percInFN}")
       writer = parsers.getTsvWriter(percInFN)
   else:
-    print("Writing results to stdout")
+    logger.info("Writing results to stdout")
     writer = parsers.getTsvWriter(sys.stdout)
   
   charges = list(range(2,7))
@@ -56,7 +63,7 @@ def main(argv):
   for andromedaTargetOutFN in andromedaTargetOutFNs:
     convertAndromedaOutToPin(andromedaTargetOutFN, writer, charges, numHits, peptideToProteinMap, decoyPattern = decoyPattern)
   
-  print("Finished writing percolator input")
+  logger.info("Finished writing percolator input")
 
 def parseArgs(argv):
   import argparse
@@ -135,11 +142,11 @@ def parseMqEvidenceFile(mqEvidenceFile, razor = False):
   else:
     experimentCol = -1
   
-  print("Parsing MaxQuant evidence.txt file")
+  logger.info("Parsing MaxQuant evidence.txt file")
   quants = list()
   for lineIdx, row in enumerate(reader):
     if lineIdx % 500000 == 0:
-      print("  Reading line", lineIdx)
+      logger.info(f"  Reading line {lineIdx}")
     
     if len(row[idCol]) == 0:
       continue
@@ -174,7 +181,7 @@ def getPeptideToProteinMap(fastaFile, min_len, max_len, enzyme, miscleavages, sp
     return dict()
   
 def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideToProteinMap, decoyPattern = ""):
-  print("Reading", andromedaOutFN)
+  logger.info(f"Reading {andromedaOutFN}")
   
   rows = list()
   for scanNr, charge, fileName, peptide, tmp_proteins, experiment, andromedaScore, deltaScore, expMass, deltaMass in parseMqEvidenceFile(andromedaOutFN):
@@ -188,7 +195,7 @@ def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideTo
         proteins = digest.getProteins(peptideToProteinMap, cleanPeptide[2:-2])
         if len(proteins) == 0:
           if not "CON__" in tmp_proteins[0]:
-            print("WARNING: Could not find peptide " + peptide + " " + str(tmp_proteins) + " in fasta database, skipping PSM")
+            logger.warning(f"Could not find peptide {peptide} ({str(tmp_proteins)}) in fasta database, skipping PSM")
           continue
       
       if len(decoyPattern) > 0:

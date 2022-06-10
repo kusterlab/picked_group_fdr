@@ -58,6 +58,7 @@ def main(argv):
         updatePeptides(args.mq_evidence, args.perc_results, args.mq_evidence_out, args.mq_msms, args.pout_input_type)
     else:
         updateEvidence(args.mq_evidence, args.perc_results, args.mq_evidence_out, args.mq_msms, args.pout_input_type)
+    os.rename(args.mq_evidence_out + ".tmp", args.mq_evidence_out)
 
     
 def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInputType):
@@ -161,8 +162,6 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
     
     logger.info(f"#{poutInputType} identifications:")
     countBelowFDR(prositPEPs)
-    
-    os.rename(outEvidenceFile + ".tmp", outEvidenceFile)
 
 
 def updatePeptides(peptideFiles, poutFiles, outPeptideFile, msmsFiles, poutInputType):
@@ -236,8 +235,6 @@ def updatePeptides(peptideFiles, poutFiles, outPeptideFile, msmsFiles, poutInput
     
     logger.info(poutInputType)
     countBelowFDR(prositPEPs)
-    
-    os.rename(outPeptideFile + ".tmp", outPeptideFile)
 
 
 def get_percolator_results(pout_files: List[str], pout_input_type: str):

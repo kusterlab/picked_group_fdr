@@ -1,12 +1,16 @@
 import sys
 import collections
 import re
+import logging
 
 import numpy as np
 
 from .. import parsers
 from .. import fdr
 
+
+# hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
+logger = logging.getLogger(__package__ + "." + __file__)
 
 Scan = collections.namedtuple('Scan', 'postErrorProb rawFile scanNr sequence precCharge isDecoy')
 
@@ -56,13 +60,13 @@ def main(argv):
     if args.mq_msms_out:
       filterAtFDR(args.mq_msms, args.mq_msms_out, args.fdr_cutoff, args.psm_level_fdr, args.precursor_level_fdr, args.per_rawfile_fdr)
     else:
-      print("ERROR: if --mq_msms is set, --mq_msms_out also needs to be set")  
+      logger.error("if --mq_msms is set, --mq_msms_out also needs to be set")  
   
   if args.mq_protein_groups:
     if args.mq_protein_groups_out:
       filterProteinGroupsAtFDR(args.mq_protein_groups, args.mq_protein_groups_out, args.fdr_cutoff)
     else:
-      print("ERROR: if --mq_protein_groups is set, --mq_protein_groups_out also needs to be set")
+      logger.error("if --mq_protein_groups is set, --mq_protein_groups_out also needs to be set")
 
 
 def filterProteinGroupsAtFDR(proteinGroupFiles, outputFile, fdrCutoff):
@@ -70,7 +74,7 @@ def filterProteinGroupsAtFDR(proteinGroupFiles, outputFile, fdrCutoff):
     if ".txt" not in proteinGroupFile:
       sys.exit("ERROR: could not detect file extension .txt in the input file")
     
-    print("Writing filtered protein groups results to:", outputFile)
+    logger.info(f"Writing filtered protein groups results to: {outputFile}")
     writer = parsers.getTsvWriter(outputFile)
     reader = parsers.getTsvReader(proteinGroupFile)
     header = next(reader)
@@ -81,7 +85,7 @@ def filterProteinGroupsAtFDR(proteinGroupFiles, outputFile, fdrCutoff):
       if float(row[qvalCol]) <= fdrCutoff:
         writer.writerow(row)
     
-    print("Finished writing")
+    logger.info("Finished writing")
 
 
 def filterAtFDR(msmsFiles, msmsOutputFile, fdrCutoff, psmLevelFDR, precursorLevelFDR, perRawFileFDR):  
@@ -94,7 +98,7 @@ def filterAtFDR(msmsFiles, msmsOutputFile, fdrCutoff, psmLevelFDR, precursorLeve
   bestScans = collections.defaultdict(lambda: collections.defaultdict(lambda: Scan(np.inf, "", "", "", "", "")))
   rawFiles = set()
   for msmsFile in msmsFiles:
-    print("Processing", msmsFile)
+    logger.info(f"Processing {msmsFile}")
     reader = parsers.getTsvReader(msmsFile)
     headersOrig = next(reader) # save the header
     headers = list(map(lambda x : x.lower(), headersOrig))
@@ -117,7 +121,7 @@ def filterAtFDR(msmsFiles, msmsOutputFile, fdrCutoff, psmLevelFDR, precursorLeve
     
     for i, row in enumerate(reader):
       if i % 500000 == 0:
-        print("Processing line %d" % i)
+        logger.info(f"Processing line {i}")
       
       isDecoy = False
       if row[reverseCol] == '+':
@@ -143,7 +147,7 @@ def filterAtFDR(msmsFiles, msmsOutputFile, fdrCutoff, psmLevelFDR, precursorLeve
       if not np.isnan(postErrorProb) and postErrorProb < bestScans[rawFile][key].postErrorProb:
         bestScans[rawFile][key] = Scan(postErrorProb, rawFile, scanNr, sequence, precCharge, isDecoy)
   
-  print(f"Filtering best scan per {level}")
+  logger.info(f"Filtering best scan per {level}")
   
   survivingPeptides, postErrorProbCutoffs = getPeptidesBelowFdr(rawFiles, bestScans, fdrCutoff, level)
   writeMsmsOutput(msmsOutputFile, headersOrig, msmsFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR)
@@ -158,20 +162,20 @@ def getPeptidesBelowFdr(rawFiles, bestScans, fdrCutoff, level):
     postErrorProbCutoff = calculatePostErrProbCutoff(sortedPostErrorProbs, fdrCutoff)
     postErrorProbCutoffs[rawFile] = postErrorProbCutoff
     survivingPeptides.extend([(x.sequence, x.rawFile) for x in bestScans[rawFile].values() if x.postErrorProb <= postErrorProbCutoff])
-    print(f"PEP at 1% {level}-level FDR for {rawFile}: {postErrorProbCutoff}")
+    logger.info(f"PEP at 1% {level}-level FDR for {rawFile}: {postErrorProbCutoff}")
   survivingPeptides = set(survivingPeptides)
   
   return survivingPeptides, postErrorProbCutoffs
 
 
 def writeMsmsOutput(msmsOutputFile, headersOrig, msmsFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR):
-  print("Writing msms.txt output file")
+  logger.info("Writing msms.txt output file")
   writer = parsers.getTsvWriter(msmsOutputFile)
   writer.writerow(headersOrig)
   
   survivingPSMs = 0
   for msmsFile in msmsFiles:
-    print("Processing", msmsFile)
+    logger.info(f"Processing {msmsFile}")
     reader = parsers.getTsvReader(msmsFile)
     headersOrig = next(reader)
     headers = list(map(lambda x : x.lower(), headersOrig))
@@ -184,7 +188,7 @@ def writeMsmsOutput(msmsOutputFile, headersOrig, msmsFiles, postErrorProbCutoffs
     postErrorProbCol = headers.index('pep')
     for i, row in enumerate(reader):
       if i % 500000 == 0:
-        print("Processing line %d" % i)
+        logger.info(f"Processing line {i}")
       
       postErrorProb = float(row[postErrorProbCol])
       sequence = row[seqCol]
@@ -200,7 +204,7 @@ def writeMsmsOutput(msmsOutputFile, headersOrig, msmsFiles, postErrorProbCutoffs
       survivingPSMs += 1
       writer.writerow(row)
   
-  print("Written {} rows".format(survivingPSMs))
+  logger.info(f"Written {survivingPSMs} rows")
 
 
 def calculatePostErrProbCutoff(sortedPostErrorProbs, fdrCutoff):
