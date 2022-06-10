@@ -1,2 +1,5 @@
+v0.2.0
+- Fixed problems with GUI and removed unnecessary libraries to reduce file size
+
 v0.1.0
 - Initial release
