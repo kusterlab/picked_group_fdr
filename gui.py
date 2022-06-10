@@ -20,6 +20,7 @@ import picked_group_fdr.utils.multiprocessing_pool as pool
 
 import mokapot
 import numpy as np
+from joblib import parallel_backend
 
 
 logger = logging.getLogger()
@@ -47,7 +48,8 @@ def run_andromeda_to_pin(evidence_file, fasta_file, output_dir, digest_params):
 def run_mokapot(output_dir):
     np.random.seed(0) # TODO: Make seed configurable
     psms = mokapot.read_pin(f'{output_dir}/pin.tab')
-    results, models = mokapot.brew(psms)
+    with parallel_backend("threading"):
+        results, models = mokapot.brew(psms)
     results.to_txt(dest_dir=output_dir, decoys = True)
     
 

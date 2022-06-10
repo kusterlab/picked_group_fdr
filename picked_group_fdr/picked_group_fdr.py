@@ -5,6 +5,7 @@ import logging
 
 import numpy as np
 
+from . import version
 from . import digest
 from . import helpers
 from . import parsers
@@ -22,7 +23,7 @@ from .plotter import PlotterFactory
 
 logger = logging.getLogger(__name__)
 
-__version__ = "0.1.0"
+__version__ = version.get_version_from_pyproject()
 __copyright__ = '''Copyright (c) 2020-2022 Matthew The. All rights reserved.
 Written by Matthew The (matthew.the@tum.de) at the
 Chair of Proteomics and Bioanalytics at the Technical University of Munich.'''
