@@ -87,6 +87,19 @@ def parseMqEvidenceFile(mqEvidenceFile, scoreType, forQuantification = False):
   """
   Reads in approximately 100,000 lines per second with forQuantification=False 
   and 50,000 lines per second with forQuantification=True
+  
+  Columns needed for identification:
+  - Modified sequence
+  - Leading proteins (not used for all methods, but should still be in the input file)
+  - Score/PEP
+  - Experiment
+  
+  Extra columns needed for quantification:
+  - Charge
+  - Intensity
+  - Raw file
+  - Fraction (optional)
+  - Id
   """
   if mqEvidenceFile.endswith('.csv'):
     delimiter = ','
