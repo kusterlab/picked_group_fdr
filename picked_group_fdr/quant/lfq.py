@@ -12,6 +12,8 @@ from .. import helpers
 from .base import ProteinGroupColumns
 from .sum_and_ibaq import SummedIntensityAndIbaqColumns
 from .peptide_count import UniquePeptideCountColumns
+from ..utils import multiprocessing_pool as pool
+
 # imports for typing
 from ..results import ProteinGroupResults
 from .precursor_quant import PrecursorQuant
@@ -26,10 +28,11 @@ class LFQIntensityColumns(ProteinGroupColumns):
     stabilizeLargeRatiosLFQ: bool
 
     def __init__(self, silacChannels: List[str], minPeptideRatiosLFQ: int,
-                 stabilizeLargeRatiosLFQ: bool) -> None:
+                 stabilizeLargeRatiosLFQ: bool, numThreads: int = 1) -> None:
         self.silacChannels = silacChannels
         self.minPeptideRatiosLFQ = minPeptideRatiosLFQ
         self.stabilizeLargeRatiosLFQ = stabilizeLargeRatiosLFQ
+        self.numThreads = numThreads
 
     def append_headers(self, proteinGroupResults: ProteinGroupResults,
                        experiments: int) -> None:
@@ -54,13 +57,24 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
         logger.info("Doing quantification: MaxLFQ intensity")
         numSilacChannels = len(self.silacChannels)
+        
+        if self.numThreads > 1:
+            processingPool = pool.JobPool(processes=self.numThreads)
+        
+        allIntensities = list()
+        for i, pgr in enumerate(proteinGroupResults):
+            if self.numThreads > 1:
+                processingPool.applyAsync(self._getLFQIntensities,
+                    [pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff])
+            else:
+                allIntensities.append(self._getLFQIntensities(pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff))
+
+        if self.numThreads > 1:
+            allIntensities = processingPool.checkPool(printProgressEvery=100)
+
         proteinGroupCounts = np.zeros(
             len(experimentToIdxMap) * max(1, numSilacChannels), dtype='int')
-        for i, pgr in enumerate(proteinGroupResults):
-            if i % 100 == 0:
-                logger.info(f"Processing protein {i}/{len(proteinGroupResults)}")
-            intensities = self._getLFQIntensities(
-                pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff)
+        for i, (pgr, intensities) in enumerate(zip(proteinGroupResults, allIntensities)):
             pgr.extend(intensities)
 
             if pgr.qValue < 0.01:
