@@ -19,7 +19,7 @@ networkx = "^2.4"
 matplotlib = "^3.3.1"
 triqler = ">=0.4.0"
 cython = ">=0.29.21"
-llvmlite = ">=0.31.0"
+llvmlite = ">=0.30"
 mokapot = ">=0.3"
 
 [tool.poetry.dev-dependencies]

@@ -7,6 +7,7 @@ import logging
 import numpy as np
 from scipy.sparse.linalg import lsqr
 from scipy.sparse import csr_matrix
+import bottleneck as bn
 
 from .. import helpers
 from .base import ProteinGroupColumns
@@ -90,7 +91,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
                     logger.info(f"    {experiment} {silacChannel}: {numProteinGroups[silacIdx]}")
             else:
                 logger.info(f"    {experiment}: {numProteinGroups[0]}")
-
+    @profile
     def _getLFQIntensities(self, peptideIntensityList: List[PrecursorQuant],
                            experimentToIdxMap: Dict[str, int],
                            postErrProbCutoff: float) -> List[float]:
@@ -212,7 +213,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
                         (1 - w) * logMedianPeptideRatios[(i, j)])
 
         return logMedianPeptideRatios
-
+    @profile
     def _getLogMedianPeptideRatios(
             self,
             peptideIntensities: Dict[Tuple[str, int], List[float]],
@@ -227,15 +228,16 @@ class LFQIntensityColumns(ProteinGroupColumns):
             warnings.simplefilter("ignore", category=RuntimeWarning)
             intensityMatrix = np.array(
                 list(peptideIntensities.values()))
+            intensityMatrix[intensityMatrix == 0] = np.nan
             nonzeros_per_column = np.count_nonzero(intensityMatrix, axis=0)
             valid_columns = np.argwhere(
                 nonzeros_per_column >= minPeptideRatiosLFQ).flatten()
-            columns = [(i, intensityMatrix[:, i]) for i in valid_columns]
+            columns = [(i, np.log(intensityMatrix[:, i])) for i in valid_columns]
             for ((i, col_i), (j, col_j)) in itertools.combinations(
                     columns, 2):
-                ratios = col_i / col_j
+                ratios = col_i - col_j
                 # remove ratios where one of the intensities was 0
-                ratios = ratios[(np.isfinite(ratios)) & (ratios != 0)]
+                ratios = ratios[~np.isnan(ratios)]
                 if len(ratios) >= minPeptideRatiosLFQ:
                     peptideRatios.append(ratios)
                     experimentPairs.append((i,j))
@@ -243,7 +245,8 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
         # ratio lists are not always of equal size, pad those with NaNs
         peptideRatiosArray = self._createJaggedArray(peptideRatios, maxRatiosLength)
-        logPeptideRatios = np.log(np.nanmedian(peptideRatiosArray, axis=1))
+        # vectorization of computing medians is (a bit) faster than computing them in the for loop above
+        logPeptideRatios = bn.nanmedian(peptideRatiosArray, axis=1)
 
         peptideRatiosDict = {p: r for p, r in zip(experimentPairs, logPeptideRatios)}
         return peptideRatiosDict

@@ -1,5 +1,7 @@
 from picked_group_fdr.quantification import main
+import sys
 
+print(sys.version)
 
 def run_example_776():
     data_dir = "/media/processing_results/bierdimpfl/workDir/776"
