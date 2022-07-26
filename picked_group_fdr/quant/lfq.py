@@ -68,6 +68,8 @@ class LFQIntensityColumns(ProteinGroupColumns):
                 processingPool.applyAsync(self._getLFQIntensities,
                     [pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff])
             else:
+                if i % 100 == 0:
+                    logger.info(f"Processing protein {i}/{len(proteinGroupResults)}")
                 allIntensities.append(self._getLFQIntensities(pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff))
 
         if self.numThreads > 1:
