@@ -21,6 +21,20 @@ tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)"
 tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins"]
 
 [[package]]
+name = "bottleneck"
+version = "1.3.5"
+description = "Fast NumPy array functions written in C"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
+
+[package.extras]
+doc = ["numpydoc", "sphinx", "gitpython"]
+
+[[package]]
 name = "certifi"
 version = "2020.6.20"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -416,7 +430,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "6632407c7363afc37c9b3ca7e4a10dd3feead959f010a36b4806c90b58b6fff3"
+content-hash = "7954100530c629df8c9378abc441c18aee946ebb1b7eca33ddc4703f66e3e5c5"
 
 [metadata.files]
 atomicwrites = [
@@ -426,6 +440,44 @@ atomicwrites = [
 attrs = [
     {file = "attrs-21.2.0-py2.py3-none-any.whl", hash = "sha256:149e90d6d8ac20db7a955ad60cf0e6881a3f20d37096140088356da6c716b0b1"},
     {file = "attrs-21.2.0.tar.gz", hash = "sha256:ef6aaac3ca6cd92904cdd0d83f629a15f18053ec84e6432106f7a4d04ae4f5fb"},
+]
+bottleneck = [
+    {file = "Bottleneck-1.3.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:75ed4ffbe26672da14d9e9e29b7bca79f82c7ecf1e8a32f1d3f7b4dda53b486e"},
+    {file = "Bottleneck-1.3.5-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c8f5562e5f27ab39775758b3d57c6144e29ca33edc76ee60cb220b5a99d5a1f5"},
+    {file = "Bottleneck-1.3.5-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5d26675caa9ce86a299877b14e909bc456c0d1fec30ae63bbb52a20b01beedb9"},
+    {file = "Bottleneck-1.3.5-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:cc1395aabff7db940f2cd952b8e42f014461feecd563c6dddb9077022a361a80"},
+    {file = "Bottleneck-1.3.5-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:d17af36baa48cd68c83eeefd830236410981556987c5ea9d8212f99c64c696ae"},
+    {file = "Bottleneck-1.3.5-cp310-cp310-win32.whl", hash = "sha256:fe75dff7ad1ec63cd832aa7529fc60ef78ce13ee29318a1437b0634c01ad59f4"},
+    {file = "Bottleneck-1.3.5-cp310-cp310-win_amd64.whl", hash = "sha256:9a53cfddc71bdfa14e444deab90173b658fbe98a784cdfee55725641b21be175"},
+    {file = "Bottleneck-1.3.5-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:826ecaa26132179ce43b7796473eff62b232db47b39f3b6fcc4365488f3b0b00"},
+    {file = "Bottleneck-1.3.5-cp36-cp36m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:3283f98c01702404fde4c674b19ae444eaa2668da77124fcc6de40f82c6cda93"},
+    {file = "Bottleneck-1.3.5-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f5f7cffb0de10d83901a942a50f1a8421776fc0489603ce938b31bdf867ab0e9"},
+    {file = "Bottleneck-1.3.5-cp36-cp36m-musllinux_1_1_i686.whl", hash = "sha256:005578d5ffbef148d1bc8cdd74d71734a5add7379142e1add339ad68c20ad13b"},
+    {file = "Bottleneck-1.3.5-cp36-cp36m-musllinux_1_1_x86_64.whl", hash = "sha256:538dc29cf97410cb767ea7f369806be487ba6fe125329e0cf410cb6dd225c891"},
+    {file = "Bottleneck-1.3.5-cp36-cp36m-win32.whl", hash = "sha256:7b1c0f1a4ab2240dcee5df4968d0b70892d958435750c1dfb1c835b091436453"},
+    {file = "Bottleneck-1.3.5-cp36-cp36m-win_amd64.whl", hash = "sha256:698c8b92da3c0638910a81a5c404e199080f0dd6d64c56de7d21dd90870c58cb"},
+    {file = "Bottleneck-1.3.5-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:97d628e66f59255d65d6bcd43f58d64b976388d3cc4e330832a260793cdbdb2a"},
+    {file = "Bottleneck-1.3.5-cp37-cp37m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:103fe3f2166667448271698394a15eae9d43a252dbb41a9d4397e08e4852934e"},
+    {file = "Bottleneck-1.3.5-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a56e945a323896f9c76e99c1401e86bbca68ec0828b38d5832b5881fbacd5da2"},
+    {file = "Bottleneck-1.3.5-cp37-cp37m-musllinux_1_1_i686.whl", hash = "sha256:8a7dbf8e79b9f6821df964b964cfe10ba58ad92334a3cca6e6c8cc5c72ec92d1"},
+    {file = "Bottleneck-1.3.5-cp37-cp37m-musllinux_1_1_x86_64.whl", hash = "sha256:da08bd0978be264daff090d3cddeff809810bb58ef4dbad418fcb1de0770dafb"},
+    {file = "Bottleneck-1.3.5-cp37-cp37m-win32.whl", hash = "sha256:a4280a609b37b12827b3c86fe72869bb580462ae06c970f904412a0bc1b9ba12"},
+    {file = "Bottleneck-1.3.5-cp37-cp37m-win_amd64.whl", hash = "sha256:1dc6bc824ff24e55edb5e0738e7e9de838091471406df63a20a12cca006eab2d"},
+    {file = "Bottleneck-1.3.5-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:930a2e86ef95eab1a5ef00467de45d316a8dfb0de9604aa23cdbf7fefbdab765"},
+    {file = "Bottleneck-1.3.5-cp38-cp38-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e069baf7a3208aaa55e3d2c2fa315661cd61a1e0c5cc33be42111e9520fa5802"},
+    {file = "Bottleneck-1.3.5-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f3bb670f70c86978b99566e39959b151e211c814b336cacda6931109f19b280a"},
+    {file = "Bottleneck-1.3.5-cp38-cp38-musllinux_1_1_i686.whl", hash = "sha256:9a4cb657afba02c01471e78879bc01652268a8d23dec3c8ea432df174c10f61d"},
+    {file = "Bottleneck-1.3.5-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:0b624ebe4660545534f6408dbe069157600d89392caabfc0c337f2a01aa2c990"},
+    {file = "Bottleneck-1.3.5-cp38-cp38-win32.whl", hash = "sha256:c907f1be11ab6e2b9c980a61feabee21dbe16d62db1e605fbffe6a85d2a8a23b"},
+    {file = "Bottleneck-1.3.5-cp38-cp38-win_amd64.whl", hash = "sha256:73084b263d5ec3091e92664ae1276258db2865e6801b7f99864af42baebd6d2d"},
+    {file = "Bottleneck-1.3.5-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:f0eaf6e9dc1a8efe56b90b790c0bd47453639c4a6427d6206c8bd26f7c06c3a6"},
+    {file = "Bottleneck-1.3.5-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b5cffd0b4a7b929f94412586e78ca3506b3c2b50d213f7a4aaff67f913736e38"},
+    {file = "Bottleneck-1.3.5-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5a87a21081fb27995ef2123d85a5cc392a3aab707189c6ba98b4a4808d0905d0"},
+    {file = "Bottleneck-1.3.5-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:04c938dea6ca735bed69e0e01b3d83c31da4861c10d3332363a4f697db02a341"},
+    {file = "Bottleneck-1.3.5-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:5712542be5b067f10c064139227757008ecd6e494967e26ecc03e24d5953e6c4"},
+    {file = "Bottleneck-1.3.5-cp39-cp39-win32.whl", hash = "sha256:f24fc607466edf97d46aeafe0ac4797e0f7b654aef4a547b1699bb8ae15db3ff"},
+    {file = "Bottleneck-1.3.5-cp39-cp39-win_amd64.whl", hash = "sha256:dce5ba9eaab354fdc13c7969f026ef2e9f4757415f565a188322e6cc9a296ce5"},
+    {file = "Bottleneck-1.3.5.tar.gz", hash = "sha256:2c0d27afe45351f6f421893362621804fa7dea14fe29a78eaa52d4323f646de7"},
 ]
 certifi = [
     {file = "certifi-2020.6.20-py2.py3-none-any.whl", hash = "sha256:8fc0819f1f30ba15bdb34cceffb9ef04d99f420f68eb75d901e9560b8749fc41"},
