@@ -1,3 +1,6 @@
+v0.2.5
+- Undo switching order of log and median operation in LFQ as this led to wrong results
+
 v0.2.4
 - Speed up LFQ by using Bottleneck package for nanmedian
 
