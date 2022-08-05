@@ -19,6 +19,8 @@ test:
 performance:
 	python3 -m pytest -s tests/performance_tests
 
+line_profiler_lfq:
+	kernprof -lv tests/performance_tests/test_lfq.py
 
 # --no-cache
 build: dependencies

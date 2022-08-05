@@ -47,4 +47,5 @@ def getExperimentToIdxMap(num_experiments):
 if __name__ == "__main__":
     #import cProfile
     #cProfile.run("test_performanceLFQ()")
+    print("Starting LFQ performance test")
     test_performanceLFQ()

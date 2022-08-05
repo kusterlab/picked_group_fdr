@@ -223,42 +223,33 @@ class LFQIntensityColumns(ProteinGroupColumns):
         """
         :param peptideIntensities: rows are peptides, columns are experiments
         :param minPeptideRatiosLFQ: minimum valid ratios needed to perform LFQ
-        """
+        returns: dictionary of (sample_i, sample_j) -> log(median(ratios))
+        """        
+        intensityMatrix = np.array(list(peptideIntensities.values()))
+        
+        nonzeros_per_column = np.count_nonzero(intensityMatrix, axis=0)
+        valid_columns = np.argwhere(
+            nonzeros_per_column >= minPeptideRatiosLFQ).flatten()
+        
+        valid_counts_matrix = (intensityMatrix[:, valid_columns] > 0).astype(int)
+        valid_vals = np.dot(valid_counts_matrix.T, valid_counts_matrix)
+        
+        # replace zeroes by NaNs to automatically filter ratios with one missing value
+        intensityMatrix[intensityMatrix == 0] = np.nan
+        columns = [(idx, i, intensityMatrix[:, i]) for idx, i in enumerate(valid_columns)]
         peptideRatios, experimentPairs = list(), list()
-        maxRatiosLength = 0
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            intensityMatrix = np.array(
-                list(peptideIntensities.values()))
-            intensityMatrix[intensityMatrix == 0] = np.nan
-            nonzeros_per_column = np.count_nonzero(intensityMatrix, axis=0)
-            valid_columns = np.argwhere(
-                nonzeros_per_column >= minPeptideRatiosLFQ).flatten()
-            columns = [(i, intensityMatrix[:, i]) for i in valid_columns]
-            for ((i, col_i), (j, col_j)) in itertools.combinations(
-                    columns, 2):
-                ratios = col_i / col_j
-                # remove ratios where one of the intensities was 0
-                ratios = ratios[~np.isnan(ratios)]
-                if len(ratios) >= minPeptideRatiosLFQ:
-                    peptideRatios.append(ratios)
-                    experimentPairs.append((i,j))
-                    maxRatiosLength = max(len(ratios), maxRatiosLength)
-
-        # ratio lists are not always of equal size, pad those with NaNs
-        peptideRatiosArray = self._createJaggedArray(peptideRatios, maxRatiosLength)
-        # vectorization of computing medians is (a bit) faster than computing them in the for loop above
-        logPeptideRatios = np.log(bn.nanmedian(peptideRatiosArray, axis=1))
-
-        peptideRatiosDict = {p: r for p, r in zip(experimentPairs, logPeptideRatios)}
-        return peptideRatiosDict
-
-    def _createJaggedArray(self, peptideRatios: List[np.array], maxRatiosLength: int):
-        peptideRatiosArray = np.empty((len(peptideRatios), maxRatiosLength))
-        peptideRatiosArray[:] = np.nan
-        for idx, row in enumerate(peptideRatios):
-            peptideRatiosArray[idx, :len(row)] = row
-        return peptideRatiosArray
+        for ((idx_i, i, col_i), (idx_j, j, col_j)) in itertools.combinations(
+                columns, 2):
+            if valid_vals[idx_i, idx_j] < minPeptideRatiosLFQ:
+                continue
+            
+            ratios = col_i / col_j
+            # vectorization of computing medians is 25% faster than computing 
+            # them in a loop here but requires more memory
+            peptideRatios.append(bn.nanmedian(ratios))
+            experimentPairs.append((i,j))
+        
+        return dict(zip(experimentPairs, np.log(peptideRatios)))
 
     def _getMaxRatio(self, pc1: float, pc2: float) -> float:
         assert pc1 > 0 and pc2 > 0
