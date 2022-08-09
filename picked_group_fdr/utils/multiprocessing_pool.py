@@ -37,7 +37,7 @@ class NestablePool(multiprocessing.pool.Pool):
 
 
 class JobPool:
-    def __init__(self, processes=1, warningFilter="default", queue=None):
+    def __init__(self, processes=1, warningFilter="default", queue=None, maxtasksperchild=None):
         self.warningFilter = warningFilter
         
         # In the GUI, SIMSI-Transfer runs in a child process to allow user
@@ -50,25 +50,27 @@ class JobPool:
             queue = multiprocessing.Queue()
             queue_listener = QueueListener(queue, logger)
             queue_listener.start()
-        self.pool = NestablePool(processes, worker_init, initargs=(self.warningFilter, queue))
+        self.pool = NestablePool(processes, worker_init, initargs=(self.warningFilter, queue), maxtasksperchild=maxtasksperchild)
         
         self.results = []
+        self.outputs = []
 
     def applyAsync(self, f, fargs, *args, **kwargs):
         r = self.pool.apply_async(f, fargs, *args, **kwargs)
         self.results.append(r)
 
-    def checkPool(self, printProgressEvery=-1):
+    def checkPool(self, printProgressEvery=-1, keepAlive=False):
         try:
-            outputs = list()
-            for res in self.results:
-                outputs.append(res.get(timeout=10000))  # 10000 seconds = ~3 hours
-                if printProgressEvery > 0 and len(outputs) % printProgressEvery == 0:
+            results_idx = len(self.outputs)
+            for res in self.results[results_idx:]:
+                self.outputs.append(res.get(timeout=10000))  # 10000 seconds = ~3 hours
+                if printProgressEvery > 0 and len(self.outputs) % printProgressEvery == 0:
                     logger.info(
-                        f' {len(outputs)} / {len(self.results)} {"%.2f" % (float(len(outputs)) / len(self.results) * 100)}%')
-            self.pool.close()
-            self.pool.join()
-            return outputs
+                        f' {len(self.outputs)} / {len(self.results)} {"%.2f" % (float(len(self.outputs)) / len(self.results) * 100)}%')
+            if not keepAlive:
+                self.pool.close()
+                self.pool.join()
+                return self.outputs
         except (KeyboardInterrupt, SystemExit):
             logger.error("Caught KeyboardInterrupt, terminating workers")
             self.pool.terminate()

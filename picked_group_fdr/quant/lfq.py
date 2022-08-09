@@ -60,12 +60,12 @@ class LFQIntensityColumns(ProteinGroupColumns):
         numSilacChannels = len(self.silacChannels)
         
         if self.numThreads > 1:
-            processingPool = pool.JobPool(processes=self.numThreads)
+            processingPool = pool.JobPool(processes=self.numThreads, maxtasksperchild=10)
         
         allIntensities = list()
-        numSilacChannels = len(self.silacChannels)
         for i, pgr in enumerate(proteinGroupResults):
-            args = [pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff, self.minPeptideRatiosLFQ, self.stabilizeLargeRatiosLFQ, numSilacChannels]
+            args = [pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff, 
+                    self.minPeptideRatiosLFQ, self.stabilizeLargeRatiosLFQ, numSilacChannels]
             if self.numThreads > 1:
                 processingPool.applyAsync(_getLFQIntensities, args)
             else:

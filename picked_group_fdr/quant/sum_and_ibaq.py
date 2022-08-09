@@ -68,7 +68,8 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
     for precursor in peptideIntensityList:
       if helpers.isMbr(precursor.postErrProb) or precursor.postErrProb <= postErrProbCutoff:
         intensities[experimentToIdxMap[precursor.experiment]*(1+numSilacChannels)] += precursor.intensity
-        for silacIdx, silacIntensity in enumerate(precursor.silacIntensities):
-          intensities[experimentToIdxMap[precursor.experiment]*(1+numSilacChannels)+silacIdx+1] += silacIntensity
+        if precursor.silacIntensities is not None:
+          for silacIdx, silacIntensity in enumerate(precursor.silacIntensities):
+            intensities[experimentToIdxMap[precursor.experiment]*(1+numSilacChannels)+silacIdx+1] += silacIntensity
     return intensities
 

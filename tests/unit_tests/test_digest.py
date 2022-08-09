@@ -158,7 +158,7 @@ class TestSemiSpecificDigest:
              'ABCDEFGKX',
                 'BCDEFGKX', 
                  'CDEFGKX',
-                    'DEFGKX'])
+                  'DEFGKX'])
                  
     def test_semiSpecificDigest_notPost(self):
         seq = 'ABCDEFKPX'
@@ -175,7 +175,7 @@ class TestSemiSpecificDigest:
              'ABCDEFKPX', 
                 'BCDEFKPX', 
                  'CDEFKPX', 
-                    'DEFKPX'])
+                  'DEFKPX'])
 
 
 class TestFullDigest:
@@ -200,7 +200,7 @@ class TestFullDigest:
         methionineCleavage = True
         assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
             ['MABCDEFGH',
-                'ABCDEFGH'])
+              'ABCDEFGH'])
     
     # make sure that the methionine cleavage is not counted as a miscleavage
     def test_fullDigest_methionineCleavageOneMiscleavage(self):
@@ -214,8 +214,8 @@ class TestFullDigest:
         assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
             ['MABCDEFGHK',
              'MABCDEFGHKK',
-                'ABCDEFGHK',
-                'ABCDEFGHKK'])
+              'ABCDEFGHK',
+              'ABCDEFGHKK'])
     
     def test_fullDigest_noCleavageSiteMaxLen(self):
         seq = 'ABCDEFGH'

@@ -232,7 +232,7 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
       numTmtChannels = int(len(tmtCols) / 3) 
     if numSilacChannels == -1:
       numSilacChannels = len(silacCols)
-    
+
     # override the parsed experiment and fraction if --file_list_file option is used
     if fileMapping:
       experiment, fraction = fileMapping[rawFile]
@@ -264,6 +264,16 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
       if not helpers.isDecoy(proteins):
         postErrProbs.append((postErrProb, rawFile, experiment, peptide))
       
+      if len(tmtCols) > 0:
+        tmtCols = np.array(tmtCols, dtype = 'float64')
+      else:
+        tmtCols = None
+      
+      if len(silacCols) > 0:
+        silacCols = np.array(silacCols, dtype = 'float64')
+      else:
+        silacCols = None
+
       for proteinGroupIdx in proteinGroupIdxs:
         precursorQuant = PrecursorQuant(peptide, 
                                         charge, 
@@ -271,8 +281,8 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
                                         fraction, 
                                         intensity, 
                                         postErrProb,
-                                        np.array(tmtCols, dtype = 'float64'), 
-                                        np.array(silacCols, dtype = 'float64'),
+                                        tmtCols,
+                                        silacCols,
                                         evidenceId)
         proteinGroupResults[proteinGroupIdx].precursorQuants.append(precursorQuant)
   

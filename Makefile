@@ -22,6 +22,9 @@ performance:
 line_profiler_lfq:
 	kernprof -lv tests/performance_tests/test_lfq.py
 
+memory_profile:
+	mprof run --include-children --backend psutil_pss python3 -u tests/performance_tests/test_lfq.py | ts '[%H:%M:%.S]'
+
 # --no-cache
 build: dependencies
 	docker build -f Dockerfile -t $(IMAGE) . || (exit 1)
