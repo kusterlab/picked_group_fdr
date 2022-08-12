@@ -46,7 +46,7 @@ class Plotter:
   import matplotlib.pyplot as plt
   
   def __init__(self, figure_base_fn, plot_figures):
-    self.maxPlottedQval = 0.02
+    self.maxPlottedQval = 0.1 # 0.02
     self.maxProt = 0
     self.figure_base_fn = figure_base_fn
     self.plot_figures = plot_figures
