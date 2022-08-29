@@ -309,7 +309,7 @@ def maxquant_to_internal(
                 else:
                         key = f"{key}$"
 
-            return replacements[key]
+        return replacements[key]
 
     return [regex.sub(find_replacement, seq)[1:-1] for seq in sequences]
 
