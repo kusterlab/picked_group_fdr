@@ -36,8 +36,8 @@ RUN echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
 RUN echo 'eval "$(pyenv init -)"' >> ~/.bashrc
 
 WORKDIR /root/
-RUN pyenv install 3.6.9
-RUN pyenv local 3.6.9
+RUN pyenv install 3.8.12
+RUN pyenv local 3.8.12
 RUN pyenv rehash
 
 # see https://github.com/python-poetry/poetry/issues/1427
