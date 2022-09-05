@@ -104,10 +104,10 @@ def main(argv):
     
     scoreType = ProteinScoringStrategy("bestPEP")
     doQuantification(args.mq_evidence, proteinGroupResults, proteinSequences,
-                                     peptideToProteinMap, numIbaqPeptidesPerProtein, args.file_list_file, 
-                                     scoreType, minPeptideRatiosLFQ = args.lfq_min_peptide_ratios,
-                                     stabilizeLargeRatiosLFQ = args.lfq_stabilize_large_ratios,
-                                     numThreads = args.num_threads)
+                     peptideToProteinMap, numIbaqPeptidesPerProtein, args.file_list_file, 
+                     scoreType, minPeptideRatiosLFQ = args.lfq_min_peptide_ratios,
+                     stabilizeLargeRatiosLFQ = args.lfq_stabilize_large_ratios,
+                     numThreads = args.num_threads)
     
     proteinGroupResults.write(args.protein_groups_out)
     

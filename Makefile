@@ -44,7 +44,7 @@ endif
 percolator: tab
 ifeq ($(PROSIT_FLAG),)
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr.pipeline.run_mokapot $(PERC_TEST_FDR) $(PERC_TRAIN_FDR) $(OUT_DIR_LOCAL)/percolator" || (echo "3" > $(DATA)err.out; exit 3)
+		$(IMAGE) bash -c "OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr.pipeline.run_mokapot $(PERC_TEST_FDR) $(PERC_TRAIN_FDR) $(OUT_DIR_LOCAL)/percolator $(NUM_THREADS)" || (echo "3" > $(DATA)err.out; exit 3)
 endif
 
 update_evidence: percolator
