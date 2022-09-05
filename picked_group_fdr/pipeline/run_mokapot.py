@@ -6,6 +6,7 @@ import datetime
 
 import mokapot
 from mokapot import __version__
+from mokapot.model import PercolatorModel
 
 
 def run_mokapot(perc_folder, test_fdr, train_fdr):
@@ -43,7 +44,8 @@ def run_mokapot(perc_folder, test_fdr, train_fdr):
     logging.info("=================")
 
     psms = mokapot.read_pin(os.path.join(perc_folder, "andromeda.tab"))
-    results, models = mokapot.brew(psms, test_fdr = test_fdr)
+    model = PercolatorModel(train_fdr=train_fdr)
+    results, models = mokapot.brew(psms, model=model, test_fdr=test_fdr)
     results.to_txt(dest_dir = perc_folder, file_root="andromeda", decoys = True)
 
     total_time = round(time.time() - start)
