@@ -16,7 +16,7 @@ logger = logging.getLogger(__package__ + "." + __file__)
 Scan = collections.namedtuple('Scan', 'postErrorProb rawFile scanNr sequence precCharge isDecoy')
 
 
-# python -m picked_group_fdr.pipeline.filter_fdr_maxquant --per_rawfile_fdr --perc_in ${DATA_DIR}/Dongxue_mimic_final_runs/mimic_s0.5_m4_peptFDR0.1/peptides.all.txt --perc_out ${DATA_DIR}/Dongxue_mimic_final_runs/mimic_s0.5_m4_peptFDR0.1/peptides_0.01peptideFDR_per_rawfile2.all.txt
+# python -m picked_group_fdr.pipeline.filter_fdr_maxquant --per_rawfile_fdr --perc_in ${DATA_DIR}/Dongxue_mimic_final_runs/mimic_s0.5_m4_peptFDR0.1/peptides.all.txt --perc_out ${DATA_DIR}/Dongxue_mimic_final_runs/mimic_s0.5_m4_peptFDR0.1/peptides_0.01peptideFDR_per_rawfile.all.txt
 def parseArgs(argv):
     import argparse
     apars = argparse.ArgumentParser(

@@ -34,50 +34,49 @@ def parseArgs(argv):
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     apars.add_argument('--mq_evidence', default=None, metavar = "EV", required = True,
-                                         help='''MaxQuant evidence file.
-                                                    ''')
+                         help='''MaxQuant evidence file.''')
     
     apars.add_argument('--mq_protein_groups', default=None, metavar = "PG", required = True,
-                                         help='''MaxQuant protein groups file.
-                                                    ''')
+                         help='''MaxQuant protein groups file.''')
     
     apars.add_argument('--protein_groups_out', default=None, metavar = "PG", required = True,
-                                         help='''Protein groups output file, mimicks a subset of the MQ protein groups columns.
-                                                    ''')
+                         help='''Protein groups output file, mimicks a subset of the MQ protein groups columns.
+                                ''')
     
     apars.add_argument('--peptide_protein_map', default=None, metavar = "M",
-                                         help='''Mapping from peptides to proteins.
-                                                    ''')
+                         help='''TSV file with mapping from peptides to proteins.''')
     
     apars.add_argument('--fasta', default=None, metavar = "F",
-                                         help='''Fasta file to create mapping from peptides to proteins.
-                                                    ''')
+                         help='''Fasta file to create mapping from peptides to proteins.''')
     
     apars.add_argument('--fasta_use_uniprot_id',
-                                         help='''Parse protein identifiers in the fasta file as UniProt IDs, 
-                                                         i.e. Q9UM47 for the protein identifier sp|Q9UM47|NOTC3_HUMAN''',
-                                         action='store_true')
+                         help='''Parse protein identifiers in the fasta file as UniProt IDs, 
+                                 i.e. Q9UM47 for the protein identifier sp|Q9UM47|NOTC3_HUMAN''',
+                         action='store_true')
 
     apars.add_argument('--gene_level',
-                                         help='''Do quantification on gene-level instead of on protein group level''',
-                                         action='store_true')
+                         help='''Do quantification on gene-level instead of on protein group level''',
+                         action='store_true')
     
     apars.add_argument('--file_list_file', metavar='L', 
-                                         help='''Tab separated file with lines of the format (third and 
-                                                         fourth columns are optional): raw_file <tab> condition 
-                                                         <tab> experiment <tab> fraction.
-                                                         ''',
-                                         required = False)
+                         help='''Tab separated file with lines of the format (third and 
+                                 fourth columns are optional): raw_file <tab> condition 
+                                 <tab> experiment <tab> fraction.
+                                 ''',
+                         required = False)
     
     apars.add_argument('--lfq_min_peptide_ratios', default=2, type=int, metavar='M',
-                                         help='''Minimum number of common peptides between two samples
-                                                         to qualify for calculating a peptide ratio in LFQ
-                                                         ''')
+                         help='''Minimum number of common peptides between two samples
+                                 to qualify for calculating a peptide ratio in LFQ
+                                 ''')
+    
+    apars.add_argument('--num_threads', default=1, type=int, metavar='T',
+                         help='''Maximum number of threads to use.''')
     
     apars.add_argument('--lfq_stabilize_large_ratios',
-                                         help='''Apply stabilization of large ratios in LFQ as described
-                                                         in the MaxLFQ paper.''',
-                                         action='store_false')
+                         help='''Apply stabilization of large ratios in LFQ as described
+                                 in the MaxLFQ paper.''',
+                         action='store_false')
     
     
     digest.addArguments(apars)
@@ -107,7 +106,8 @@ def main(argv):
     doQuantification(args.mq_evidence, proteinGroupResults, proteinSequences,
                                      peptideToProteinMap, numIbaqPeptidesPerProtein, args.file_list_file, 
                                      scoreType, minPeptideRatiosLFQ = args.lfq_min_peptide_ratios,
-                                     stabilizeLargeRatiosLFQ = args.lfq_stabilize_large_ratios)
+                                     stabilizeLargeRatiosLFQ = args.lfq_stabilize_large_ratios,
+                                     numThreads = args.num_threads)
     
     proteinGroupResults.write(args.protein_groups_out)
     
@@ -160,7 +160,9 @@ def doQuantification(mqEvidenceFile, proteinGroupResults, proteinSequences,
         peptideToProteinMap, numIbaqPeptidesPerProtein, fileListFile, 
         scoreType, psmQvalCutoff = 0.01, 
         discardSharedPeptides = True, 
-        minPeptideRatiosLFQ = 2, stabilizeLargeRatiosLFQ = True):
+        minPeptideRatiosLFQ = 2, 
+        stabilizeLargeRatiosLFQ = True,
+        numThreads = 1):
     params = initTriqlerParams()
     
     logger.info("Preparing for quantification")
@@ -202,7 +204,7 @@ def doQuantification(mqEvidenceFile, proteinGroupResults, proteinSequences,
     if numTmtChannels > 0:
         columns.append(TMTIntensityColumns(numTmtChannels))
     else:
-        columns.append(LFQIntensityColumns(silacChannels, minPeptideRatiosLFQ, stabilizeLargeRatiosLFQ))
+        columns.append(LFQIntensityColumns(silacChannels, minPeptideRatiosLFQ, stabilizeLargeRatiosLFQ, numThreads))
         # TODO: add SILAC functionality of Triqler
         if numSilacChannels == 0:
             columns.append(TriqlerIntensityColumns(params))
