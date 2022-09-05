@@ -1,0 +1,27 @@
+{
+   "id":"c4a6f98a-484f-486b-8b92-62a6d7ef9cd3",
+   "options":{
+      "collisionEnergy":false,
+      "missedCleavages":false,
+      "oxidizedMethionine":false,
+      "protease":"trypsinp",
+      "minPeptideLength":6,
+      "maxPeptideLength":false,
+      "specialAAs":"KR"
+   },
+   "outputFormat":"msp",
+   "prosit_server":"131.159.152.7:8500",
+   "prosit_server_rest":"131.159.152.7:8501",
+   "selectedIRTModel":"Prosit_2019_irt",
+   "selectedIntensityModel":"Prosit_2019_intensity",
+   "selectedProteotypicityModel":"Prosit_2020_proteotypicity",
+   "uploads":{
+      "FASTA":false,
+      "RAW":true,
+      "msms.txt":true,
+      "peptides.csv":false,
+      "evidence.txt":true,
+      "prosit_target.psms":false,
+      "prosit_decoy.psms":false
+   }
+}
