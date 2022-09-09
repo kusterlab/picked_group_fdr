@@ -4,6 +4,7 @@ import logging
 
 from . import graphs
 from .protein_groups import ProteinGroups
+from .peptide_info import PeptideInfoList
 
 
 logger = logging.getLogger(__name__)
@@ -12,32 +13,49 @@ logger = logging.getLogger(__name__)
 class ObservedPeptides:
     peptide_to_proteins_dict: Dict[str, List[str]]
     protein_to_peptides_dict: Dict[str, List[str]]
+    peptide_to_score_dict: Dict[str, float]
     
     def __init__(self) -> None:
         self.peptide_to_proteins_dict = dict()
         self.protein_to_peptides_dict = collections.defaultdict(list) 
-    
-    def create(self, peptideInfoList: Dict[str, Tuple[float, List[str]]]) -> None:
+        self.peptide_to_score_dict = dict()
+
+    def create(self, 
+            peptideInfoList: PeptideInfoList,
+            proteinGroups: ProteinGroups = None) -> None:
         """Populates two dictionaries, the first mapping peptides to proteins and the
         second mapping proteins to peptides
         
         :param peptideInfoList: dictionary of peptide -> (score, proteins)
         """
         for peptide, (score, proteins) in peptideInfoList.items():
+            if proteinGroups:
+                proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)            
+                if len(proteinGroupIdxs) != 1:
+                    continue
+
             self.peptide_to_proteins_dict[peptide] = proteins
+            self.peptide_to_score_dict[peptide] = score
             for protein in proteins:
                 self.protein_to_peptides_dict[protein].append(peptide)
-    
+                
     def get_proteins(self, peptide: str) -> List[str]:
         """Returns list of proteins that a peptide matches to"""
         return self.peptide_to_proteins_dict.get(peptide, [])
     
+    def get_score(self, peptide: str) -> List[str]:
+        """Returns list of proteins that a peptide matches to"""
+        return self.peptide_to_score_dict.get(peptide, 1.0)
+
     def get_peptides(self, protein: str) -> List[str]:
         """Returns list of peptides that a protein matches to"""
         return self.protein_to_peptides_dict[protein]
     
     def get_peptide_counts_per_protein(self) -> Dict[str, int]:
         return { protein : len(set(peptides)) for protein, peptides in self.protein_to_peptides_dict.items() }
+
+    def get_best_peptide_score_per_protein(self) -> Dict[str, float]:
+        return { protein : min(self.get_score(p) for p in peptides) for protein, peptides in self.protein_to_peptides_dict.items() }
 
     def generate_protein_groups(self) -> ProteinGroups:
         """Generating protein groups from a dictionary of observed_peptide -> protein"""

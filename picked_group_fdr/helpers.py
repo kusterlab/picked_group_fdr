@@ -4,12 +4,20 @@ from typing import List, Dict, Optional
 import numpy as np
 
 
+def allContain(proteinGroup: List[str], prefix) -> bool:
+    return len([1 for x in proteinGroup if prefix in x]) == len(proteinGroup)
+
+
 def isContaminant(proteinGroup: List[str]) -> bool:
-    return len([1 for x in proteinGroup if "CON__" in x]) == len(proteinGroup)
+    return allContain(proteinGroup, "CON__")
 
     
 def isDecoy(proteinGroup: List[str]) -> bool:
-    return len([1 for x in proteinGroup if "REV__" in x]) == len(proteinGroup)
+    return allContain(proteinGroup, "REV__")
+
+
+def isObsolete(proteinGroup: List[str]) -> bool:
+    return allContain(proteinGroup, "OBSOLETE__")
 
 
 def isMbr(postErrProb: float) -> bool:

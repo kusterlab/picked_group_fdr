@@ -17,7 +17,6 @@ ITRAQ4_UNIMOD = "[UNIMOD:214]"
 ITRAQ8_UNIMOD = "[UNIMOD:730]"
 
 
-
 # copied from fundamentals/constants.py
 MAXQUANT_VAR_MODS = {
         "(ox)": "[UNIMOD:35]",
@@ -62,7 +61,8 @@ ITRAQ8_FIXED_MODS = {'C': 'C[UNIMOD:4]',
 FIXED_MODS_UNIMOD = [TMT_UNIMOD, TMTPRO_UNIMOD, ITRAQ4_UNIMOD, ITRAQ8_UNIMOD]
 FIXED_MODS_DICTS = [DEFAULT_FIXED_MODS, TMT_FIXED_MODS, TMTPRO_FIXED_MODS, ITRAQ4_FIXED_MODS, ITRAQ8_FIXED_MODS]
 
-def parseMqProteinGroupsFile(mqProteinGroupsFile):
+
+def parseMqProteinGroupsFile(mqProteinGroupsFile, protein_column='Protein IDs'):
     if mqProteinGroupsFile.endswith('.csv'):
         delimiter = ','
     else:
@@ -72,8 +72,7 @@ def parseMqProteinGroupsFile(mqProteinGroupsFile):
     headers = next(reader) # save the header
     
     scoreCol = headers.index('Score')
-    proteinCol = headers.index('Protein IDs')
-    #proteinCol = headers.index('Majority protein IDs')
+    proteinCol = headers.index(protein_column)
     
     logger.info("Parsing MaxQuant proteinGroups.txt file")
     for row in reader:

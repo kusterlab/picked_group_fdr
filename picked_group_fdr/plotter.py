@@ -31,7 +31,7 @@ class NoPlotter:
     def set_series_label(self, scoreType, groupingStrategy, pickedStrategy, rescue_step):
         pass
     
-    def plotQvalCalibrationAndPerformance(self, reportedQvals, observedQvals, label, absentRatio = 1.0):
+    def plotQvalCalibrationAndPerformance(self, reportedQvals, observedQvals, absentRatio = 1.0):
         pass
 
 

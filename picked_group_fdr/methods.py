@@ -3,6 +3,16 @@ from .scoring import ProteinScoringStrategy
 from .grouping import RescuedSubsetGrouping, NoGrouping, MQNativeGrouping, SubsetGrouping, RescuedMQNativeGrouping
 
 def get_methods(args):
+    """
+    pickedStrategy: PickedStrategy() = picked FDR
+                    ClassicStrategy() = classic FDR
+    
+    grouping:       MQNativeGrouping() = MaxQuant grouping from proteinGroups.txt
+                    SubsetGrouping() = Emulate protein grouping of MaxQuant based on evidence.txt
+                                       (currently does not work with simulated datasets since peptideToProteinMap does not contain entrapment labels)
+                    NoGrouping() = No protein grouping, each protein is in its own group
+                    +Rescued = Rescue protein groups by only considering peptides below 1% protein FDR threshold
+    """
     configs = list()
     
     ### WELL-CALIBRATED METHODS
@@ -105,14 +115,15 @@ def get_methods(args):
     #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Picked Protein Group FDR' })
     
     
-    #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant' })
-    #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc PEP' })
-    #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant picked' })
-    #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc PEP picked' })
-    #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : SubsetGrouping(), 'label' : 'Classic Protein Group FDR no rescue' })
-    #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Classic Protein Group FDR'})
-    #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : SubsetGrouping(), 'label' : 'Picked Protein Group FDR no rescue' })
-    #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Picked Protein Group FDR'})
+#    configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant' })
+#    configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc PEP' })
+#    configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant picked' })
+#    configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc PEP picked' })
+#    configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Best Perc PEP picked' })
+#    configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : SubsetGrouping(), 'label' : 'Classic Protein Group FDR no rescue' })
+#    configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Classic Protein Group FDR'})
+#    configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : SubsetGrouping(), 'label' : 'Picked Protein Group FDR no rescue' })
+#    configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Picked Protein Group FDR'})
     
     
     #################
@@ -133,11 +144,23 @@ def get_methods(args):
     ################
     
     # entrapment simulation
-    # for NUMEXP in {10,100,200,300,400,500}; do python3 -um picked_group_fdr --mq_evidence    ${DATA_DIR}/simulations/evidence.${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt --peptide_protein_map ${DATA_DIR}/fasta/uniprot-proteome_human_190327.peptide_to_protein_map.long_protein_ids.txt --mq_protein_groups ${DATA_DIR}/simulations/proteinGroups.${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt --figure_base_fn results/220203_manuscript_figures/simulated-${NUMEXP}-experiments-peptFDR0.01-no-recalibration | tee results/220203_manuscript_figures/simulated-${NUMEXP}-experiments-peptFDR0.01-no-recalibration.log; done
+    # for NUMEXP in {10,100,200,300,400,500}; do python3 -um picked_group_fdr --mq_evidence ${DATA_DIR}/simulations/evidence.${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt --peptide_protein_map ${DATA_DIR}/fasta/uniprot-proteome_human_190327.peptide_to_protein_map.long_protein_ids.txt --mq_protein_groups ${DATA_DIR}/simulations/proteinGroups.${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt --figure_base_fn results/220812_0.01peptideFDR_investigation/simulated-${NUMEXP}-experiments-peptFDR0.01-no-recalibration | tee results/220812_0.01peptideFDR_investigation/simulated-${NUMEXP}-experiments-peptFDR0.01-no-recalibration.log; done
     #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("multPEP razor"), 'grouping' : MQNativeGrouping(), 'label' : 'MaxQuant'})
     #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("bestPEP razor"), 'grouping' : MQNativeGrouping(), 'label' : 'Razor + Picked group'})
     #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("bestPEP"), 'grouping' : MQNativeGrouping(), 'label' : 'Discard + Picked group'})
     #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("bestPEP"), 'grouping' : RescuedMQNativeGrouping(), 'label' : 'Picked group'})
+    
+    #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant' })
+    #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc PEP' })
+    #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap multPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc PEP picked' })
+#    configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc bestPEP' })
+    #configs.append({'pickedStrategy' : PickedGroupStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP razor"), 'grouping' : SubsetGrouping(), 'label' : 'MaxQuant Perc bestPEP picked' })
+    #configs.append({'pickedStrategy' : ClassicStrategy(), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Classic Protein Group FDR'})
+    #configs.append({'pickedStrategy' : PickedGroupStrategy("leading"), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Picked Protein Group FDR'})
+    
+    #configs.append({'pickedStrategy' : PickedGroupStrategy("all"), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Picked (all) Protein Group FDR'})
+    #configs.append({'pickedStrategy' : PickedGroupStrategy("majority"), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Picked (majority) Protein Group FDR'})
+    #configs.append({'pickedStrategy' : PickedGroupStrategy("leading"), 'scoreType' : ProteinScoringStrategy("Perc remap bestPEP"), 'grouping' : RescuedSubsetGrouping(), 'label' : 'Picked (leading) Protein Group FDR'})
     
     
     #################

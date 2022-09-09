@@ -1,9 +1,13 @@
+from __future__ import annotations
 from typing import List, Set, Dict
 import logging
 
 from . import parsers
 from . import helpers
 from . import entrapment
+
+# for type hints only
+from .peptide_info import ProteinGroupPeptideInfos
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +57,10 @@ class ProteinGroups:
         self.protein_groups.append(protein_group)
         self.valid_idx = False
     
+    def extend(self, protein_groups: ProteinGroups):
+        self.protein_groups.extend(protein_groups)
+        self.valid_idx = False
+    
     def size(self) -> int:
         return len(self.protein_groups)
     
@@ -86,9 +94,6 @@ class ProteinGroups:
         return self.protein_to_group_idx_map[protein]
     
     def get_protein_group_idxs(self, proteins: List[str], check_idx_valid: bool = True) -> Set[int]:
-        if not self.valid_idx and check_idx_valid:
-            raise Exception("Trying to get group index while index is invalid")
-        
         proteinGroupIdxs = set()
         for protein in proteins:    
             if protein in self.protein_to_group_idx_map:
@@ -102,15 +107,23 @@ class ProteinGroups:
         self.protein_groups[self._get_protein_group_idx(protein, check_idx_valid = False)] = []
         self.valid_idx = False
     
-    def add_unseen_protein_groups(self, proteinGroups):
-        """Add protein groups from another ProteinGroups object that do not have
-        proteins in common with a protein group in the current ProteinGroups object"""
+    def add_unseen_protein_groups(self, proteinGroups: ProteinGroups, proteinGroupPeptideInfos: ProteinGroupPeptideInfos):
+        """Add protein groups from another ProteinGroups object that have proteins
+        which are not already in a protein group of the current ProteinGroups object"""
         identifiedNewProteins = self.get_all_proteins()
-        for proteinGroup in proteinGroups:
+        obsoleteProteinGroups = ProteinGroups()
+        obsoleteProteinGroupPeptideInfos = []
+        for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupPeptideInfos):
             newProteinGroup = list(filter(lambda protein : protein not in identifiedNewProteins, proteinGroup))
             if len(newProteinGroup) > 0:
                 self.append(newProteinGroup)
+            else:
+                obsoleteProteinGroup = list(map(lambda x: f"OBSOLETE__{x}", proteinGroup))
+                obsoleteProteinGroups.append(obsoleteProteinGroup)
+                obsoleteProteinGroupPeptideInfos.append(proteinGroupScoreList)
         self.create_index()
+        
+        return obsoleteProteinGroups, obsoleteProteinGroupPeptideInfos
         
     def remove_empty_groups(self):
         self.protein_groups = list(filter(lambda x : len(x) > 0, self.protein_groups))

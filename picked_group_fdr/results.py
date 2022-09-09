@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import copy
 import logging
@@ -9,6 +11,10 @@ import numpy as np
 from . import parsers
 from . import helpers
 
+# for type hints only
+from .peptide_info import ProteinGroupPeptideInfos
+from .protein_groups import ProteinGroups
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +23,7 @@ logger = logging.getLogger(__name__)
 class ProteinGroupResult:
     proteinIds: str = ""
     majorityProteinIds: str = ""
-    peptideCountsUnique: int = 0
+    peptideCountsUnique: str = ""
     proteinNames: str = ""
     geneNames: str = ""
     fastaHeaders: str = ""
@@ -103,17 +109,17 @@ class ProteinGroupResult:
         
     def to_list(self):
         return [self.proteinIds, 
-                        self.majorityProteinIds, 
-                        self.peptideCountsUnique,
-                        self.proteinNames,
-                        self.geneNames,
-                        self.fastaHeaders,
-                        self.bestPeptide,
-                        self.numberOfProteins,
-                        self.qValue,
-                        self.score,
-                        self.reverse,
-                        self.potentialContaminant] + ["%.0f" % (x) if not type(x) == str else x for x in self.extraColumns]
+                self.majorityProteinIds, 
+                self.peptideCountsUnique,
+                self.proteinNames,
+                self.geneNames,
+                self.fastaHeaders,
+                self.bestPeptide,
+                self.numberOfProteins,
+                self.qValue,
+                self.score,
+                self.reverse,
+                self.potentialContaminant] + ["%.0f" % (x) if not type(x) == str else x for x in self.extraColumns]
 
 
 ProteinGroupHeaders = [
@@ -135,8 +141,8 @@ class ProteinGroupResults:
     headers = List[str]
     protein_group_results: List[ProteinGroupResult] = field(default_factory=list)
     
-    def __init__(self, protein_group_results=None):
-        if protein_group_results is None: # https://docs.python-guide.org/writing/gotchas/
+    def __init__(self, protein_group_results: ProteinGroupResults=None):
+        if protein_group_results is None: # cannot use empty list as default argument: https://docs.python-guide.org/writing/gotchas/
             self.protein_group_results = []
         else:    
             self.protein_group_results = protein_group_results
@@ -154,21 +160,20 @@ class ProteinGroupResults:
     def __getitem__(self, indices):
         return self.protein_group_results[indices]
     
-    def append_header(self, header):
+    def append_header(self, header: str) -> None:
         self.headers.append(header)
     
-    def write(self, output_file):
+    def write(self, output_file: str) -> None:
         writer = parsers.getTsvWriter(output_file)
         writer.writerow(self.headers)
         for proteinRow in self.protein_group_results:
             writer.writerow(proteinRow.to_list())
 
     @classmethod
-    def from_mq_protein_proteins_file(cls, mqProteinGroupsFile):
+    def from_mq_protein_proteins_file(cls, mqProteinGroupsFile: str) -> ProteinGroupResults:
+        delimiter = '\t'
         if mqProteinGroupsFile.endswith('.csv'):
-            delimiter = ','
-        else:
-            delimiter = '\t'
+            delimiter = ','            
             
         reader = parsers.getTsvReader(mqProteinGroupsFile, delimiter)
         headers = next(reader)
@@ -182,9 +187,17 @@ class ProteinGroupResults:
         return cls(protein_group_results)
     
     @classmethod
-    def from_protein_groups(cls, proteinGroups, proteinGroupScores, proteinScores, reportedQvals, scoreCutoff, proteinAnnotations):
+    def from_protein_groups(cls, 
+            proteinGroups: ProteinGroups, 
+            proteinGroupPeptideInfos: ProteinGroupPeptideInfos, 
+            proteinScores: List[float], 
+            reportedQvals: List[float], 
+            scoreCutoff: float, 
+            proteinAnnotations) -> ProteinGroupResults:
         protein_group_results = list()
-        for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(proteinGroups, proteinGroupScores, proteinScores, reportedQvals):
+        for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(proteinGroups, proteinGroupPeptideInfos, proteinScores, reportedQvals):
+            if helpers.isObsolete(proteinGroup):
+                continue
             pgr = ProteinGroupResult.from_protein_group(proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations)
             protein_group_results.append(pgr)
         

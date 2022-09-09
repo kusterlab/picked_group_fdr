@@ -4,6 +4,7 @@ import numpy as np
 import picked_group_fdr.grouping as grouping
 from picked_group_fdr.protein_groups import ProteinGroups
 from picked_group_fdr.results import ProteinGroupResult
+from picked_group_fdr.scoring import ProteinScoringStrategy
 
 
 class TestNoGrouping:
@@ -26,10 +27,12 @@ class TestRescuedSubsetGrouping:
   def test_group_proteins(self, peptideInfoListRescue, proteinFdrResults):
     rescued_subset_grouping = grouping.RescuedSubsetGrouping()
     protein_groups_before_rescue = rescued_subset_grouping.group_proteins(peptideInfoListRescue, "")
+    score_type = ProteinScoringStrategy("bestPEP")
+    proteinGroupPeptideInfos = score_type.collect_peptide_scores_per_protein(protein_groups_before_rescue, peptideInfoListRescue)
     
     assert protein_groups_before_rescue == ProteinGroups([["proteinA"], ["proteinB"], ["proteinC"]])
     
-    protein_groups_after_rescue = rescued_subset_grouping.rescue_protein_groups(peptideInfoListRescue, proteinFdrResults, protein_groups_before_rescue)
+    protein_groups_after_rescue = rescued_subset_grouping.rescue_protein_groups(peptideInfoListRescue, proteinFdrResults, protein_groups_before_rescue, proteinGroupPeptideInfos)
     assert protein_groups_after_rescue == ProteinGroups([["proteinA", "proteinB"], ["proteinC"]])
 
   def test_scoring_threshold(self, proteinFdrResults):

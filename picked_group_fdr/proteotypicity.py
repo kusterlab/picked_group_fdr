@@ -55,12 +55,12 @@ def getProteotypicities(peptideToProteotypicityMap, peptideScorePairs, scoreCuto
     return sorted([(peptideToProteotypicityMap.get(peptide, 0.0), peptide) for peptide in uniquePeptides], reverse = True)
 
 
-def calculateProteotypicityScores(proteinGroups, proteinGroupScores, peptideToProteotypicityMap, scoreType, scoreCutoff):
+def calculateProteotypicityScores(proteinGroups, proteinGroupPeptideInfos, peptideToProteotypicityMap, scoreType, scoreCutoff):
     logger.info("Computing proteotypicity scores")
     
     ptWriter = parsers.getTsvWriter("protein_percolator_input.tab")
     ptWriter.writerow(["PSMid", "label", "bestPEP", "proteotypicityRatio", "numObservedPeptides", "numInSilicoPeptides", "maxObservedProteotypicity", "maxProteinProteotypicity", "proteotypicityDiff", "peptide", "proteins"])
-    for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupScores):
+    for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupPeptideInfos):
         proteinScore = scoreType.calculate_score(proteinGroupScoreList)
         if proteinScore == -100.0:
             break

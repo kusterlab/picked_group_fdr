@@ -10,12 +10,11 @@ from . import entrapment
 logger = logging.getLogger(__name__)
 
 
-def calculateProteinFDRs(proteinGroups, proteinGroupScores, scoreType):
+def calculateProteinFDRs(proteinGroups, proteinScores):
     logger.info("Calculating protein group-level FDRs")
     numDecoys, numEntrapments, numTargets = 0, 0, 0
     proteinGroupInfoList = list()
-    for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupScores):
-        proteinScore = scoreType.calculate_score(proteinGroupScoreList)
+    for proteinGroup, proteinScore in zip(proteinGroups, proteinScores):
         if proteinScore == -100.0:
             break
         
@@ -27,14 +26,15 @@ def calculateProteinFDRs(proteinGroups, proteinGroupScores, scoreType):
                 numEntrapments += 1
         reportedFdr = (numDecoys + 1) / (numTargets + 1)
         observedFdr = (numEntrapments + 1) / (numTargets + 1)
-        proteinGroupInfoList.append((reportedFdr, observedFdr, helpers.isDecoy(proteinGroup), proteinScore))
+
+        proteinGroupInfoList.append((reportedFdr, observedFdr, helpers.isDecoy(proteinGroup)))
         
     logger.info(f"Decoys: {numDecoys}, Entrapments: {numEntrapments}, Pool: {numTargets - numEntrapments}")
     
     if len(proteinGroupInfoList) == 0:
         raise Exception("No proteins with scores found, make sure that protein identifiers are consistent in the evidence and fasta files")
     
-    reportedFdrs, observedFdrs, decoyLabels, proteinScores = zip(*proteinGroupInfoList)
+    reportedFdrs, observedFdrs, decoyLabels = zip(*proteinGroupInfoList)
     reportedQvals, observedQvals = fdrsToQvals(reportedFdrs), fdrsToQvals(observedFdrs)
     logger.info(f"#Targets at 1% decoy FDR: {countBelowThreshold(reportedQvals, 0.01, decoyLabels)}")
     if numEntrapments > 1:
@@ -44,7 +44,7 @@ def calculateProteinFDRs(proteinGroups, proteinGroupScores, scoreType):
         
         #printReportedAndEntrapmentFDRs(reportedQvals, observedQvals)
     
-    return reportedQvals, observedQvals, proteinScores
+    return reportedQvals, observedQvals
 
 
 def printReportedAndEntrapmentFDRs(reportedQvals, observedQvals):

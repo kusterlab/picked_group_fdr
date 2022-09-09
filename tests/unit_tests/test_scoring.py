@@ -6,9 +6,9 @@ from picked_group_fdr.scoring import MultPEPScore
 
 
 class TestMultPEPScore:
-  def test_optimize_hyperparameters(self, proteinGroupsSimple, proteinGroupScoresSimple):
+  def test_optimize_hyperparameters(self, proteinGroupsSimple, proteinGroupPeptideInfosSimple):
     score_type = MultPEPScore()
-    score_type.optimize_hyperparameters(proteinGroupsSimple, proteinGroupScoresSimple)
+    score_type.optimize_hyperparameters(proteinGroupsSimple, proteinGroupPeptideInfosSimple)
     
     np.testing.assert_almost_equal(score_type.div, 1e-4)
 
@@ -24,7 +24,7 @@ def proteinGroupsSimple():
 
 
 @pytest.fixture
-def proteinGroupScoresSimple():
+def proteinGroupPeptideInfosSimple():
   # tuples of (score, peptide, proteins)
   return [[(0.001, "A", []), (0.9, "B", []), (0.1, "A", [])],
           [(0.01, "", [])],
@@ -43,7 +43,7 @@ def proteinGroupsNoGrouping():
 
 
 @pytest.fixture
-def proteinGroupScoresNoGrouping():
+def proteinGroupPeptideInfosNoGrouping():
   # tuples of (score, peptide, proteins)
   return [[(0.001, "", [])],
           [(0.001, "", [])],
@@ -61,7 +61,7 @@ def proteinGroupsUnordered():
 
 
 @pytest.fixture
-def proteinGroupScoresUnordered():
+def proteinGroupPeptideInfosUnordered():
   # tuples of (score, peptide, proteins)
   return [[(0.01, "", [])],
           [(0.001, "", [])]]

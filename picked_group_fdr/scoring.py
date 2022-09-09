@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple
 import logging
+import hashlib
 
 import numpy as np
 
@@ -8,12 +9,16 @@ from . import parsers
 from . import helpers
 from . import fdr
 from .observed_peptides import ObservedPeptides
+from .protein_groups import ProteinGroups
+from .peptide_info import ProteinGroupPeptideInfos
 
 
 logger = logging.getLogger(__name__)
 
 
 """
+N.B.: Higher protein score indicates more confident identification
+
 scoreType:  MQ_protein = MaxQuant protein score from proteinGroups.txt (see below)
             multPEP = emulate MaxQuant protein score with multPEP with dividing of PEPs by fixed value
             bestPEP = best scoring peptide based on PEP
@@ -43,7 +48,7 @@ class ProteinScore(ABC):
     def short_description(self):
         pass
     
-    def optimize_hyperparameters(self, proteinGroups, proteinGroupScores):
+    def optimize_hyperparameters(self, proteinGroups, proteinGroupPeptideInfos):
         pass
 
 
@@ -69,10 +74,10 @@ class MQProteinScore(ProteinScore):
         return 'multiplication of'
         
     def get_protein_scores_from_file(self):
-        proteinGroupScores = list()
+        proteinGroupPeptideInfos = list()
         for proteinGroup, proteinScore in parsers.parseMqProteinGroupsFile(self.mq_protein_groups_file):
-            proteinGroupScores.append([(proteinScore, "NA", proteinGroup)])
-        return proteinGroupScores
+            proteinGroupPeptideInfos.append([(proteinScore, "NA", proteinGroup)])
+        return proteinGroupPeptideInfos
 
 
 class BestAndromedaScore(ProteinScore):
@@ -90,6 +95,7 @@ class BestAndromedaScore(ProteinScore):
 
     def long_description(self):
         return 'best'
+
 
 class BestPEPScore(ProteinScore):
     def calculate_score(self, scorePeptidePairs):
@@ -111,15 +117,16 @@ class BestPEPScore(ProteinScore):
     def long_description(self):
         return 'best'
 
+
 class MultPEPScore(ProteinScore):
     div: float
     
     def __init__(self):
         self.div = 1.0
     
-    def optimize_hyperparameters(self, proteinGroups, proteinGroupScores):
+    def optimize_hyperparameters(self, proteinGroups, proteinGroupPeptideInfos):
         proteinScoreTuples = list()
-        for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupScores):
+        for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupPeptideInfos):
             multPEP, numPeptides = self._get_score_and_num_peptides(proteinGroupScoreList)
             if numPeptides > 0 and not np.isnan(multPEP):
                 proteinScoreTuples.append([multPEP, numPeptides, helpers.isDecoy(proteinGroup)])
@@ -241,6 +248,7 @@ class ProteinScoringStrategy:
     protein_score: ProteinScore
     score_origin: ScoreOrigin
     peptide_counts_per_protein: Dict[str, int]
+    best_peptide_score_per_protein: Dict[str, float]
     
     def __init__(self, score_description, mq_protein_groups_file = ""):
         if "multPEP" in score_description:
@@ -267,60 +275,71 @@ class ProteinScoringStrategy:
         else:
             self.score_origin = MaxQuantInput()
         
-    def get_evidence_file(self, args):
+    def get_evidence_file(self, args) -> str:
         return self.score_origin.get_evidence_file(args)
     
-    def remaps_peptides_to_proteins(self):
+    def remaps_peptides_to_proteins(self) -> bool:
         return self.score_origin.remaps_peptides_to_proteins()
     
-    def can_do_quantification(self):
+    def can_do_quantification(self) -> bool:
         return self.score_origin.can_do_quantification()
     
-    def optimize_hyperparameters(self, proteinGroups, proteinGroupScores):
-        return self.protein_score.optimize_hyperparameters(proteinGroups, proteinGroupScores)
+    def optimize_hyperparameters(self, proteinGroups, proteinGroupPeptideInfos) -> float:
+        return self.protein_score.optimize_hyperparameters(proteinGroups, proteinGroupPeptideInfos)
     
-    def calculate_score(self, scorePeptidePairs):
+    def calculate_score(self, scorePeptidePairs) -> float:
         return self.protein_score.calculate_score(scorePeptidePairs)
     
-    def get_score_column(self):
+    def get_score_column(self) -> str:
         return self.protein_score.get_score_column(self.score_origin.short_description() == 'p')
     
-    def can_do_protein_group_rescue(self):
+    def can_do_protein_group_rescue(self) -> bool:
         return self.protein_score.can_do_protein_group_rescue()
     
-    def short_description(self):
+    def short_description(self) -> str:
         return self.protein_score.short_description() + self.score_origin.short_description() + 'P'
     
-    def short_description_razor(self):
+    def short_description_razor(self) -> str:
         return "rS" if self.use_razor else "dS"
     
-    def long_description(self):
+    def long_description(self) -> str:
         return f"{self.protein_score.long_description()} {self.score_origin.long_description()} PEP"
     
-    def long_description_razor(self):
+    def long_description_razor(self) -> str:
         return "razor peptides" if self.use_razor else "discard shared peptides"
         
-    def filter_proteins(self, proteins):
+    def filter_proteins(self, proteins) -> List[str]:
         if self.use_razor:
             return self._retain_protein_with_most_observed_peptides(proteins)
         else:
             return proteins
     
-    def set_peptide_counts_per_protein(self, peptideInfoList):
+    def set_peptide_counts_per_protein(self, 
+            peptideInfoList: Dict[str, Tuple[float, List[str]]]) -> None:
         if self.use_razor:
             observedPeptides = ObservedPeptides()
             observedPeptides.create(peptideInfoList)
             self.peptide_counts_per_protein = observedPeptides.get_peptide_counts_per_protein()
-    
-    def _retain_protein_with_most_observed_peptides(self, proteins):
-        """Retains only the protein with the most observed peptides, ties are broken based on alphabetical order"""
-        numPeptidesPerProteinPairs = [(self.peptide_counts_per_protein.get(protein, 0), protein) for protein in proteins]
+            self.best_peptide_score_per_protein = observedPeptides.get_best_peptide_score_per_protein()
+            
+    def _retain_protein_with_most_observed_peptides(self, proteins: List[str]) -> List[str]:
+        """Retains only the protein with the most observed peptides. 
+        Ties are first broken on best scoring (potentially shared) peptide and 
+        otherwise by the md5 hash of the protein identifier. The latter
+        ensures that we randomly select a protein, but that this happens
+        consistently across different peptides."""
+        numPeptidesPerProteinPairs = [(self.peptide_counts_per_protein.get(protein, 0), 
+                                       -1*self.best_peptide_score_per_protein.get(protein, 1.0),
+                                       hashlib.md5(protein.encode('utf-8')).hexdigest(),
+                                       protein) for protein in proteins]
         pairWithMostObservedPeptides = sorted(numPeptidesPerProteinPairs, reverse = True)[0]
-        proteinWithMostObservedPeptides = pairWithMostObservedPeptides[1]
+        proteinWithMostObservedPeptides = pairWithMostObservedPeptides[-1]
         return [proteinWithMostObservedPeptides]
     
     def collect_peptide_scores_per_protein(self,
-            proteinGroups, peptideInfoList, suppressMissingProteinWarning = False) -> List[List[Tuple[float,str,List[str]]]]:
+            proteinGroups: ProteinGroups, 
+            peptideInfoList: Dict[str, Tuple[float, List[str]]], 
+            suppressMissingProteinWarning: bool = False) -> ProteinGroupPeptideInfos:
         """Groups peptides with associated scores by protein
         
         :param proteinGroups: ProteinGroups object
@@ -335,24 +354,25 @@ class ProteinScoringStrategy:
         
         logger.info("Assigning peptides to protein groups")
         sharedPeptides, uniquePeptides = 0, 0
-        proteinGroupScores = [list() for _ in range(len(proteinGroups))]
+        proteinGroupPeptideInfos = [list() for _ in range(len(proteinGroups))]
         
         for peptide, (score, proteins) in peptideInfoList.items():
             proteins = self.filter_proteins(proteins) # filtering for razor peptide approach
             
             proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)
             if len(proteinGroupIdxs) == 0 and not suppressMissingProteinWarning:
-                raise Exception(f"Could not find any of the proteins {proteins} in the ProteinGroups object, check if the identifier format is the same. 1st protein group in ProteinGroups object: {proteinGroups.protein_groups[0]}")
+                raise Exception(f"Could not find any of the proteins {proteins} in the ProteinGroups object, check if the identifier format is the same. \
+                                  1st protein group in ProteinGroups object: {proteinGroups.protein_groups[0]}")
             
             if not self.use_shared_peptides and len(proteinGroupIdxs) > 1: # ignore shared peptides
                 sharedPeptides += 1
             else:
                 uniquePeptides += 1
                 for proteinGroupIdx in proteinGroupIdxs:
-                    proteinGroupScores[proteinGroupIdx].append((score, peptide, proteins))
+                    proteinGroupPeptideInfos[proteinGroupIdx].append((score, peptide, proteins))
         
         logger.info(f"Shared peptides: {sharedPeptides}; Unique peptides: {uniquePeptides}")
-        return proteinGroupScores
+        return proteinGroupPeptideInfos
     
 
 def compareRazorPeptides(mqEvidenceFile, peptideToProteinMap, proteinGroups, scoreType):

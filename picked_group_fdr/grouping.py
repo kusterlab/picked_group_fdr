@@ -8,8 +8,10 @@ from . import parsers
 from . import helpers
 from .protein_groups import ProteinGroups
 from .observed_peptides import ObservedPeptides
-from .results import ProteinGroupResult
 
+# for type hints only
+from .results import ProteinGroupResults
+from .peptide_info import PeptideInfoList, ProteinGroupPeptideInfos
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +22,20 @@ class ProteinGroupingStrategy(ABC):
         pass
     
     @abstractmethod
-    def group_proteins(self, peptideInfoList: Dict[float, List[str]], mqProteinGroupsFile: str) -> ProteinGroups:
+    def group_proteins(self, peptideInfoList: PeptideInfoList, mqProteinGroupsFile: str) -> ProteinGroups:
         pass
     
     def get_rescue_steps(self):
         return [False]
         
     def rescue_protein_groups(self, 
-                            peptideInfoList: Dict[float, List[str]], 
-                            proteinFdrResults: List[ProteinGroupResult], 
-                            oldProteinGroups: ProteinGroups) -> ProteinGroups:
+            peptideInfoList: PeptideInfoList, 
+            proteinGroupResults: ProteinGroupResults, 
+            oldProteinGroups: ProteinGroups) -> ProteinGroups:
         pass
+    
+    def update_protein_groups(self, proteinGroups: ProteinGroups, proteinGroupPeptideInfos):
+        return proteinGroups, proteinGroupPeptideInfos
 
     @abstractmethod
     def short_description(self, rescue_step):
@@ -45,7 +50,7 @@ class NoGrouping(ProteinGroupingStrategy):
     def needs_peptide_to_protein_map(self):
         return True
     
-    def group_proteins(self, peptideInfoList: Dict[float, List[str]], mqProteinGroupsFile: str) -> ProteinGroups:
+    def group_proteins(self, peptideInfoList: PeptideInfoList, mqProteinGroupsFile: str) -> ProteinGroups:
         """
         Creates a single protein group for each protein in peptideInfoList
         
@@ -74,7 +79,7 @@ class SubsetGrouping(ProteinGroupingStrategy):
     def needs_peptide_to_protein_map(self):
         return True
     
-    def group_proteins(self, peptideInfoList: Dict[float, List[str]], mqProteinGroupsFile: str) -> ProteinGroups:
+    def group_proteins(self, peptideInfoList: PeptideInfoList, mqProteinGroupsFile: str) -> ProteinGroups:
         logger.info("Grouping proteins (subset strategy):")
         
         observedPeptides = ObservedPeptides()
@@ -89,12 +94,13 @@ class SubsetGrouping(ProteinGroupingStrategy):
     def long_description(self, rescue_step):
         return 'subset protein grouping'
 
+
 class MQNativeGrouping(ProteinGroupingStrategy):
     """Use grouping provided by a MaxQuant proteinGroups.txt file"""
     def needs_peptide_to_protein_map(self):
         return False
     
-    def group_proteins(self, peptideInfoList: Dict[float, List[str]], mqProteinGroupsFile: str) -> ProteinGroups:
+    def group_proteins(self, peptideInfoList: PeptideInfoList, mqProteinGroupsFile: str) -> ProteinGroups:
         if not mqProteinGroupsFile:
             raise ValueError("Missing MQ protein groups file input --mq_protein_groups")
         
@@ -108,33 +114,37 @@ class MQNativeGrouping(ProteinGroupingStrategy):
     def long_description(self, rescue_step):
         return 'subset protein grouping'
 
+
 class RescuedGrouping:
     score_cutoff: float
+    obsoleteProteinGroups: ProteinGroups
+    obsoleteProteinGroupPeptideInfos: ProteinGroupPeptideInfos
     
     def rescue_protein_groups(self, 
-                            peptideInfoList: Dict[float, List[str]], 
-                            proteinFdrResults: List[ProteinGroupResult], 
-                            oldProteinGroups: ProteinGroups) -> ProteinGroups:
-        self._calculate_rescue_score_cutoff(proteinFdrResults)
+            peptideInfoList: PeptideInfoList, 
+            proteinGroupResults: ProteinGroupResults, 
+            oldProteinGroups: ProteinGroups,
+            oldProteinGroupPeptideInfos) -> ProteinGroups:
+        self._calculate_rescue_score_cutoff(proteinGroupResults)
         peptideInfoListFiltered = self._filter_peptide_list_by_score_cutoff(peptideInfoList)
-        return self.merge_with_rescued_protein_groups(peptideInfoListFiltered, oldProteinGroups)
+        return self.merge_with_rescued_protein_groups(peptideInfoListFiltered, oldProteinGroups, oldProteinGroupPeptideInfos)
     
-    def get_rescue_steps(self):
+    def get_rescue_steps(self) -> List[bool]:
         return [False, True]
     
-    def short_description(self, rescue_step):
+    def short_description(self, rescue_step: bool) -> str:
         if rescue_step:
             return 'rsG'
         else:
             return 'sG'
     
-    def long_description(self, rescue_step):
+    def long_description(self, rescue_step: bool) -> str:
         if rescue_step:
             return 'rescued subset protein grouping'
         else:
             return 'subset protein grouping'
     
-    def get_rescued_protein_groups(self, peptideInfoList: Dict[float, List[str]]):
+    def get_rescued_protein_groups(self, peptideInfoList: PeptideInfoList) -> ProteinGroups:
         """Generates new protein grouping by "rescuing" protein groups that were split
         due to low-scoring PSMs uniquely mapping to particular isoforms
         
@@ -154,22 +164,30 @@ class RescuedGrouping:
         
         return newProteinGroups
     
-    def merge_with_rescued_protein_groups(self, peptideInfoList: Dict[float, List[str]], proteinGroups: ProteinGroups):    
+    def update_protein_groups(self, proteinGroups: ProteinGroups, proteinGroupPeptideInfos: ProteinGroupPeptideInfos):
+        proteinGroups.extend(self.obsoleteProteinGroups)
+        proteinGroupPeptideInfos.extend(self.obsoleteProteinGroupPeptideInfos)
+        return proteinGroups, proteinGroupPeptideInfos
+
+    def merge_with_rescued_protein_groups(self, 
+            peptideInfoList: PeptideInfoList, 
+            proteinGroups: ProteinGroups,
+            proteinGroupPeptideInfos) -> ProteinGroups:
         newProteinGroups = self.get_rescued_protein_groups(peptideInfoList)
-        newProteinGroups.add_unseen_protein_groups(proteinGroups) 
+        self.obsoleteProteinGroups, self.obsoleteProteinGroupPeptideInfos = newProteinGroups.add_unseen_protein_groups(proteinGroups, proteinGroupPeptideInfos) 
              
         logger.info(f"#protein groups before rescue: {len(proteinGroups)}")
         logger.info(f"#protein groups after rescue: {len(newProteinGroups)}")
         
         return newProteinGroups
         
-    def _filter_peptide_list_by_score_cutoff(self, peptideInfoList: Dict[float, List[str]]):
+    def _filter_peptide_list_by_score_cutoff(self, peptideInfoList: PeptideInfoList):
         return { peptide : (score, proteins) for peptide, (score, proteins) in peptideInfoList.items() if score < self.score_cutoff }
     
-    def _calculate_rescue_score_cutoff(self, proteinFdrResults: List[ProteinGroupResult]):
-        """Calculate PEP corresponding to 1% protein-level FDR. N.B. this only works if the protein score is bestPEP!"""
-        proteinScores, reportedQvals = zip(*[(x.score, x.qValue) for x in proteinFdrResults])
-        identifiedProteinScores = [x for x, y in zip(proteinScores, reportedQvals) if y < 0.01]
+    def _calculate_rescue_score_cutoff(self, proteinGroupResults: ProteinGroupResults):
+        """Calculate PEP corresponding to 1% protein-level FDR. 
+        N.B. this only works if the protein score is bestPEP!"""
+        identifiedProteinScores = [pfr.score for pfr in proteinGroupResults if pfr.qValue < 0.01]
         
         if len(identifiedProteinScores) == 0:
             raise ValueError("Could not calculate rescuing threshold as no proteins were found below 1% FDR")
@@ -220,7 +238,7 @@ class PseudoGeneGrouping(ProteinGroupingStrategy):
     def needs_peptide_to_protein_map(self):
         return True
     
-    def group_proteins(self, peptideInfoList: Dict[float, List[str]], mqProteinGroupsFile: str) -> ProteinGroups:
+    def group_proteins(self, peptideInfoList: PeptideInfoList, mqProteinGroupsFile: str) -> ProteinGroups:
         observedPeptides = ObservedPeptides()
         observedPeptides.create(peptideInfoList)
         

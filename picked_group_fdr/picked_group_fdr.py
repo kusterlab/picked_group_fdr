@@ -2,7 +2,8 @@ import sys
 import os
 import collections
 import logging
-from typing import List, Dict, Tuple
+from timeit import default_timer as timer
+from typing import List, Dict, Tuple, Union
 
 import numpy as np
 
@@ -20,7 +21,13 @@ from . import fdr
 from .grouping import PseudoGeneGrouping
 from .results import ProteinGroupResult, ProteinGroupResults
 from .plotter import PlotterFactory
+from .peptide_info import PeptideInfoList, ProteinGroupPeptideInfos
 
+# for type hints only
+from .scoring import ProteinScoringStrategy
+from .grouping import ProteinGroupingStrategy
+from .competition import ProteinCompetitionStrategy
+from .plotter import Plotter, NoPlotter
 
 logger = logging.getLogger(__name__)
 
@@ -109,20 +116,7 @@ def main(argv):
     
     np.random.seed(1) # set seed for random shuffling of protein groups, see competition.do_competition()
     
-    '''
-    pickedStrategy: PickedStrategy() = picked FDR
-                    ClassicStrategy() = classic FDR
-    
-    grouping:       MQNativeGrouping() = MaxQuant grouping from proteinGroups.txt
-                    SubsetGrouping() = Emulate protein grouping of MaxQuant based on evidence.txt
-                                       (currently does not work with simulated datasets since peptideToProteinMap does not contain entrapment labels)
-                    NoGrouping() = No protein grouping, each protein is in its own group
-                    +Rescued = Rescue protein groups by only considering peptides below 1% protein FDR threshold
-    '''
-    
     configs = methods.get_methods(args)
-    
-    from timeit import default_timer as timer
 
     start = timer()
     
@@ -131,7 +125,6 @@ def main(argv):
     
     parseId = digest.parseUntilFirstSpace
     proteinAnnotations = digest.getProteinAnnotations(args.fasta, parseId)
-    
     if args.gene_level:
         if digest.hasGeneNames(proteinAnnotations, minRatioWithGenes=0.5):
             parseId = digest.parseGeneNameFunc
@@ -160,9 +153,9 @@ def main(argv):
             peptideToProteotypicityMap = proteotypicity.getPeptideToProteotypicityFromFile(args.peptide_proteotypicity_map)
         
         peptideInfoList = parseMqEvidenceFile(peptideFile, 
-                                            peptideToProteinMap, 
-                                            config['scoreType'], 
-                                            args.suppress_missing_peptide_warning)
+                                              peptideToProteinMap, 
+                                              config['scoreType'], 
+                                              args.suppress_missing_peptide_warning)
         
         plotter.set_series_label_base(config.get('label', None))
         proteinGroupResults = getProteinGroupResults(
@@ -172,31 +165,10 @@ def main(argv):
                 plotter)
         
         if args.do_quant:
-            if not config['scoreType'].can_do_quantification():
-                logger.warning("Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed")
-                continue
-            
-            logger.info("In silico protein digest for iBAQ")
-            numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(args)
-            proteinSequences = digest.getProteinSequences(args.fasta, parseId)
-            
-            quantification.doQuantification(
-                    args.mq_evidence, proteinGroupResults, proteinSequences,
-                    peptideToProteinMap, numIbaqPeptidesPerProtein, 
-                    args.file_list_file, config['scoreType'], minPeptideRatiosLFQ=args.lfq_min_peptide_ratios, numThreads=args.num_threads)
-        
+            doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMap)
+
         if args.protein_groups_out:
-            protein_groups_out = args.protein_groups_out
-            if len(configs) > 1:
-                base, ext = os.path.splitext(protein_groups_out)
-                label = config.get('label', None)
-                if label is None:
-                    label = methods.short_description(config['scoreType'], config['grouping'], config['pickedStrategy'], True)
-                else:
-                    label = label.lower().replace(" ", "_")
-                protein_groups_out = f"{base}_{label}{ext}" 
-            proteinGroupResults.write(protein_groups_out)
-            logger.info(f"Protein group results have been written to: {protein_groups_out}")
+            writeProteinGroups(proteinGroupResults, args.protein_groups_out, config, apply_suffix=len(configs) > 1)
     
     end = timer()
     logger.info(f"PickedGroupFDR execution took {'%.1f' % (end - start)} seconds wall clock time")
@@ -207,49 +179,55 @@ def main(argv):
 
 
 def getProteinGroupResults(
-        peptideInfoList, mqProteinGroupsFile, proteinAnnotations, peptideToProteotypicityMap, 
-        pickedStrategy, scoreType, groupingStrategy, plotter):
+        peptideInfoList: PeptideInfoList, 
+        mqProteinGroupsFile: str, 
+        proteinAnnotations, 
+        peptideToProteotypicityMap, 
+        pickedStrategy: ProteinCompetitionStrategy,
+        scoreType: ProteinScoringStrategy,
+        groupingStrategy: ProteinGroupingStrategy, 
+        plotter: Union[Plotter, NoPlotter]):
     proteinGroups = groupingStrategy.group_proteins(peptideInfoList, mqProteinGroupsFile)
     
-    scoreType.set_peptide_counts_per_protein(peptideInfoList) # for razor peptide strategy
+    # for razor peptide strategy
+    scoreType.set_peptide_counts_per_protein(peptideInfoList)
     
     for rescue_step in groupingStrategy.get_rescue_steps():
         if rescue_step:
             if not scoreType.can_do_protein_group_rescue():
                 raise Exception("Cannot do rescue step for other score types than bestPEP")
-            proteinGroups = groupingStrategy.rescue_protein_groups(peptideInfoList, proteinGroupResults, proteinGroups)
+            proteinGroups = groupingStrategy.rescue_protein_groups(peptideInfoList, proteinGroupResults, proteinGroups, proteinGroupPeptideInfos)
         
-        proteinGroupScores = scoreType.collect_peptide_scores_per_protein(
+        proteinGroupPeptideInfos = scoreType.collect_peptide_scores_per_protein(
             proteinGroups, peptideInfoList, suppressMissingProteinWarning=rescue_step)
         
-        scoreType.optimize_hyperparameters(proteinGroups, proteinGroupScores)
+        # find optimal division factor for multPEP score
+        scoreType.optimize_hyperparameters(proteinGroups, proteinGroupPeptideInfos)
         
-        pickedProteinGroups, proteinGroupScores = pickedStrategy.do_competition(proteinGroups, proteinGroupScores, scoreType)
+        if rescue_step and pickedStrategy.short_description() == "pgT":
+            proteinGroups, proteinGroupPeptideInfos = groupingStrategy.update_protein_groups(proteinGroups, proteinGroupPeptideInfos)
         
-        reportedQvals, observedQvals, proteinScores = fdr.calculateProteinFDRs(
-                pickedProteinGroups, proteinGroupScores, scoreType)
+        pickedProteinGroups, pickedProteinGroupPeptideInfos, proteinScores = pickedStrategy.do_competition(proteinGroups, proteinGroupPeptideInfos, scoreType)
         
-        if len(groupingStrategy.get_rescue_steps()) == 1 or rescue_step:
-            plotter.set_series_label(scoreType, groupingStrategy, pickedStrategy, rescue_step=rescue_step)
-            
-            #absentRatio = 0.9 # entrapment / (pool + entrapment)
-            #absentRatio = 96788.0 / (16503 + 96788.0)
-            absentRatio = 1.0
-            plotter.plotQvalCalibrationAndPerformance(reportedQvals, observedQvals, absentRatio)
+        reportedQvals, observedQvals = fdr.calculateProteinFDRs(
+                pickedProteinGroups, proteinScores)
         
         scoreCutoff = groupingStrategy.score_cutoff if rescue_step else float("inf")
         proteinGroupResults = ProteinGroupResults.from_protein_groups(
-                pickedProteinGroups, proteinGroupScores, 
+                pickedProteinGroups, pickedProteinGroupPeptideInfos, 
                 proteinScores, reportedQvals, 
                 scoreCutoff, proteinAnnotations)
-        
-        if scoreType.use_proteotypicity:
-            proteotypicity.calculateProteotypicityScores(pickedProteinGroups, proteinGroupScores, peptideToProteotypicityMap, scoreType, scoreCutoff)
+
+    if scoreType.use_proteotypicity:
+        proteotypicity.calculateProteotypicityScores(pickedProteinGroups, pickedProteinGroupPeptideInfos, peptideToProteotypicityMap, scoreType, scoreCutoff)
+    
+    plotter.set_series_label(scoreType, groupingStrategy, pickedStrategy, rescue_step=rescue_step)
+    plotter.plotQvalCalibrationAndPerformance(reportedQvals, observedQvals, absentRatio=1.0)
         
     return proteinGroupResults
 
 
-def parseMqEvidenceFile(mqEvidenceFile, peptideToProteinMap, scoreType, suppressMissingPeptideWarning) -> Dict[str, Tuple[float, List[str]]]:
+def parseMqEvidenceFile(mqEvidenceFile, peptideToProteinMap, scoreType, suppressMissingPeptideWarning) -> PeptideInfoList:
     peptideInfoList = dict()
     for peptide, tmp_proteins, _, score in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = scoreType):
         peptide = helpers.cleanPeptide(peptide)
@@ -267,6 +245,34 @@ def parseMqEvidenceFile(mqEvidenceFile, peptideToProteinMap, scoreType, suppress
             peptideInfoList[peptide] = [score, proteins]
 
     return peptideInfoList
+
+
+def doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMap):
+    if not config['scoreType'].can_do_quantification():
+        logger.warning("Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed")
+        return
+    
+    logger.info("In silico protein digest for iBAQ")
+    numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(args)
+    proteinSequences = digest.getProteinSequences(args.fasta, parseId)
+    
+    quantification.doQuantification(
+            args.mq_evidence, proteinGroupResults, proteinSequences,
+            peptideToProteinMap, numIbaqPeptidesPerProtein, 
+            args.file_list_file, config['scoreType'], minPeptideRatiosLFQ=args.lfq_min_peptide_ratios, numThreads=args.num_threads)
+
+
+def writeProteinGroups(proteinGroupResults, protein_groups_out, config, apply_suffix):
+    if apply_suffix:
+        base, ext = os.path.splitext(protein_groups_out)
+        label = config.get('label', None)
+        if label is None:
+            label = methods.short_description(config['scoreType'], config['grouping'], config['pickedStrategy'], True)
+        else:
+            label = label.lower().replace(" ", "_")
+        protein_groups_out = f"{base}_{label}{ext}" 
+    proteinGroupResults.write(protein_groups_out)
+    logger.info(f"Protein group results have been written to: {protein_groups_out}")
 
 
 if __name__ == "__main__":
