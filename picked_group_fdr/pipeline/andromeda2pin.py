@@ -65,6 +65,7 @@ def main(argv):
     
     logger.info("Finished writing percolator input")
 
+
 def parseArgs(argv):
     import argparse
     apars = argparse.ArgumentParser(
@@ -72,10 +73,10 @@ def parseArgs(argv):
     
     apars.add_argument('mq_evidence_file', default=None, metavar = "evidence.txt",
      help='''MaxQuant evidence file, or a meta file if you have multiple evidence 
-                     files you want to combine. Meta files are text files containing the
-                     the paths of mzid-files, one path per line. For successful results,
-                     the different runs should be generated under similar conditions.
-                ''')
+             files you want to combine. Meta files are text files containing the
+             the paths of mzid-files, one path per line. For successful results,
+             the different runs should be generated under similar conditions.
+             ''')
                                                     
     apars.add_argument('-o', '--outputTab', default = None, metavar='pin.tab', 
                                          help='''Save output in a tab delimited file
@@ -100,10 +101,12 @@ def parseArgs(argv):
     args = apars.parse_args(argv)
     
     return args
-    
+
+
 def writeHeaders(writer, charges):
     writer.writerow(["SpecId", "Label", "ScanNr", "ExpMass", "AndromedaScore", "DeltaScore", "PepLen"] + ["Charge" + str(i) for i in charges] + ["Mass", "enzN", "enzC", "enzInt", "numMods", "dM", "absdM", "Peptide", "Proteins"])
     #writer.writerow(["DefaultDirection", "-", "-", "-", 1, 0.5, 0] + [0 for i in charges] + [0, 0, 0, -1.5, -2, 0, -1])
+
 
 def parseMqEvidenceFile(mqEvidenceFile, razor = False):
     if mqEvidenceFile.endswith('.csv'):

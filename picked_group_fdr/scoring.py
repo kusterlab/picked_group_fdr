@@ -10,7 +10,7 @@ from . import helpers
 from . import fdr
 from .observed_peptides import ObservedPeptides
 from .protein_groups import ProteinGroups
-from .peptide_info import ProteinGroupPeptideInfos
+from .peptide_info import ProteinGroupPeptideInfos, PeptideInfoList
 
 
 logger = logging.getLogger(__name__)
@@ -315,7 +315,7 @@ class ProteinScoringStrategy:
             return proteins
     
     def set_peptide_counts_per_protein(self, 
-            peptideInfoList: Dict[str, Tuple[float, List[str]]]) -> None:
+            peptideInfoList: PeptideInfoList) -> None:
         if self.use_razor:
             observedPeptides = ObservedPeptides()
             observedPeptides.create(peptideInfoList)
@@ -338,7 +338,7 @@ class ProteinScoringStrategy:
     
     def collect_peptide_scores_per_protein(self,
             proteinGroups: ProteinGroups, 
-            peptideInfoList: Dict[str, Tuple[float, List[str]]], 
+            peptideInfoList: PeptideInfoList, 
             suppressMissingProteinWarning: bool = False) -> ProteinGroupPeptideInfos:
         """Groups peptides with associated scores by protein
         

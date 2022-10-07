@@ -170,7 +170,7 @@ class ProteinGroupResults:
             writer.writerow(proteinRow.to_list())
 
     @classmethod
-    def from_mq_protein_proteins_file(cls, mqProteinGroupsFile: str) -> ProteinGroupResults:
+    def from_mq_protein_groups_file(cls, mqProteinGroupsFile: str) -> ProteinGroupResults:
         delimiter = '\t'
         if mqProteinGroupsFile.endswith('.csv'):
             delimiter = ','            

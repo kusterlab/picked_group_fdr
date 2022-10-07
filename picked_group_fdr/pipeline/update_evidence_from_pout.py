@@ -18,28 +18,35 @@ def parseArgs(argv):
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     apars.add_argument('--mq_evidence', default=None, metavar = "EV", nargs='+', required = True,
-                                         help='''MaxQuant evidence.txt or msms.txt file(s). If you want to combine multiple evidence files, use spaces to separate the file paths.
-                                                    ''')
+                       help='''MaxQuant evidence.txt or msms.txt file(s). If you 
+                               want to combine multiple evidence files, use 
+                               spaces to separate the file paths.''')
                                                     
     apars.add_argument('--mq_evidence_out', default=None, metavar = "EV", required = True,
-                                         help='''MaxQuant evidence.txt or msms.txt combined output file with updated percolator results.
-                                                    ''')
+                       help='''MaxQuant evidence.txt or msms.txt combined output 
+                               file with updated percolator results.''')
     
     apars.add_argument('--perc_results', default=list(), metavar = "POUT", nargs='+',
-                                         help='''Percolator output file(s) with PSMs separated by spaces. Also include the decoy results. If this flag is not set, the evidence files are simply concatenated without updating the PSMs.
-                                                    ''')
+                       help='''Percolator output file(s) with PSMs separated by 
+                               spaces. Also include the decoy results. If this 
+                               flag is not set, the evidence files are simply 
+                               concatenated without updating the PSMs.''')
                                                     
     apars.add_argument('--mq_msms', default=None, metavar = "M", nargs='+',
-                                         help='''MaxQuant msms.txt file(s) (optional). Can help resolve MS1 features with multiple scans. If you want to combine multiple evidence files, use spaces to separate the file paths. Not implemented yet...
-                                                    ''')
+                       help='''MaxQuant msms.txt file(s) (optional). Can help 
+                               resolve MS1 features with multiple scans. If you
+                               want to combine multiple evidence files, use 
+                               spaces to separate the file paths. Not 
+                               implemented yet...''')
     
     apars.add_argument('--pout_input_type', default="andromeda", metavar = "SE",
-                                         help='''Input type of percolator output file. Can be "andromeda" or "prosit".
-                                                    ''')
+                       help='''Input type of percolator output file. Can be 
+                               "andromeda" or "prosit".''')
     
     apars.add_argument('--mq_input_type', default="auto", metavar = "IT",
-                                         help='''Input type of MaxQuant output file. Can be "peptides", "evidence", "msms" or "auto" (automatic detection).
-                                                    ''')
+                       help='''Input type of MaxQuant output file. Can be 
+                               "peptides", "evidence", "msms" or "auto" 
+                               (automatic detection).''')
                                                     
     # ------------------------------------------------
     args = apars.parse_args(argv)

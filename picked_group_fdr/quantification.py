@@ -100,7 +100,7 @@ def main(argv):
     
     peptideToProteinMap, numIbaqPeptidesPerProtein = getPeptideToProteinMaps(args, parseId)
     proteinSequences = digest.getProteinSequences(args.fasta, parseId)
-    proteinGroupResults = ProteinGroupResults.from_mq_protein_proteins_file(args.mq_protein_groups)
+    proteinGroupResults = ProteinGroupResults.from_mq_protein_groups_file(args.mq_protein_groups)
     
     scoreType = ProteinScoringStrategy("bestPEP")
     doQuantification(args.mq_evidence, proteinGroupResults, proteinSequences,
@@ -196,10 +196,10 @@ def doQuantification(mqEvidenceFile, proteinGroupResults, proteinSequences,
         pgr.precursorQuants = retainOnlyIdentifiedPrecursors(pgr.precursorQuants, postErrProbCutoff)
     
     columns = [UniquePeptideCountColumns(), 
-                         IdentificationTypeColumns(),
-                         SummedIntensityAndIbaqColumns(silacChannels, numIbaqPeptidesPerProtein),
-                         SequenceCoverageColumns(proteinSequences),
-                         EvidenceIdsColumns()]
+               IdentificationTypeColumns(),
+               SummedIntensityAndIbaqColumns(silacChannels, numIbaqPeptidesPerProtein),
+               SequenceCoverageColumns(proteinSequences),
+               EvidenceIdsColumns()]
     
     if numTmtChannels > 0:
         columns.append(TMTIntensityColumns(numTmtChannels))

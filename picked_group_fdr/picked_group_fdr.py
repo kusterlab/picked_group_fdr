@@ -140,6 +140,7 @@ def main(argv):
         methodDescriptionLong = methods.long_description(config['scoreType'], config['grouping'], config['pickedStrategy'], True)
         label = config.get('label', "")
         logger.info(f"Protein group level estimation method: {label} ({methodDescriptionLong})")
+        
         peptideFile = config['scoreType'].get_evidence_file(args)
         if not peptideFile:
             logger.warning("No evidence file provided, skipping...")
@@ -227,22 +228,25 @@ def getProteinGroupResults(
     return proteinGroupResults
 
 
-def parseMqEvidenceFile(mqEvidenceFile, peptideToProteinMap, scoreType, suppressMissingPeptideWarning) -> PeptideInfoList:
+def parseMqEvidenceFile(mqEvidenceFile: str, peptideToProteinMap, scoreType, suppressMissingPeptideWarning: bool) -> PeptideInfoList:
+    """Returns best score per peptide"""
     peptideInfoList = dict()
     for peptide, tmp_proteins, _, score in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = scoreType):
         peptide = helpers.cleanPeptide(peptide)
-        if score < peptideInfoList.get(peptide, [np.inf])[0]:
-            if scoreType.remaps_peptides_to_proteins():
-                proteins = digest.getProteins(peptideToProteinMap, peptide)
-                if len(proteins) == 0:
-                    if not helpers.isContaminant(tmp_proteins) and not suppressMissingPeptideWarning:
-                        logger.warning(f"Missing peptide: {peptide} {tmp_proteins}")
-                    continue
-            else:
-                proteins = tmp_proteins
+        if score >= peptideInfoList.get(peptide, [np.inf])[0]:
+            continue
+        
+        if scoreType.remaps_peptides_to_proteins():
+            proteins = digest.getProteins(peptideToProteinMap, peptide)
+            if len(proteins) == 0:
+                if not helpers.isContaminant(tmp_proteins) and not suppressMissingPeptideWarning:
+                    logger.warning(f"Missing peptide: {peptide} {tmp_proteins}")
+                continue
+        else:
+            proteins = tmp_proteins
 
-            proteins = helpers.removeDecoyProteinsFromTargetPeptides(proteins)
-            peptideInfoList[peptide] = [score, proteins]
+        proteins = helpers.removeDecoyProteinsFromTargetPeptides(proteins)
+        peptideInfoList[peptide] = [score, proteins]
 
     return peptideInfoList
 

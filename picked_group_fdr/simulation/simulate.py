@@ -19,7 +19,7 @@ def main(argv):
     if len(argv) > 4:
         proteinToGeneMapFile = argv[4]
     
-    numExperiments = 10
+    numExperiments = 30
     numProteinsMean = 10000
     numProteinsStdev = 1000
     truePosPeptideScoresMean = 2.5

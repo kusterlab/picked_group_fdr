@@ -51,7 +51,7 @@ class ProteinCompetitionStrategy(ABC):
         scoreGroupTuples = sorted(scoreGroupTuples, key = lambda x : (x[2], not x[3]), reverse = True)
         
         filteredScoreGroupTuples = []
-        for proteinGroup, proteinGroupScoreList, protein_score, _ in scoreGroupTuples: 
+        for proteinGroup, proteinGroupScoreList, protein_score, _ in scoreGroupTuples:
             if self._is_protein_seen(proteinGroup) or helpers.isContaminant(proteinGroup):
                 continue
             
