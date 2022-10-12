@@ -1,0 +1,6 @@
+label = "Savitski + MQ best PEP"
+
+scoreType = "bestPEP"
+grouping = "no"
+sharedPeptides = "discard"
+pickedStrategy = "picked"

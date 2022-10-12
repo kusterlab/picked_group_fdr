@@ -1,0 +1,6 @@
+label = "Savitski"
+
+scoreType = "Perc remap bestPEP"
+grouping = "no"
+sharedPeptides = "discard"
+pickedStrategy = "classic"

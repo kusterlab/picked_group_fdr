@@ -1,0 +1,260 @@
+# performance Savitski vs MaxQuant on Wang_base
+Figure3a:
+	for database in swissprot_human_no_isoforms swissprot_human_with_isoforms uniprot_human; do \
+		mkdir -p $(DATA_DIR)/Wang_base/Wang_base_$${database}; \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/Wang_base/Wang_base_maxquant/evidence.txt \
+			--perc_evidence $(DATA_DIR)/Wang_base/Wang_base_percolator/peptides.all.txt \
+			--fasta $(DATA_DIR)/fasta/$${database}_prdb.fasta \
+			--suppress_missing_peptide_warning \
+			--protein_groups_out $(DATA_DIR)/Wang_base/Wang_base_$${database}/proteinGroups_$${database}.txt \
+			--methods savitski,maxquant \
+			| tee $(DATA_DIR)/manuscript_figures/Figure3a_$${database}.log; \
+	done
+
+
+# calibration of Razor/Discard + Picked group
+Figure4b:
+	mkdir -p $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation; \
+	python3 -um picked_group_fdr \
+		--mq_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_maxquant/evidence.txt \
+		--perc_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_percolator/peptides.all.txt \
+		--fasta $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.5_m4.fasta \
+		--enzyme trypsinp \
+		--cleavages 0 \
+		--protein_groups_out $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation/proteinGroups.txt \
+		--figure_base_fn $(DATA_DIR)/manuscript_figures/razor-vs-discard \
+		--methods discard_picked,razor_picked \
+		| tee $(DATA_DIR)/manuscript_figures/Figure4b.log;
+
+
+# number of identified peptides unique and shared
+Figure5b:
+	for database in swissprot_human_no_isoforms swissprot_human_with_isoforms uniprot_human; do \
+		python3 -um picked_group_fdr \
+			--perc_evidence $(DATA_DIR)/Wang_base/Wang_base_percolator/peptides.all.txt \
+			--fasta $(DATA_DIR)/fasta/$${database}_prdb.fasta \
+			--suppress_missing_peptide_warning \
+			--methods classic_no_grouping,classic_subset_grouping,classic_rescued_subset_grouping \
+		| tee $(DATA_DIR)/manuscript_figures/Figure5b_$${database}.log; \
+	done
+
+
+# calibration of MaxQuant, Savitski, Classic protein group and Picked protein group
+Figure5c:
+	mkdir -p $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation; \
+	python3 -um picked_group_fdr \
+		--mq_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_maxquant/evidence.txt \
+		--perc_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_percolator/peptides.all.txt \
+		--fasta $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.5_m4.fasta \
+		--enzyme trypsinp \
+		--cleavages 0 \
+		--protein_groups_out $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation/proteinGroups.txt \
+		--figure_base_fn $(DATA_DIR)/manuscript_figures/razor-vs-discard \
+		--methods maxquant,savitski,classic_protein_group,picked_protein_group \
+		| tee $(DATA_DIR)/manuscript_figures/Figure4b.log;
+
+
+# performance MaxQuant, Savitski, Classic protein group and Picked protein group
+Figure5d:
+	for database in swissprot_human_no_isoforms swissprot_human_with_isoforms uniprot_human; do \
+		mkdir -p $(DATA_DIR)/Wang_base/Wang_base_$${database}; \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/Wang_base/Wang_base_maxquant/evidence.txt \
+			--perc_evidence $(DATA_DIR)/Wang_base/Wang_base_percolator/peptides.all.txt \
+			--fasta $(DATA_DIR)/fasta/$${database}_prdb.fasta \
+			--suppress_missing_peptide_warning \
+			--protein_groups_out $(DATA_DIR)/Wang_base/Wang_base_$${database}/proteinGroups_$${database}.txt \
+			--methods maxquant,savitski,classic_protein_group,picked_protein_group \
+			| tee $(DATA_DIR)/manuscript_figures/Figure5d_$${database}.log; \
+	done
+
+
+# Simulated data calibration and performance
+Figure6:
+	for NUMEXP in 10 100 200 300 400 500; do \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/simulation/simulation_main_figure/evidence.$${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt \
+			--peptide_protein_map $(DATA_DIR)/fasta/uniprot-proteome_human_190327.peptide_to_protein_map.long_protein_ids.txt \
+			--mq_protein_groups $(DATA_DIR)/simulation/simulation_main_figure/proteinGroups.$${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt \
+			--protein_groups_out $(DATA_DIR)/simulation/simulation_main_figure_results/proteinGroups.$${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt \
+			--figure_base_fn $(DATA_DIR)/manuscript_figures/Figure6-$${NUMEXP}-experiments \
+			--methods maxquant,discard_picked_mq_input,razor_picked_mq_input,picked_protein_group_mq_input \
+			| tee $(DATA_DIR)/manuscript_figures/Figure6-$${NUMEXP}-experiments.log; \
+	done
+
+
+# ProteomicsDB protein groups
+Figure7a:
+	for database in swissprot_human_no_isoforms swissprot_human_with_isoforms uniprot_human; do \
+		python3 -um picked_group_fdr \
+			--perc_evidence $(DATA_DIR)/ProteomicsDB/ProteomicsDB_percolator_combined/percolator.$${database}.all.peptides.txt \
+			--protein_groups_out $(DATA_DIR)/ProteomicsDB/ProteomicsDB_picked_group_fdr/proteinGroups_$${database}.txt \
+			--fasta $(DATA_DIR)/fasta/$${database}_prdb.fasta \
+			--suppress_missing_peptide_warning \
+			--methods savitski_no_remap,picked_protein_group_no_remap \
+			| tee $(DATA_DIR)/manuscript_figures/Figure7a_$${database}.log; \
+	done
+
+
+# MQ PEP is not well calibrated
+SuppFigure1d:
+	python3 -um picked_group_fdr \
+		--mq_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_maxquant/evidence.txt \
+		--perc_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_percolator/peptides.all.txt \
+		--fasta $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.5_m4.fasta \
+		--enzyme trypsinp \
+		--cleavages 0 \
+		--protein_groups_out $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation/proteinGroups.txt \
+		--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure1d \
+		--methods savitski_mq_best,savitski_mq_mult,savitski,maxquant \
+		| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure1d.log
+
+
+# performance all methods
+SuppFigure2:
+	for fdr in "" _fdr0.1; do \
+		for database in swissprot_human_no_isoforms swissprot_human_with_isoforms uniprot_human; do \
+			mkdir -p $(DATA_DIR)/Wang_base/Wang_base_$${database}$${fdr}; \
+			python3 -um picked_group_fdr \
+				--mq_evidence $(DATA_DIR)/Wang_base/Wang_base_maxquant$${fdr}/evidence.txt \
+				--perc_evidence $(DATA_DIR)/Wang_base/Wang_base_percolator$${fdr}/peptides.all.txt \
+				--fasta $(DATA_DIR)/fasta/$${database}_prdb.fasta \
+				--suppress_missing_peptide_warning \
+				--protein_groups_out $(DATA_DIR)/Wang_base/Wang_base_$${database}$${fdr}/proteinGroups_$${database}.txt \
+				--methods maxquant,savitski_classic,savitski,discard_picked,razor_picked,classic_protein_group,picked_protein_group \
+				| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure2_$${database}$${fdr}.log; \
+		done; \
+	done
+
+# number of unique and shared peptides in Wang_base
+SuppFigure3:
+	for database in swissprot_human_no_isoforms swissprot_human_with_isoforms uniprot_human; do \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/Wang_base/Wang_base_maxquant/evidence.txt \
+			--perc_evidence $(DATA_DIR)/Wang_base/Wang_base_percolator/peptides.all.txt \
+			--fasta $(DATA_DIR)/fasta/$${database}_prdb.fasta \
+			--methods savitski \
+			--suppress_missing_peptide_warning \
+			| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure3_$${database}.log; \
+	done
+
+
+# none of the razor approaches work
+SuppFigure4:
+	python3 -um picked_group_fdr \
+		--mq_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_maxquant/evidence.txt \
+		--perc_evidence $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_percolator/peptides.all.txt \
+		--fasta $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.5_m4.fasta \
+		--enzyme trypsinp \
+		--cleavages 0 \
+		--protein_groups_out $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation/proteinGroups.txt \
+		--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure4 \
+		--methods maxquant,maxquant_mq_best,maxquant_perc_best,maxquant_picked,maxquant_mq_best_picked,maxquant_perc_best_picked \
+		| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure4.log
+
+
+# calibration for all methods
+SuppFigure5:
+	for ratio in 04 5; do \
+		mkdir -p $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_calibration_evaluation; \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_maxquant/evidence.txt \
+			--perc_evidence $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_percolator/peptides.all.txt \
+			--fasta $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.$${ratio}_m4.fasta \
+			--enzyme trypsinp \
+			--cleavages 0 \
+			--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure5_s0-$${ratio} \
+			--protein_groups_out $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_calibration_evaluation/proteinGroups.txt \
+			--methods maxquant,savitski_classic,savitski,discard_picked,razor_picked,classic_protein_group,picked_protein_group \
+			| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure5_s0.$${ratio}.log; \
+	done
+
+
+# entrapment simulation verification - simulation
+SuppFigure6a_d:
+	mkdir -p $(DATA_DIR)/simulation/simulation_supplementary_figures_results; \
+	for fdr in 1 01; do \
+		for ratio in 5 04; do \
+			python3 -um picked_group_fdr \
+				--mq_evidence $(DATA_DIR)/simulations/simulation_entrapment_analysis/evidence.mimic_s0.$${ratio}_m4_peptFDR0.$${fdr}.30_experiments.txt \
+				--peptide_protein_map $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.$${ratio}_m4.peptide_to_protein_map.txt \
+				--mq_protein_groups $(DATA_DIR)/simulations/simulation_entrapment_analysis/proteinGroups.mimic_s0.$${ratio}_m4_peptFDR0.$${fdr}.30_experiments.txt \
+				--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_simulation-s0-$${ratio}-fdr0-$${fdr} \
+				--protein_groups_out $(DATA_DIR)/simulation/simulation_supplementary_figures_results/proteinGroups_simulation-s0-$${ratio}-fdr0-$${fdr}.txt \
+				--methods maxquant,discard_picked_mq_input,razor_picked_mq_input,picked_protein_group_mq_input \
+				| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_simulation-s0-$${ratio}-fdr0-$${fdr}.log; \
+		done; \
+	done
+
+
+# entrapment simulation verification - entrapment
+SuppFigure6e_h:
+	for fdr in "" _fdr0.1; do \
+		for ratio in 5 04; do \
+			mkdir -p $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_calibration_evaluation$${fdr}; \
+			python3 -um picked_group_fdr \
+				--mq_evidence $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_maxquant$${fdr}/evidence.txt \
+				--perc_evidence $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_percolator$${fdr}/peptides.all.txt \
+				--fasta $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.$${ratio}_m4.fasta \
+				--enzyme trypsinp \
+				--cleavages 0 \
+				--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_entrapment-s0-$${ratio}-fdr0-$${fdr} \
+				--protein_groups_out $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_calibration_evaluation$${fdr}/proteinGroups.txt \
+				--methods maxquant,discard_picked,razor_picked,picked_protein_group \
+				| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_entrapment-s0-$${ratio}-fdr0-$${fdr}.log; \
+		done; \
+	done
+
+
+# Simulated data calibration and performance 1% per experiment FDR
+SuppFigure7:
+	mkdir -p $(DATA_DIR)/simulation/simulation_supplementary_figures_results; \
+	for NUMEXP in 100 200 500; do \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/simulation/simulation_supplementary_figures/evidence.$${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt \
+			--peptide_protein_map $(DATA_DIR)/fasta/uniprot-proteome_human_190327.peptide_to_protein_map.long_protein_ids.txt \
+			--mq_protein_groups $(DATA_DIR)/simulation/simulation_supplementary_figures/proteinGroups.$${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt \
+			--protein_groups_out $(DATA_DIR)/simulation/simulation_supplementary_figures_results/proteinGroups.$${NUMEXP}_experiments_peptFDR0.01_no_recalibration.txt \
+			--figure_base_fn $(DATA_DIR)/manuscript_figures/SuppFigure7-$${NUMEXP}-experiments \
+			--methods maxquant,discard_picked_mq_input,razor_picked_mq_input,picked_protein_group_mq_input \
+			| tee $(DATA_DIR)/manuscript_figures/SuppFigure7-$${NUMEXP}-experiments.log; \
+	done
+
+
+# Simulated data calibration and performance 10% per experiment FDR
+SuppFigure8:
+	mkdir -p $(DATA_DIR)/simulation/simulation_supplementary_figures_results; \
+	for NUMEXP in 100 200 500; do \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/simulation/simulation_supplementary_figures/evidence.$${NUMEXP}_experiments_peptFDR0.1_no_recalibration.txt \
+			--peptide_protein_map $(DATA_DIR)/fasta/uniprot-proteome_human_190327.peptide_to_protein_map.long_protein_ids.txt \
+			--mq_protein_groups $(DATA_DIR)/simulation/simulation_supplementary_figures/proteinGroups.$${NUMEXP}_experiments_peptFDR0.1_no_recalibration.txt \
+			--protein_groups_out $(DATA_DIR)/simulation/simulation_supplementary_figures_results/proteinGroups.$${NUMEXP}_experiments_peptFDR0.1_no_recalibration.txt \
+			--figure_base_fn $(DATA_DIR)/manuscript_figures/SuppFigure8-$${NUMEXP}-experiments \
+			--methods maxquant,discard_picked_mq_input,razor_picked_mq_input,picked_protein_group_mq_input \
+			| tee $(DATA_DIR)/manuscript_figures/SuppFigure8-$${NUMEXP}-experiments.log; \
+	done
+
+
+# Simulated data calibration and performance 1% per experiment FDR
+SuppFigure9:
+	mkdir -p $(DATA_DIR)/simulation/simulation_supplementary_figures_results; \
+	for NUMEXP in 100 200 500; do \
+		python3 -um picked_group_fdr \
+			--mq_evidence $(DATA_DIR)/simulation/simulation_supplementary_figures/evidence.$${NUMEXP}_experiments_peptFDR0.01_with_recalibration.txt \
+			--peptide_protein_map $(DATA_DIR)/fasta/uniprot-proteome_human_190327.peptide_to_protein_map.long_protein_ids.txt \
+			--mq_protein_groups $(DATA_DIR)/simulation/simulation_supplementary_figures/proteinGroups.$${NUMEXP}_experiments_peptFDR0.01_with_recalibration.txt \
+			--protein_groups_out $(DATA_DIR)/simulation/simulation_supplementary_figures_results/proteinGroups.$${NUMEXP}_experiments_peptFDR0.01_with_recalibration.txt \
+			--figure_base_fn $(DATA_DIR)/manuscript_figures/SuppFigure9-$${NUMEXP}-experiments \
+			--methods maxquant,discard_picked_mq_input,razor_picked_mq_input,picked_protein_group_mq_input \
+			| tee $(DATA_DIR)/manuscript_figures/SuppFigure9-$${NUMEXP}-experiments.log; \
+	done
+
+
+# table with genes with multiple isoforms in SwissProt+isoforms
+SuppTable2:
+	python3 -u picked_group_fdr/utils/get_genes_with_multiple_isoforms.py \
+		$(DATA_DIR)/ProteomicsDB/ProteomicsDB_picked_group_fdr/proteinGroups_swissprot_human_with_isoforms_picked_protein_group_fdr.txt \
+		$(DATA_DIR)/fasta/swissprot_human_with_isoforms_prdb.fasta \
+		$(DATA_DIR)/manuscript_figures/Supplementary_Table2.txt

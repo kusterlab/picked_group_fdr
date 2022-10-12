@@ -1,0 +1,6 @@
+label = "Razor + Picked group"
+
+scoreType = "bestPEP"
+grouping = "no"
+sharedPeptides = "razor"
+pickedStrategy = "picked_group"

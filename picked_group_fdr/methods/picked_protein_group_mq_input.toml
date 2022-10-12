@@ -1,0 +1,6 @@
+label = "Picked Protein Group FDR"
+
+scoreType = "bestPEP"
+grouping = "rescued_subset"
+sharedPeptides = "discard"
+pickedStrategy = "picked_group"

@@ -9,6 +9,16 @@ from .scoring import ProteinScoringStrategy, ProteinGroupPeptideInfos
 from . import helpers
 
 
+def ProteinCompetitionStrategyFactory(method='picked_group'):
+    methods = {}
+    methods['picked'] = PickedStrategy
+    methods['picked_group'] = PickedGroupStrategy
+    methods['classic'] = ClassicStrategy
+    if method not in methods:
+        raise ValueError(f"Unknown pickedStrategy {method['pickedStrategy']}, should be one of 'picked', 'picked_group' or 'classic'")
+    return methods[method]()
+
+
 class ProteinCompetitionStrategy(ABC):
     @abstractmethod
     def _add_seen_proteins(self, proteins: List[str]) -> None:
@@ -150,4 +160,4 @@ class ClassicStrategy(ProteinCompetitionStrategy):
 
 
 def _clean_protein_id(protein_id):
-        return protein_id.replace("REV__", "").replace("OBSOLETE__", "")
+    return protein_id.replace("REV__", "").replace("OBSOLETE__", "")

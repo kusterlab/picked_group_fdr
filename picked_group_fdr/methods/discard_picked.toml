@@ -1,0 +1,6 @@
+label = "Discard + Picked group"
+
+scoreType = "Perc remap bestPEP"
+grouping = "no"
+sharedPeptides = "discard"
+pickedStrategy = "picked_group"
