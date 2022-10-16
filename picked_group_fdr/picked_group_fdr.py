@@ -236,7 +236,7 @@ def parseMqEvidenceFile(mqEvidenceFile: str, peptideToProteinMap, scoreType, sup
     peptideInfoList = dict()
     for peptide, tmp_proteins, _, score in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = scoreType):
         peptide = helpers.cleanPeptide(peptide)
-        if score >= peptideInfoList.get(peptide, [np.inf])[0]:
+        if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:
             continue
         
         if scoreType.remaps_peptides_to_proteins():
