@@ -23,7 +23,7 @@ Figure4b:
 		--enzyme trypsinp \
 		--cleavages 0 \
 		--protein_groups_out $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation/proteinGroups.txt \
-		--figure_base_fn $(DATA_DIR)/manuscript_figures/razor-vs-discard \
+		--figure_base_fn $(DATA_DIR)/manuscript_figures/Figure4b \
 		--methods discard_picked,razor_picked \
 		| tee $(DATA_DIR)/manuscript_figures/Figure4b.log;
 
@@ -50,9 +50,9 @@ Figure5c:
 		--enzyme trypsinp \
 		--cleavages 0 \
 		--protein_groups_out $(DATA_DIR)/Wang_trap_0.5/Wang_trap_0.5_calibration_evaluation/proteinGroups.txt \
-		--figure_base_fn $(DATA_DIR)/manuscript_figures/razor-vs-discard \
+		--figure_base_fn $(DATA_DIR)/manuscript_figures/Figure5c \
 		--methods maxquant,savitski,classic_protein_group,picked_protein_group \
-		| tee $(DATA_DIR)/manuscript_figures/Figure4b.log;
+		| tee $(DATA_DIR)/manuscript_figures/Figure5c.log;
 
 
 # performance MaxQuant, Savitski, Classic protein group and Picked protein group
@@ -177,9 +177,9 @@ SuppFigure6a_d:
 	for fdr in 1 01; do \
 		for ratio in 5 04; do \
 			python3 -um picked_group_fdr \
-				--mq_evidence $(DATA_DIR)/simulations/simulation_entrapment_analysis/evidence.mimic_s0.$${ratio}_m4_peptFDR0.$${fdr}.30_experiments.txt \
+				--mq_evidence $(DATA_DIR)/simulation/simulation_entrapment_analysis/evidence.mimic_s0.$${ratio}_m4_peptFDR0.$${fdr}.30_experiments.txt \
 				--peptide_protein_map $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.$${ratio}_m4.peptide_to_protein_map.txt \
-				--mq_protein_groups $(DATA_DIR)/simulations/simulation_entrapment_analysis/proteinGroups.mimic_s0.$${ratio}_m4_peptFDR0.$${fdr}.30_experiments.txt \
+				--mq_protein_groups $(DATA_DIR)/simulation/simulation_entrapment_analysis/proteinGroups.mimic_s0.$${ratio}_m4_peptFDR0.$${fdr}.30_experiments.txt \
 				--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_simulation-s0-$${ratio}-fdr0-$${fdr} \
 				--protein_groups_out $(DATA_DIR)/simulation/simulation_supplementary_figures_results/proteinGroups_simulation-s0-$${ratio}-fdr0-$${fdr}.txt \
 				--methods maxquant,discard_picked_mq_input,razor_picked_mq_input,picked_protein_group_mq_input \
@@ -199,10 +199,10 @@ SuppFigure6e_h:
 				--fasta $(DATA_DIR)/fasta/uniprot-proteome_human_190327.with_mimic_s0.$${ratio}_m4.fasta \
 				--enzyme trypsinp \
 				--cleavages 0 \
-				--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_entrapment-s0-$${ratio}-fdr0-$${fdr} \
+				--figure_base_fn $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_entrapment-s0-$${ratio}$${fdr} \
 				--protein_groups_out $(DATA_DIR)/Wang_trap_0.$${ratio}/Wang_trap_0.$${ratio}_calibration_evaluation$${fdr}/proteinGroups.txt \
 				--methods maxquant,discard_picked,razor_picked,picked_protein_group \
-				| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_entrapment-s0-$${ratio}-fdr0-$${fdr}.log; \
+				| tee $(DATA_DIR)/manuscript_figures/Supplementary_Figure6_entrapment-s0-$${ratio}$${fdr}.log; \
 		done; \
 	done
 
