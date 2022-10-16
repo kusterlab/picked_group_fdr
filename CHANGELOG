@@ -1,3 +1,11 @@
+v0.3.0
+- Added make rules to reproduce manuscript figures
+- Moved methods to toml files
+- Update picking strategy to use leading proteins
+- Add max_workers option for mokapot
+- Add support for multiple threads in LFQ computation
+- Fix non-functioning train_fdr option for mokapot
+
 v0.2.7
 - Added maxtasksperchild for better memory management in LFQ
 

@@ -55,7 +55,7 @@ pip install .
 To reproduce the figures from the manuscript:
 
 1. make sure that you have `make` installed.
-2. download the input files from zenodo: https://zenodo.org/record/6602949#.YqfgcGDMKUk
+2. download the input files from zenodo: https://zenodo.org/record/7157677
 3. specify the location of the input files and run the make command with the figure you want to reproduce, e.g.:
    ```shell
    export DATA_DIR=</path/to/zenodo/files>
