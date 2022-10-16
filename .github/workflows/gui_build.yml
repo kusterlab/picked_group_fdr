@@ -43,7 +43,7 @@ jobs:
       - name: Avoid MKL dependence
         run: |
           C:\Miniconda\condabin\conda.bat install -c conda-forge nomkl numpy pandas networkx pyqt pyinstaller
-          C:\Miniconda\condabin\conda.bat install -c bioconda pyteomics
+          pip install scipy mokapot triqler Bottleneck toml threadpoolctl
       - name: Build exe and compress with UPX
         run: |
           cd .\gui_tools\
