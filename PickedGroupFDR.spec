@@ -1,9 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import scipy
+
+scipy_libs = os.path.join(os.path.dirname(scipy.__file__), '.libs')
+print(scipy_libs)
+
 block_cipher = None
 
 a = Analysis(['gui.py'],
-             pathex=[],
+             pathex=[scipy_libs],
              binaries=[],
              datas=[('matplotlib_mock', 'matplotlib_mock'), ('./pyproject.toml', '.')],
              hiddenimports=['sklearn.utils._cython_blas'],
