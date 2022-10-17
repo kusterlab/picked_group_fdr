@@ -2,6 +2,7 @@ import sys
 import os
 import collections
 import logging
+import argparse
 from timeit import default_timer as timer
 from typing import List, Dict, Tuple, Union
 
@@ -37,68 +38,73 @@ Written by Matthew The (matthew.the@tum.de) at the
 Chair of Proteomics and Bioanalytics at the Technical University of Munich.'''
 
 
+class ArgumentParserWithLogger(argparse.ArgumentParser):
+    def error(self, message):
+        logger.error(f"Error parsing input arguments: {message}")
+        super().error(message)
+
+
 def parseArgs(argv):
-    import argparse
-    apars = argparse.ArgumentParser(
+    apars = ArgumentParserWithLogger(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     apars.add_argument('--mq_evidence', default=None, metavar = "EV",
                          help='''MaxQuant evidence file.''')
-    
+
     apars.add_argument('--protein_groups_out', default=None, metavar = "PG",
                          help='''Protein groups output file, mimicks a subset of the MQ protein groups columns.
                                 ''')
-    
+
     apars.add_argument('--fasta', default=None, metavar = "F",
                          help='''Fasta file to create mapping from peptides to proteins.
                                                     ''')
-    
+
     apars.add_argument('--mq_protein_groups', default=None, metavar = "PG",
                          help='''MaxQuant protein groups file; only specify if we want to keep MaxQuant's original grouping instead of Picked Grouping
                                 ''')
-    
+
     apars.add_argument('--perc_evidence', default=None, metavar = "POUT",
                          help='''Percolator output file with PSMs or peptides; alternative for --mq_evidence if we want to use Percolator PEPs instead of MaxQuant's PEPs
                                 ''')
-    
+
     apars.add_argument('--methods', default=None, metavar = "M1,M2",
                          help='''Use one or more predefined protein group FDR estimation methods, separated by commas.''')
-    
+
     apars.add_argument('--peptide_protein_map', default=None, metavar = "M",
                          help='''File with mapping from peptides to proteins; alternative for --fasta flag if digestion is time consuming.
                                 ''')
-    
+
     apars.add_argument('--peptide_proteotypicity_map', default=None, metavar = "M",
                          help='''File with mapping from peptides to proteotypicity.
                                 ''')
-    
+
     apars.add_argument('--gene_level',
                          help='Report gene-level statistics instead of protein group-level. This requires the GN= field to be present in the fasta file.',
                          action='store_true')
-                                         
+
     apars.add_argument('--do_quant',
                          help='Do protein quantification, will calculate summed intensity, iBAQ and LFQ intensities.',
                          action='store_true')
-    
+
     apars.add_argument('--suppress_missing_peptide_warning',
                          help='Suppress missing peptide warning.',
                          action='store_true')
-    
+
     apars.add_argument('--lfq_min_peptide_ratios', default=2, type=int, metavar='M',
                          help='''Minimum number of common peptides between two samples
                                  to qualify for calculating a peptide ratio in LFQ
                                  ''')
-    
+
     apars.add_argument('--num_threads', default=1, type=int, metavar='T',
                          help='''Maximum number of threads to use.''')
-                                                                         
-    apars.add_argument('--file_list_file', metavar='L', 
+
+    apars.add_argument('--file_list_file', metavar='L',
                          help='Tab separated file with lines of the format (third and fourth columns are optional): raw_file <tab> condition <tab> experiment <tab> fraction.')
-                                                    
+
     apars.add_argument('--figure_base_fn', default=None, metavar = "F",
                          help='''Base file name for calibration and performance figures.
                                 ''')
-    
+
     apars.add_argument('--plot_figures',
                          help='Plot figures with matplotlib.',
                          action='store_true')
@@ -107,7 +113,7 @@ def parseArgs(argv):
 
     # ------------------------------------------------
     args = apars.parse_args(argv)
-    
+
     return args
 
 
