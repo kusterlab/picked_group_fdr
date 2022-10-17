@@ -37,11 +37,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          C:\Miniconda\condabin\conda.bat env create -f conda_environment.yml
-          C:\Miniconda\condabin\conda.bat init powershell
-          C:\Miniconda\condabin\conda.bat activate picked_group_fdr_gui
-      - name: Avoid MKL dependence
-        run: |
           C:\Miniconda\condabin\conda.bat install -c conda-forge nomkl
           C:\Miniconda\condabin\conda.bat install -c conda-forge numpy scipy pandas networkx pyqt pyinstaller bottleneck toml threadpoolctl
           C:\Miniconda\condabin\conda.bat install -c bioconda mokapot triqler
