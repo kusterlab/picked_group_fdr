@@ -1,0 +1,57 @@
+name: Automatic GUI build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'rel-*'
+
+jobs:
+  build-windows:
+    name: Executable build for Windows
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Make temporary folder for UPX
+        run: |
+          mkdir .\UPX\
+      - name: Download UPX zip
+        run: |
+          Invoke-WebRequest -uri "https://github.com/upx/upx/releases/download/v3.96/upx-3.96-win64.zip" -outfile ".\UPX\upx-3.96-win64.zip"
+      - name: Unpack UPX
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          function Unzip
+          {
+              param([string]$zipfile, [string]$outpath)
+
+              [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+          }
+
+          Unzip ".\UPX\upx-3.96-win64.zip" ".\UPX\upx-3.96\"
+      - name: Create conda environment
+        run: |
+          C:\Miniconda\condabin\conda.bat create -n picked_group_fdr_gui python=3.9
+          C:\Miniconda\condabin\conda.bat init powershell
+          C:\Miniconda\condabin\conda.bat activate picked_group_fdr_gui
+      - name: Install dependencies
+        run: |
+          C:\Miniconda\condabin\conda.bat install -c conda-forge nomkl
+          C:\Miniconda\condabin\conda.bat install -c conda-forge numpy scipy pandas networkx pyqt pyinstaller bottleneck toml threadpoolctl
+          C:\Miniconda\condabin\conda.bat install -c bioconda mokapot triqler
+      - name: Build exe and compress with UPX
+        run: |
+          cd .\gui_tools\
+          & .\build_gui.bat
+          cd ..
+      - name: Add built .exe to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: gui_tools/dist/*.zip
+          tag: ${{ github.ref }}
+          overwrite: false
+          file_glob: true
