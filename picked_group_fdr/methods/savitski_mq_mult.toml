@@ -1,0 +1,6 @@
+label = "Savitski + MQ mult PEP"
+
+scoreType = "multPEP"
+grouping = "no"
+sharedPeptides = "discard"
+pickedStrategy = "picked"

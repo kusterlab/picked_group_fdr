@@ -61,6 +61,9 @@ def parseArgs(argv):
                          help='''Percolator output file with PSMs or peptides; alternative for --mq_evidence if we want to use Percolator PEPs instead of MaxQuant's PEPs
                                 ''')
     
+    apars.add_argument('--methods', default=None, metavar = "M1,M2",
+                         help='''Use one or more predefined protein group FDR estimation methods, separated by commas.''')
+    
     apars.add_argument('--peptide_protein_map', default=None, metavar = "M",
                          help='''File with mapping from peptides to proteins; alternative for --fasta flag if digestion is time consuming.
                                 ''')
@@ -233,7 +236,7 @@ def parseMqEvidenceFile(mqEvidenceFile: str, peptideToProteinMap, scoreType, sup
     peptideInfoList = dict()
     for peptide, tmp_proteins, _, score in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = scoreType):
         peptide = helpers.cleanPeptide(peptide)
-        if score >= peptideInfoList.get(peptide, [np.inf])[0]:
+        if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:
             continue
         
         if scoreType.remaps_peptides_to_proteins():

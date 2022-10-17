@@ -1,0 +1,6 @@
+label = "Classic subset grouping"
+
+scoreType = "Perc remap bestPEP"
+grouping = "subset"
+sharedPeptides = "discard"
+pickedStrategy = "classic"

@@ -1,0 +1,6 @@
+label = "Classic no grouping"
+
+scoreType = "Perc remap bestPEP"
+grouping = "no"
+sharedPeptides = "discard"
+pickedStrategy = "classic"

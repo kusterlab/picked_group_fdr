@@ -1,0 +1,6 @@
+label = "MaxQuant"
+
+scoreType = "multPEP"
+grouping = "subset"
+sharedPeptides = "razor"
+pickedStrategy = "classic"

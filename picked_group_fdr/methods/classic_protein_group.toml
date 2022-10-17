@@ -1,0 +1,6 @@
+label = "Classic Protein Group FDR"
+
+scoreType = "Perc remap bestPEP"
+grouping = "rescued_subset"
+sharedPeptides = "discard"
+pickedStrategy = "classic"

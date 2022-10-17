@@ -1,0 +1,6 @@
+label = "MaxQuant + MQ best PEP + Picked group"
+
+scoreType = "bestPEP"
+grouping = "subset"
+sharedPeptides = "razor"
+pickedStrategy = "picked_group"

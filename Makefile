@@ -1,5 +1,6 @@
 PICKEDGROUPFDR_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 include $(PICKEDGROUPFDR_DIR)MakefileShared
+include $(PICKEDGROUPFDR_DIR)MakefileFigures
 
 dependencies:
 	git config --global credential.helper cache
@@ -30,6 +31,10 @@ build: dependencies
 	docker build -f Dockerfile -t $(IMAGE) . || (exit 1)
 
 
+####################################################################################
+### Pipeline including recalculation of PEPs by mokapot (=percolator for Python) ###
+####################################################################################
+
 prepayload_setup_create_folder: rm_err_file
 	$(DOCKER_CMD) \
 		$(IMAGE) mkdir -p -m 777 $(OUT_DIR_LOCAL)/percolator || (echo "1" > $(DATA)err.out; exit 1)
@@ -53,11 +58,11 @@ update_evidence: percolator
 
 picked_fdr: update_evidence
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr --mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt --protein_groups_out $(OUT_DIR_LOCAL)/percolator/proteinGroups.txt --do_quant --fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" --num_threads $(NUM_THREADS) $(DIGEST_PARAMS) $(PICKED_GROUP_FDR_EXTRA_PARAMS) > $(OUT_DIR_LOCAL)/percolator/proteinGroups.log" || (echo "5" > $(DATA)err.out; exit 5)
+		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr --mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt --protein_groups_out $(OUT_DIR_LOCAL)/percolator/proteinGroups.txt --do_quant --fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" --methods picked_protein_group_mq_input --num_threads $(NUM_THREADS) $(DIGEST_PARAMS) $(PICKED_GROUP_FDR_EXTRA_PARAMS) > $(OUT_DIR_LOCAL)/percolator/proteinGroups.log" || (echo "5" > $(DATA)err.out; exit 5)
 
 picked_fdr_gene_level: picked_fdr
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr --mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt --protein_groups_out $(OUT_DIR_LOCAL)/percolator/geneGroups.txt --do_quant --gene_level --fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" --num_threads $(NUM_THREADS) $(DIGEST_PARAMS) $(PICKED_GROUP_FDR_EXTRA_PARAMS) --suppress_missing_peptide_warning > $(OUT_DIR_LOCAL)/percolator/geneGroups.log" || (echo "5" > $(DATA)err.out; exit 5)
+		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr --mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt --protein_groups_out $(OUT_DIR_LOCAL)/percolator/geneGroups.txt --do_quant --gene_level --fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" --methods picked_protein_group_mq_input --num_threads $(NUM_THREADS) $(DIGEST_PARAMS) $(PICKED_GROUP_FDR_EXTRA_PARAMS) --suppress_missing_peptide_warning > $(OUT_DIR_LOCAL)/percolator/geneGroups.log" || (echo "5" > $(DATA)err.out; exit 5)
 
 # by popular demand: also produce an evidence.txt and proteinGroups.txt filtered at 1% FDR
 filter_results: picked_fdr_gene_level

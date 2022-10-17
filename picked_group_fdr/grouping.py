@@ -16,6 +16,18 @@ from .peptide_info import PeptideInfoList, ProteinGroupPeptideInfos
 logger = logging.getLogger(__name__)
 
 
+def ProteinGroupingStrategyFactory(method='rescued_subset'):
+    methods = {}
+    methods['no'] = NoGrouping
+    methods['subset'] = SubsetGrouping
+    methods['rescued_subset'] = RescuedSubsetGrouping
+    methods['mq_native'] = MQNativeGrouping
+    methods['rescued_mq_native'] = RescuedMQNativeGrouping
+    if method not in methods:
+        raise ValueError(f"Unknown pickedStrategy {method['pickedStrategy']}, should be one of 'no', 'subset' or 'rescued_subset'")
+    return methods[method]()
+
+
 class ProteinGroupingStrategy(ABC):
     @abstractmethod
     def needs_peptide_to_protein_map(self):
