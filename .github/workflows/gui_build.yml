@@ -29,12 +29,12 @@ jobs:
           }
 
           Unzip ".\UPX\upx-3.96-win64.zip" ".\UPX\upx-3.96\"
-      - name: Install dependencies
+      - name: Create conda environment
         run: |
           C:\Miniconda\condabin\conda.bat create -n picked_group_fdr_gui python=3.9
           C:\Miniconda\condabin\conda.bat init powershell
           C:\Miniconda\condabin\conda.bat activate picked_group_fdr_gui
-      - name: Avoid MKL dependence
+      - name: Install dependencies
         run: |
           C:\Miniconda\condabin\conda.bat install -c conda-forge nomkl
           C:\Miniconda\condabin\conda.bat install -c conda-forge numpy scipy pandas networkx pyqt pyinstaller bottleneck toml threadpoolctl
