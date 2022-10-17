@@ -1,17 +1,22 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import scipy
+import llvmlite
 
-scipy_libs = os.path.join(os.path.dirname(scipy.__file__), '.libs')
-print(scipy_libs)
+llvmlite_dll = os.path.join(os.path.dirname(llvmlite.__file__), 'binding', 'llvmlite.dll')
 
 block_cipher = None
 
 a = Analysis(['gui.py'],
-             pathex=[scipy_libs],
-             binaries=[],
+             pathex=[],
+             binaries=[(llvmlite_dll, '.')],
              datas=[('matplotlib_mock', 'matplotlib_mock'), ('./pyproject.toml', '.')],
-             hiddenimports=['sklearn.utils._cython_blas'],
+             hiddenimports=['sklearn.utils._cython_blas',
+                            'sklearn.utils._typedefs',
+                            'sklearn.utils._heap',
+                            'sklearn.utils._sorting',
+                            'sklearn.utils._vector_sentinel',
+                            'sklearn.utils._weight_vector',
+                            'lxml._elementpath'],
              hookspath=[],
              runtime_hooks=['add_lib.py'],
              excludes=['matplotlib'],
@@ -36,7 +41,7 @@ a.binaries = [x for x in a.binaries if not x[0].endswith("qoffscreen.dll")]
 a.binaries = [x for x in a.binaries if not x[0].endswith("qminimal.dll")]
 a.binaries = [x for x in a.binaries if not x[0].endswith("qdirect2d.dll")]
 a.binaries = [x for x in a.binaries if not "imageformats" in x[0]]
-a.binaries = [x for x in a.binaries if not "gfortran-win" in x[0]]
+#a.binaries = [x for x in a.binaries if not "gfortran-win" in x[0]]
 
 a.datas = [x for x in a.datas if not x[0].startswith("libcrypto")]
 a.datas = [x for x in a.datas if not x[0].startswith("libssl")]

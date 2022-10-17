@@ -13,7 +13,7 @@ print("Moving libraries to lib directory")
 for f in dist_dir.glob('*'):
     if f.name.endswith(".egg-info'") or f.name in ["pytz", "matplotlib", "sqlalchemy", "tcl8", "PIL", "greenlet", "certifi"]:
         shutil.rmtree(f)
-    elif f.is_file() and f.name not in ['base_library.zip', 'python36.dll', 'python37.dll', 'python38.dll', 'python39.dll', 'PickedGroupFDR.exe', 'pyproject.toml']:
+    elif f.is_file() and f.name not in ['base_library.zip', 'python36.dll', 'python37.dll', 'python38.dll', 'python39.dll', 'llvmlite.dll', 'PickedGroupFDR.exe', 'pyproject.toml']:
         f.rename(lib_dir / f.name)
 
 print("Creating zip archive")
