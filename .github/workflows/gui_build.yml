@@ -3,6 +3,9 @@ name: Automatic GUI build
 on:
   workflow_dispatch:
   push:
+    tags:
+      - 'rel-*'
+
 jobs:
   build-windows:
     name: Executable build for Windows
