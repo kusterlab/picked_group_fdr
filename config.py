@@ -26,6 +26,9 @@ with open(os.path.join(configDir, 'config.json')) as f:
         if config["options"]["protease"]:
             digest_params.append("--enzyme " + config["options"]["protease"])
         
+        if config["options"].get("digestion", False):
+            digest_params.append("--digestion " + config["options"]["digestion"])
+        
         if config["options"]["minPeptideLength"]:
             digest_params.append("--min-length " + str(config["options"]["minPeptideLength"]))
         
@@ -37,11 +40,17 @@ with open(os.path.join(configDir, 'config.json')) as f:
         else:
             digest_params.append("--special-aas \\\"\\\"")
             
-        if not isinstance(config["options"]["missedCleavages"], bool):
+        if not isinstance(config["options"]["missedCleavages"], bool): # check for bool, as value can be 0 which also evaluates to False
             digest_params.append("--cleavages " + str(config["options"]["missedCleavages"]))
             
         print(" ".join(digest_params))
-     
+    
+    elif sys.argv[3] == "PICKED_GROUP_FDR_EXTRA_PARAMS":
+        if config["options"].get("minLFQPeptides", False):
+            print("--lfq_min_peptide_ratios " + str(config["options"]["minLFQPeptides"]))
+        else:
+            print()
+        
     elif sys.argv[3] == "NUM_THREADS":
         if "numThreads" in config:
             print(config["numThreads"])

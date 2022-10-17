@@ -1,7 +1,6 @@
 IMAGE ?= picked_group_fdr
 DATA ?= $(HOME)/git/picked_group_fdr/data/lfq_example/
 OUT_DIR ?= $(DATA)
-PICKED_GROUP_FDR_EXTRA_PARAMS ?= 
 
 LOCAL_DIR ?= /root/data
 OUT_DIR_LOCAL ?= $(LOCAL_DIR)/out
@@ -10,6 +9,7 @@ MQ_EVIDENCE_FILE ?= $(LOCAL_DIR)/evidence.txt
 PERC_RESULT_FILES := $(shell python3 config.py $(DATA) $(LOCAL_DIR) PERC_RESULT_FILES)
 PROSIT_FLAG := $(shell python3 config.py $(DATA) $(LOCAL_DIR) PROSIT_FLAG)
 DIGEST_PARAMS := $(shell python3 config.py $(DATA) $(LOCAL_DIR) DIGEST_PARAMS)
+PICKED_GROUP_FDR_EXTRA_PARAMS := $(shell python3 config.py $(DATA) $(LOCAL_DIR) PICKED_GROUP_FDR_EXTRA_PARAMS)
 NUM_THREADS := $(shell python3 config.py $(DATA) $(LOCAL_DIR) NUM_THREADS)
 
 FASTA_FILE := $(notdir $(shell ls $(DATA)/*.fasta | head -n1))
