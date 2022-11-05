@@ -54,11 +54,19 @@ def run_mokapot(output_dir):
     
 
 def run_update_evidence(evidence_file, output_dir):
-    update_evidence.main(['--mq_evidence', evidence_file, '--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoy.psms.txt', '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
+    update_evidence.main(
+        ['--mq_evidence', evidence_file, 
+        '--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoy.psms.txt', 
+        '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
 
 
 def run_picked_group_fdr(fasta_file, output_dir, digest_params):
-    picked_group_fdr.main(['--mq_evidence', f'{output_dir}/evidence_percolator.txt', '--protein_groups_out', f'{output_dir}/proteinGroups_percolator.txt', '--do_quant', '--fasta', fasta_file] + digest_params.split())
+    picked_group_fdr.main(
+        ['--mq_evidence', f'{output_dir}/evidence_percolator.txt', 
+        '--methods',  'picked_protein_group_mq_input', 
+        '--protein_groups_out', f'{output_dir}/proteinGroups_percolator.txt', 
+        '--do_quant', 
+        '--fasta', fasta_file] + digest_params.split())
 
 
 # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt#60528393
