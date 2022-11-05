@@ -16,6 +16,7 @@ import multiprocessing
 import picked_group_fdr.pipeline.andromeda2pin as andromeda2pin
 import picked_group_fdr.pipeline.update_evidence_from_pout as update_evidence
 import picked_group_fdr.picked_group_fdr as picked_group_fdr
+import picked_group_fdr.digest as digest
 import picked_group_fdr.utils.multiprocessing_pool as pool
 
 import mokapot
@@ -215,14 +216,42 @@ class MainWindow(QtWidgets.QWidget):
         
         layout.addRow(self.output_dir_label, self.output_dir_widget)
 
-    def _add_digestion_params_field(self, layout):
-        # additional parameters input, TODO: make user friendly options for each digestion parameter
-        self.args_label = QtWidgets.QLabel("Digestion parameters")
-        #self.args_label.setMargin(10)
+    def _add_digestion_params_field(self, layout):        
+        self.min_length_label = QtWidgets.QLabel("Min peptide length")
+        self.min_length_spinbox = QtWidgets.QSpinBox()
+        self.min_length_spinbox.setValue(digest.MIN_PEPLEN_DEFAULT)
+        self.min_length_spinbox.setRange(1,20)
         
-        self.args_line_edit = QtWidgets.QLineEdit()
+        self.max_length_label = QtWidgets.QLabel("Max peptide length")
+        self.max_length_spinbox = QtWidgets.QSpinBox()
+        self.max_length_spinbox.setValue(digest.MAX_PEPLEN_DEFAULT)
+        self.max_length_spinbox.setRange(1,100)
         
-        layout.addRow(self.args_label, self.args_line_edit)
+        self.max_cleavages_label = QtWidgets.QLabel("Max miscleavages")
+        self.max_cleavages_spinbox = QtWidgets.QSpinBox()
+        self.max_cleavages_spinbox.setValue(digest.CLEAVAGES_DEFAULT)
+        self.max_cleavages_spinbox.setRange(1,10)
+        
+        self.enzyme_label = QtWidgets.QLabel("Enzyme")
+        self.enzyme_select = QtWidgets.QComboBox()
+        self.enzyme_select.addItems(digest.ENZYME_CLEAVAGE_RULES.keys())
+        self.enzyme_select.setCurrentText(digest.ENZYME_DEFAULT)
+        
+        self.digestion_label = QtWidgets.QLabel("Digestion")
+        self.digestion_select = QtWidgets.QComboBox()
+        self.digestion_select.addItems(["full", "semi", "none"])
+        self.digestion_select.setCurrentText(digest.DIGESTION_DEFAULT)
+        
+        self.special_aas_label = QtWidgets.QLabel("Special AAs")
+        self.special_aas_line_edit = QtWidgets.QLineEdit()
+        self.special_aas_line_edit.setText(digest.SPECIAL_AAS_DEFAULT)
+        
+        layout.addRow(self.enzyme_label, self.enzyme_select)
+        layout.addRow(self.max_cleavages_label, self.max_cleavages_spinbox)
+        layout.addRow(self.min_length_label, self.min_length_spinbox)
+        layout.addRow(self.max_length_label, self.max_length_spinbox)
+        layout.addRow(self.digestion_label, self.digestion_select)
+        layout.addRow(self.special_aas_label, self.special_aas_line_edit)
     
     def _add_run_button(self, layout):    
         self.run_button = QtWidgets.QPushButton("Run")
@@ -289,7 +318,12 @@ class MainWindow(QtWidgets.QWidget):
         evidence_files = [str(self.evidence_line_edit.item(i).text()) for i in range(self.evidence_line_edit.count())]
         fasta_file = self.fasta_line_edit.text()
         output_dir = self.output_dir_line_edit.text()
-        digest_params = self.args_line_edit.text()
+        digest_params = " ".join(["--min-length", str(self.min_length_spinbox.value()),
+                                  "--max-length", str(self.max_length_spinbox.value()),
+                                  "--cleavages", str(self.max_cleavages_spinbox.value()),
+                                  "--enzyme", self.enzyme_select.currentText(),
+                                  "--digestion", self.digestion_select.currentText(),
+                                  "--special-aas", self.special_aas_line_edit.text()])
         
         self.set_buttons_enabled_state(False)
         self.pool.applyAsync(run_picked_group_fdr_all, (evidence_files, fasta_file, output_dir, digest_params), callback=self.on_picked_finished)

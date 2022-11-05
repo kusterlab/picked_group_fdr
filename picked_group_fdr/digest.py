@@ -11,6 +11,26 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+ENZYME_DEFAULT = "trypsin"
+CLEAVAGES_DEFAULT = 2
+MIN_PEPLEN_DEFAULT = 7
+MAX_PEPLEN_DEFAULT = 60
+SPECIAL_AAS_DEFAULT = "KR"
+DIGESTION_DEFAULT = "full"
+
+ENZYME_CLEAVAGE_RULES = {
+    'trypsinp': { 'pre': ['K', 'R'], 'not_post': [] },
+    'trypsin': { 'pre': ['K', 'R'], 'not_post': ['P'] },
+    'no_enzyme': { 'pre': [], 'not_post': [] },
+    'chymotrypsin': { 'pre': ['F', 'W', 'Y', 'L'], 'not_post': ['P'] },
+    'proteinasek': { 'pre': ['A', 'E', 'F', 'I', 'L', 'T', 'V', 'W', 'Y'], 'not_post': [] },
+    'elastase': { 'pre': ['L', 'V', 'A', 'G'], 'not_post': ['P'] },
+    'lys-c': { 'pre': ['K'], 'not_post': ['P'] },
+    'arg-c': { 'pre': ['R'], 'not_post': ['P'] },
+    'glu-c': { 'pre': ['E'], 'not_post': ['P'] },
+    'v8-de': { 'pre': ['N', 'D', 'E', 'Q'], 'not_post': ['P'] }
+    }
+
 
 def main(argv):
     args = parseArgs()
@@ -98,33 +118,33 @@ def parseArgs():
 
     
 def addArguments(apars):    
-    apars.add_argument('-e', '--enzyme', default = "trypsin", metavar='E',
+    apars.add_argument('-e', '--enzyme', default = ENZYME_DEFAULT, metavar='E',
                                          help='''Type of enzyme "no_enzyme","elastase","pepsin",
                                                          "proteinasek","thermolysin","chymotrypsin",
                                                          "lys-n","lys-c","arg-c","asp-n","glu-c","trypsin",
                                                          "trypsinp".
                                                     ''')        
                                                         
-    apars.add_argument('-c', '--cleavages', default = 2, metavar='C', type=int,
+    apars.add_argument('-c', '--cleavages', default = CLEAVAGES_DEFAULT, metavar='C', type=int,
                                          help='''Number of allowed miss cleavages used in the search 
                                                          engine (Only valid when using option -F).
                                                     ''')
     
-    apars.add_argument('-l', '--min-length', default = 7, metavar='L', type=int,
+    apars.add_argument('-l', '--min-length', default = MIN_PEPLEN_DEFAULT, metavar='L', type=int,
                                          help='''Minimum peptide length allowed used in the search 
                                                          engine (Only valid when using option -F).
                                                     ''')
     
-    apars.add_argument('-t', '--max-length', default = 60, metavar='L', type=int,
+    apars.add_argument('-t', '--max-length', default = MAX_PEPLEN_DEFAULT, metavar='L', type=int,
                                          help='''Maximum peptide length allowed used in the search 
                                                          engine (Only valid when using option -F).
                                                     ''')                                     
     
-    apars.add_argument('--special-aas', default = 'KR', metavar='S', 
+    apars.add_argument('--special-aas', default = SPECIAL_AAS_DEFAULT, metavar='S', 
                                          help='''Special AAs that MaxQuant uses for decoy generation.
                                                     ''')
     
-    apars.add_argument('--digestion', default = 'full', metavar='D', 
+    apars.add_argument('--digestion', default = DIGESTION_DEFAULT, metavar='D', 
                                          help='''Digestion mode ('full', 'semi' or 'none').
                                                     ''')
 
@@ -453,39 +473,11 @@ def getNumPeptidesPerProtein(peptideToProteinMap):
 
     
 def getCleavageSites(enzyme):
-    if enzyme == "trypsinp":
-        pre = ['K', 'R']
-        not_post = []
-    elif enzyme == "trypsin":
-        pre = ['K', 'R']
-        not_post = ['P']
-    elif enzyme == "no_enzyme":
-        pre = []
-        not_post = []
-    elif enzyme == "chymotrypsin":
-        pre = ['F', 'W', 'Y', 'L']
-        not_post = ['P']
-    elif enzyme == "proteinasek":
-        pre = ['A', 'E', 'F', 'I', 'L', 'T', 'V', 'W', 'Y']
-        not_post = []
-    elif enzyme == "elastase":
-        pre = ['L', 'V', 'A', 'G']
-        not_post = ['P']
-    elif enzyme == "lys-c":
-        pre = ['K']
-        not_post = ['P']
-    elif enzyme == "arg-c":
-        pre = ['R']
-        not_post = ['P']
-    elif enzyme == "glu-c":
-        pre = ['E']
-        not_post = ['P']
-    elif enzyme == 'v8-de':
-        pre = ['N', 'D', 'E', 'Q']
-        not_post = ['P']
-    else:
-        sys.exit("Enzyme", enzyme, "not implemented yet")
-    
+    if enzyme not in ENZYME_CLEAVAGE_RULES:
+        logger.error("Enzyme", enzyme, "not implemented yet")
+        
+    pre = ENZYME_CLEAVAGE_RULES[enzyme]['pre']
+    not_post = ENZYME_CLEAVAGE_RULES[enzyme]['not_post']    
     return pre, not_post
 
     
