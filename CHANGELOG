@@ -1,3 +1,7 @@
+v0.3.2
+- Fix mokapot decoy filename
+- Propagate argparse errors from pipeline scripts to logger
+
 v0.3.1
 - Fixed missing methods folder in GUI
 
