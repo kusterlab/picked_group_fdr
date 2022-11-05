@@ -1,3 +1,6 @@
+v0.3.3
+- Add option for multiple evidence files and selecing digestion parameters in GUI
+
 v0.3.2
 - Fix mokapot decoy filename
 - Propagate argparse errors from pipeline scripts to logger

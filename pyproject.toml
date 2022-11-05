@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "picked_group_fdr"
-version = "0.3.2"
+version = "0.3.3"
 description = "Scalable, accurate and sensitive protein group FDRs for large-scale mass spectrometry experiments"
 authors = ["Matthew The <matthew.the@tum.de>"]
 license= "Apache-2.0"
