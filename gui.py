@@ -261,7 +261,7 @@ if __name__ == '__main__':
         multiprocessing.freeze_support()
     else:
         # On Linux calling this function is necessary when combined with pyqt: https://stackoverflow.com/questions/29556291/multiprocessing-with-qt-works-in-windows-but-not-linux
-        multiprocessing.set_start_method('spawn')
+        multiprocessing.set_start_method('spawn', force=True)
     app = QtWidgets.QApplication(sys.argv)
     w = MainWindow()
     w.show()
