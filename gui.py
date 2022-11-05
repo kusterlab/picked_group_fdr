@@ -56,7 +56,7 @@ def run_mokapot(output_dir):
 def run_update_evidence(evidence_file, output_dir):
     update_evidence.main(
         ['--mq_evidence', evidence_file, 
-        '--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoy.psms.txt', 
+        '--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoys.psms.txt', 
         '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
 
 
@@ -74,7 +74,11 @@ class QTextEditLogger(logging.Handler, QObject):
     appendPlainText = pyqtSignal(str)
     
     def __init__(self, parent):
-        super().__init__()
+        super().__init__()        
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        formatter.converter = time.gmtime
+        self.setFormatter(formatter)
+
         QObject.__init__(self)
         self.widget = QtWidgets.QPlainTextEdit(parent)
         self.widget.setReadOnly(True)
@@ -92,6 +96,10 @@ class LogEmitter(QObject):
 class LogHandler(logging.Handler):
     def __init__(self):
         super().__init__()
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        formatter.converter = time.gmtime
+        self.setFormatter(formatter)
+
         self.emitter = LogEmitter()
 
     def emit(self, record):

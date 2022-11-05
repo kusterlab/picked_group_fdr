@@ -14,6 +14,7 @@ import numpy as np
 
 from .. import digest
 from .. import parsers
+from ..picked_group_fdr import ArgumentParserWithLogger
 
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
@@ -68,7 +69,7 @@ def main(argv):
 
 def parseArgs(argv):
     import argparse
-    apars = argparse.ArgumentParser(
+    apars = ArgumentParserWithLogger(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     apars.add_argument('mq_evidence_file', default=None, metavar = "evidence.txt",

@@ -8,7 +8,7 @@ import numpy as np
 from .. import parsers
 from .. import helpers
 from .. import fdr
-
+from ..picked_group_fdr import ArgumentParserWithLogger
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -19,7 +19,7 @@ Scan = collections.namedtuple('Scan', 'postErrorProb rawFile scanNr sequence pre
 # python -m picked_group_fdr.pipeline.filter_fdr_maxquant --per_rawfile_fdr --perc_in ${DATA_DIR}/Dongxue_mimic_final_runs/mimic_s0.5_m4_peptFDR0.1/peptides.all.txt --perc_out ${DATA_DIR}/Dongxue_mimic_final_runs/mimic_s0.5_m4_peptFDR0.1/peptides_0.01peptideFDR_per_rawfile.all.txt
 def parseArgs(argv):
     import argparse
-    apars = argparse.ArgumentParser(
+    apars = ArgumentParserWithLogger(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     apars.add_argument('--mq_msms', default=None, metavar="M", nargs='+', required=False,
