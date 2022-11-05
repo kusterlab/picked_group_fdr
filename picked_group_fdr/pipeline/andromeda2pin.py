@@ -27,10 +27,10 @@ def main(argv):
     
     andromedaTargetOutFNs = []
     if len(args.mq_evidence_file) > 0:
-        with open(args.mq_evidence_file, 'r') as f:
+        with open(args.mq_evidence_file[0], 'r') as f:
             for line in f:
                 if line.lower().startswith("sequence"):
-                    andromedaTargetOutFNs.append(args.mq_evidence_file)
+                    andromedaTargetOutFNs = args.mq_evidence_file
                     break
                 else:
                     if len(andromedaTargetOutFNs) == 0:
@@ -72,11 +72,11 @@ def parseArgs(argv):
     apars = ArgumentParserWithLogger(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    apars.add_argument('mq_evidence_file', default=None, metavar = "evidence.txt",
-     help='''MaxQuant evidence file, or a meta file if you have multiple evidence 
-             files you want to combine. Meta files are text files containing the
-             the paths of mzid-files, one path per line. For successful results,
-             the different runs should be generated under similar conditions.
+    apars.add_argument('mq_evidence_file', default=None, nargs='+', metavar = "evidence.txt",
+     help='''MaxQuant evidence file(s), or a meta file. If you want to combine 
+             multiple evidence files, use spaces to separate the file paths or
+             use a meta file. Meta files are text files containing the paths of 
+             evidence files, one path per line.
              ''')
                                                     
     apars.add_argument('-o', '--outputTab', default = None, metavar='pin.tab', 

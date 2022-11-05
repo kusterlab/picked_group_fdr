@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QObject, QThread, pyqtSignal # https://realpython.com/python-pyqt-qthread/
+from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal # https://realpython.com/python-pyqt-qthread/
 
 import sys
 
@@ -27,13 +27,13 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def run_picked_group_fdr_all(evidence_file, fasta_file, output_dir, digest_params):
+def run_picked_group_fdr_all(evidence_files, fasta_file, output_dir, digest_params):
     try:
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
-        run_andromeda_to_pin(evidence_file, fasta_file, output_dir, digest_params)
+        run_andromeda_to_pin(evidence_files, fasta_file, output_dir, digest_params)
         run_mokapot(output_dir)
-        run_update_evidence(evidence_file, output_dir)
+        run_update_evidence(evidence_files, output_dir)
         run_picked_group_fdr(fasta_file, output_dir, digest_params)
     except SystemExit as e:
         logger.info(f"Error while running Picked Group FDR, exited with error code {e}.")
@@ -41,8 +41,8 @@ def run_picked_group_fdr_all(evidence_file, fasta_file, output_dir, digest_param
         logger.info(f"Error while running Picked Group FDR: {e}")
 
 
-def run_andromeda_to_pin(evidence_file, fasta_file, output_dir, digest_params):
-    andromeda2pin.main([evidence_file, '--outputTab', f'{output_dir}/pin.tab', '--databases', fasta_file] + digest_params.split())
+def run_andromeda_to_pin(evidence_files, fasta_file, output_dir, digest_params):
+    andromeda2pin.main(evidence_files + ['--outputTab', f'{output_dir}/pin.tab', '--databases', fasta_file] + digest_params.split())
     
 
 def run_mokapot(output_dir):
@@ -53,10 +53,10 @@ def run_mokapot(output_dir):
     results.to_txt(dest_dir=output_dir, decoys = True)
     
 
-def run_update_evidence(evidence_file, output_dir):
+def run_update_evidence(evidence_files, output_dir):
     update_evidence.main(
-        ['--mq_evidence', evidence_file, 
-        '--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoys.psms.txt', 
+        ['--mq_evidence'] + evidence_files + 
+        ['--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoys.psms.txt', 
         '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
 
 
@@ -140,7 +140,7 @@ class MainWindow(QtWidgets.QWidget):
 
     def _add_evidence_field(self, layout):
         # evidence.txt input
-        self.evidence_label = QtWidgets.QLabel("Select an evidence.txt file")
+        self.evidence_label = QtWidgets.QLabel("Select evidence.txt file(s)")
         #self.evidence_label.setMargin(10)
         
         self.evidence_widget = QtWidgets.QWidget()
@@ -148,13 +148,30 @@ class MainWindow(QtWidgets.QWidget):
         self.evidence_hbox_layout = QtWidgets.QHBoxLayout()
         self.evidence_hbox_layout.setContentsMargins(0, 0, 0, 0)
         
-        self.evidence_line_edit = QtWidgets.QLineEdit()
-        self.evidence_browse_button = QtWidgets.QPushButton("Browse")
-        self.evidence_browse_button.clicked.connect(self.get_evidence_file)
-        self.evidence_hbox_layout.addWidget(self.evidence_line_edit, stretch = 1)
-        self.evidence_hbox_layout.addWidget(self.evidence_browse_button)
+        self.evidence_line_edit = QtWidgets.QListWidget()
+        self.evidence_line_edit.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         
         self.evidence_widget.setLayout(self.evidence_hbox_layout)
+        
+        self.evidence_widget_buttons = QtWidgets.QWidget()
+        
+        self.evidence_vbox_layout = QtWidgets.QVBoxLayout()
+        self.evidence_vbox_layout.setContentsMargins(0, 0, 0, 0)
+        self.evidence_vbox_layout.setAlignment(Qt.AlignTop)
+        
+        self.evidence_browse_button = QtWidgets.QPushButton("Add")
+        self.evidence_browse_button.clicked.connect(self.get_evidence_files)
+        
+        self.evidence_remove_button = QtWidgets.QPushButton("Remove")
+        self.evidence_remove_button.clicked.connect(self.remove_evidence_files)
+        
+        self.evidence_vbox_layout.addWidget(self.evidence_browse_button)
+        self.evidence_vbox_layout.addWidget(self.evidence_remove_button)
+        
+        self.evidence_widget_buttons.setLayout(self.evidence_vbox_layout)
+        
+        self.evidence_hbox_layout.addWidget(self.evidence_line_edit, stretch = 1)
+        self.evidence_hbox_layout.addWidget(self.evidence_widget_buttons)
         
         layout.addRow(self.evidence_label, self.evidence_widget)
 
@@ -218,12 +235,33 @@ class MainWindow(QtWidgets.QWidget):
         self.log_text_area = QTextEditLogger(self)
         self.log_text_area.setLevel(logging.INFO)
         logger.addHandler(self.log_text_area)
-             
-        layout.addRow(self.log_text_area.widget)
         
-    def get_evidence_file(self):
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open evidence file' , '','Tab separated file (*.txt)' )
-        self.evidence_line_edit.setText(filename)
+        self.log_text_widget = QtWidgets.QWidget()
+        
+        self.log_text_hbox_layout = QtWidgets.QHBoxLayout()
+        self.log_text_hbox_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.log_text_clear_button = QtWidgets.QPushButton("Clear")
+        self.log_text_clear_button.clicked.connect(lambda: self.log_text_area.widget.clear())
+        
+        self.log_text_hbox_layout.addWidget(self.log_text_area.widget, stretch = 1)
+        self.log_text_hbox_layout.addWidget(self.log_text_clear_button)
+        
+        self.log_text_widget.setLayout(self.log_text_hbox_layout)
+             
+        layout.addRow(self.log_text_widget)
+        
+    def get_evidence_files(self):
+        filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, 'Open evidence file(s)' , '','Tab separated file (*.txt)' )
+        self.evidence_line_edit.addItems(filenames)
+    
+    def remove_evidence_files(self):
+        selected_items = self.evidence_line_edit.selectedItems()
+        if not selected_items:
+            return
+        
+        for item in selected_items:
+            self.evidence_line_edit.takeItem(self.evidence_line_edit.row(item))
     
     def get_fasta_file(self):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open fasta file' , '','Fasta file (*.fasta *.fa)' )
@@ -248,13 +286,13 @@ class MainWindow(QtWidgets.QWidget):
             self.run_button.clicked.connect(self.stop_picked)
         
     def run_picked(self):
-        evidence_file = self.evidence_line_edit.text()
+        evidence_files = [str(self.evidence_line_edit.item(i).text()) for i in range(self.evidence_line_edit.count())]
         fasta_file = self.fasta_line_edit.text()
         output_dir = self.output_dir_line_edit.text()
         digest_params = self.args_line_edit.text()
         
         self.set_buttons_enabled_state(False)
-        self.pool.applyAsync(run_picked_group_fdr_all, (evidence_file, fasta_file, output_dir, digest_params), callback=self.on_picked_finished)
+        self.pool.applyAsync(run_picked_group_fdr_all, (evidence_files, fasta_file, output_dir, digest_params), callback=self.on_picked_finished)
     
     def on_picked_finished(self, return_code):
         self.set_buttons_enabled_state(True)

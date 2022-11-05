@@ -165,7 +165,7 @@ def parseMqEvidenceFile(mqEvidenceFile, scoreType, forQuantification = False):
                 tmtIntensities = [row[tmtCol] for tmtCol in tmtCols]
                 silacIntensities = [row[silacCol] if len(row[silacCol]) > 0 else 0 for silacCol in silacCols]
                 evidenceId = int(row[evidenceIdCol])
-                yield peptide, charge, rawFile, experiment, fraction, intensity, score, tmtIntensities, silacIntensities, evidenceId
+                yield peptide, proteins.split(";"), charge, rawFile, experiment, fraction, intensity, score, tmtIntensities, silacIntensities, evidenceId
             else:
                 yield peptide, proteins.split(";"), experiment, score
 

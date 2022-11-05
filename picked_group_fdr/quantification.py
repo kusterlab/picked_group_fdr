@@ -225,7 +225,7 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
     parsedExperiments = set()
     missingPeptidesInFasta, missingPeptidesInProteinGroups = 0, 0
     
-    for peptide, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
+    for peptide, tmp_proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
         if numTmtChannels == -1:
             # There are 3 columns per TMT channel: 
             #     Reporter intensity corrected, 
@@ -244,8 +244,9 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
         proteins = digest.getProteins(peptideToProteinMap, helpers.cleanPeptide(peptide))
         # removes peptides from proteins not present in the fasta file, this often includes peptides from contaminants
         if len(proteins) == 0:
-            logger.debug(f'Could not find the peptide {helpers.cleanPeptide(peptide)} in the fasta file')
-            missingPeptidesInFasta += 1
+            if not "CON__" in tmp_proteins[0]:
+                logger.debug(f'Could not find the peptide {helpers.cleanPeptide(peptide)} in the fasta file')
+                missingPeptidesInFasta += 1
             continue
         
         proteins = scoreType.filter_proteins(proteins) # filtering for razor peptide approach
