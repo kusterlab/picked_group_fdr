@@ -19,8 +19,8 @@ SPECIAL_AAS_DEFAULT = "KR"
 DIGESTION_DEFAULT = "full"
 
 ENZYME_CLEAVAGE_RULES = {
-    'trypsinp': { 'pre': ['K', 'R'], 'not_post': [] },
     'trypsin': { 'pre': ['K', 'R'], 'not_post': ['P'] },
+    'trypsinp': { 'pre': ['K', 'R'], 'not_post': [] },
     'no_enzyme': { 'pre': [], 'not_post': [] },
     'chymotrypsin': { 'pre': ['F', 'W', 'Y', 'L'], 'not_post': ['P'] },
     'proteinasek': { 'pre': ['A', 'E', 'F', 'I', 'L', 'T', 'V', 'W', 'Y'], 'not_post': [] },

@@ -43,7 +43,7 @@ def run_picked_group_fdr_all(evidence_files, fasta_file, output_dir, digest_para
 
 
 def run_andromeda_to_pin(evidence_files, fasta_file, output_dir, digest_params):
-    andromeda2pin.main(evidence_files + ['--outputTab', f'{output_dir}/pin.tab', '--databases', fasta_file] + digest_params.split())
+    andromeda2pin.main(evidence_files + ['--outputTab', f'{output_dir}/pin.tab', '--databases', fasta_file] + digest_params)
     
 
 def run_mokapot(output_dir):
@@ -58,16 +58,16 @@ def run_update_evidence(evidence_files, output_dir):
     update_evidence.main(
         ['--mq_evidence'] + evidence_files + 
         ['--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoys.psms.txt', 
-        '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
+         '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
 
 
 def run_picked_group_fdr(fasta_file, output_dir, digest_params):
     picked_group_fdr.main(
         ['--mq_evidence', f'{output_dir}/evidence_percolator.txt', 
-        '--methods',  'picked_protein_group_mq_input', 
-        '--protein_groups_out', f'{output_dir}/proteinGroups_percolator.txt', 
-        '--do_quant', 
-        '--fasta', fasta_file] + digest_params.split())
+         '--methods',  'picked_protein_group_mq_input', 
+         '--protein_groups_out', f'{output_dir}/proteinGroups_percolator.txt', 
+         '--do_quant', 
+         '--fasta', fasta_file] + digest_params)
 
 
 # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt#60528393
@@ -137,7 +137,7 @@ class MainWindow(QtWidgets.QWidget):
 
         self.pool = pool.JobPool(processes=1, warningFilter="default", queue=self.q)
         
-        self.resize(700, self.height())
+        self.resize(800, self.height())
 
     def _add_evidence_field(self, layout):
         # evidence.txt input
@@ -154,8 +154,6 @@ class MainWindow(QtWidgets.QWidget):
         
         self.evidence_widget.setLayout(self.evidence_hbox_layout)
         
-        self.evidence_widget_buttons = QtWidgets.QWidget()
-        
         self.evidence_vbox_layout = QtWidgets.QVBoxLayout()
         self.evidence_vbox_layout.setContentsMargins(0, 0, 0, 0)
         self.evidence_vbox_layout.setAlignment(Qt.AlignTop)
@@ -169,10 +167,8 @@ class MainWindow(QtWidgets.QWidget):
         self.evidence_vbox_layout.addWidget(self.evidence_browse_button)
         self.evidence_vbox_layout.addWidget(self.evidence_remove_button)
         
-        self.evidence_widget_buttons.setLayout(self.evidence_vbox_layout)
-        
         self.evidence_hbox_layout.addWidget(self.evidence_line_edit, stretch = 1)
-        self.evidence_hbox_layout.addWidget(self.evidence_widget_buttons)
+        self.evidence_hbox_layout.addLayout(self.evidence_vbox_layout)
         
         layout.addRow(self.evidence_label, self.evidence_widget)
 
@@ -216,7 +212,11 @@ class MainWindow(QtWidgets.QWidget):
         
         layout.addRow(self.output_dir_label, self.output_dir_widget)
 
-    def _add_digestion_params_field(self, layout):        
+    def _add_digestion_params_field(self, layout):
+        self.digestion_group = QtWidgets.QGroupBox("Digestion parameters")
+        
+        self.digestion_group_layout = QtWidgets.QGridLayout()
+        
         self.min_length_label = QtWidgets.QLabel("Min peptide length")
         self.min_length_spinbox = QtWidgets.QSpinBox()
         self.min_length_spinbox.setValue(digest.MIN_PEPLEN_DEFAULT)
@@ -246,12 +246,27 @@ class MainWindow(QtWidgets.QWidget):
         self.special_aas_line_edit = QtWidgets.QLineEdit()
         self.special_aas_line_edit.setText(digest.SPECIAL_AAS_DEFAULT)
         
-        layout.addRow(self.enzyme_label, self.enzyme_select)
-        layout.addRow(self.max_cleavages_label, self.max_cleavages_spinbox)
-        layout.addRow(self.min_length_label, self.min_length_spinbox)
-        layout.addRow(self.max_length_label, self.max_length_spinbox)
-        layout.addRow(self.digestion_label, self.digestion_select)
-        layout.addRow(self.special_aas_label, self.special_aas_line_edit)
+        self.digestion_group_layout.addWidget(self.enzyme_label, 0, 0)
+        self.digestion_group_layout.addWidget(self.enzyme_select, 0, 1)
+        self.digestion_group_layout.addWidget(self.min_length_label, 0, 2)
+        self.digestion_group_layout.addWidget(self.min_length_spinbox, 0, 3)
+        
+        self.digestion_group_layout.addWidget(self.max_length_label, 1, 2)
+        self.digestion_group_layout.addWidget(self.max_length_spinbox, 1, 3)
+        self.digestion_group_layout.addWidget(self.max_cleavages_label, 1, 0)
+        self.digestion_group_layout.addWidget(self.max_cleavages_spinbox, 1, 1)
+        
+        self.digestion_group_layout.addWidget(self.digestion_label, 0, 4)
+        self.digestion_group_layout.addWidget(self.digestion_select, 0, 5)
+        self.digestion_group_layout.addWidget(self.special_aas_label, 1, 4)
+        self.digestion_group_layout.addWidget(self.special_aas_line_edit, 1, 5)
+        
+        for col in range(6):
+            self.digestion_group_layout.setColumnStretch(col, 1)
+        
+        self.digestion_group.setLayout(self.digestion_group_layout)
+        
+        layout.addRow(self.digestion_group)
     
     def _add_run_button(self, layout):    
         self.run_button = QtWidgets.QPushButton("Run")
@@ -270,11 +285,21 @@ class MainWindow(QtWidgets.QWidget):
         self.log_text_hbox_layout = QtWidgets.QHBoxLayout()
         self.log_text_hbox_layout.setContentsMargins(0, 0, 0, 0)
         
+        self.log_text_button_vbox_layout = QtWidgets.QVBoxLayout()
+        self.log_text_button_vbox_layout.setContentsMargins(0, 0, 0, 0)
+        self.log_text_button_vbox_layout.setAlignment(Qt.AlignTop)
+        
         self.log_text_clear_button = QtWidgets.QPushButton("Clear")
         self.log_text_clear_button.clicked.connect(lambda: self.log_text_area.widget.clear())
         
+        self.log_text_save_button = QtWidgets.QPushButton("Save")
+        self.log_text_save_button.clicked.connect(self.save_log_file)
+        
+        self.log_text_button_vbox_layout.addWidget(self.log_text_clear_button)
+        self.log_text_button_vbox_layout.addWidget(self.log_text_save_button)
+        
         self.log_text_hbox_layout.addWidget(self.log_text_area.widget, stretch = 1)
-        self.log_text_hbox_layout.addWidget(self.log_text_clear_button)
+        self.log_text_hbox_layout.addLayout(self.log_text_button_vbox_layout)
         
         self.log_text_widget.setLayout(self.log_text_hbox_layout)
              
@@ -300,6 +325,16 @@ class MainWindow(QtWidgets.QWidget):
         output_dir = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select output folder' , '', QtWidgets.QFileDialog.ShowDirsOnly)
         self.output_dir_line_edit.setText(output_dir)
     
+    def save_log_file(self):
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save log to file' , 'picked_protein_group_fdr.log', 'Log file (*.txt *.log)' )
+        if not filename:
+            return
+        
+        logger.info(f"Saved log messages to {filename}")
+        with open(filename, 'w') as f:
+            f.write(self.log_text_area.widget.toPlainText())
+        
+        
     def set_buttons_enabled_state(self, enable):
         self.evidence_browse_button.setEnabled(enable)
         self.fasta_browse_button.setEnabled(enable)
@@ -318,12 +353,12 @@ class MainWindow(QtWidgets.QWidget):
         evidence_files = [str(self.evidence_line_edit.item(i).text()) for i in range(self.evidence_line_edit.count())]
         fasta_file = self.fasta_line_edit.text()
         output_dir = self.output_dir_line_edit.text()
-        digest_params = " ".join(["--min-length", str(self.min_length_spinbox.value()),
-                                  "--max-length", str(self.max_length_spinbox.value()),
-                                  "--cleavages", str(self.max_cleavages_spinbox.value()),
-                                  "--enzyme", self.enzyme_select.currentText(),
-                                  "--digestion", self.digestion_select.currentText(),
-                                  "--special-aas", self.special_aas_line_edit.text()])
+        digest_params = ["--min-length", str(self.min_length_spinbox.value()),
+                         "--max-length", str(self.max_length_spinbox.value()),
+                         "--cleavages", str(self.max_cleavages_spinbox.value()),
+                         "--enzyme", self.enzyme_select.currentText(),
+                         "--digestion", self.digestion_select.currentText(),
+                         "--special-aas", self.special_aas_line_edit.text()]
         
         self.set_buttons_enabled_state(False)
         self.pool.applyAsync(run_picked_group_fdr_all, (evidence_files, fasta_file, output_dir, digest_params), callback=self.on_picked_finished)
