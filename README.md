@@ -4,7 +4,7 @@ Scalable, accurate and sensitive protein group FDRs for large-scale mass spectro
 
 ## Running Picked Protein Group FDR using the GUI
 
-On Windows, you can download the `PickedGroupFDR_GUI_windows.zip` from the latest release, unzip it and open `PickedGroupFDR.exe` to start the GUI (no installation necessary).
+On Windows, you can download the `PickedGroupFDR_GUI_windows.zip` from the [latest release](https://github.com/kusterlab/picked_group_fdr/releases), unzip it and open `PickedGroupFDR.exe` to start the GUI (no installation necessary).
 
 Make sure that you have run the MaxQuant search with 100% protein-level FDR.
 
