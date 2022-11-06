@@ -34,12 +34,12 @@ def run_picked_group_fdr_all(evidence_files, pout_files, fasta_file, output_dir,
             os.makedirs(output_dir)
         if input_type == "percolator":
             run_merge_pout(pout_files, fasta_file, output_dir, digest_params)
-            run_picked_group_fdr(output_dir, fasta_file, percolator_input=True)
+            run_picked_group_fdr_percolator_input(output_dir, fasta_file)
         else:
             run_andromeda_to_pin(evidence_files, fasta_file, output_dir, digest_params)
             run_mokapot(output_dir)
             run_update_evidence(evidence_files, output_dir)
-            run_picked_group_fdr(output_dir, fasta_file)
+            run_picked_group_fdr(output_dir, fasta_file, digest_params)
         
     except SystemExit as e:
         logger.info(f"Error while running Picked Group FDR, exited with error code {e}.")
@@ -66,18 +66,13 @@ def run_update_evidence(evidence_files, output_dir):
          '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
 
 
-def run_picked_group_fdr(output_dir, fasta_file, percolator_input=False):
-    input_file_args = ['--mq_evidence', f'{output_dir}/evidence_percolator.txt']
-    quant_args = ['--do_quant']
-    if percolator_input:
-        input_file_args = ['--perc_evidence', f'{output_dir}/pout_merged.txt']
-        quant_args = []
-
+def run_picked_group_fdr(output_dir, fasta_file, digest_params):
     picked_group_fdr.main(
-        input_file_args + quant_args +
-        ['--methods', 'picked_protein_group_no_remap', 
+        ['--mq_evidence', f'{output_dir}/evidence_percolator.txt',
+         '--methods', 'picked_protein_group_mq_input', 
+         '--do_quant',
          '--protein_groups_out', f'{output_dir}/proteinGroups_percolator.txt',
-         '--fasta', fasta_file])
+         '--fasta', fasta_file] + digest_params)
 
 
 def run_merge_pout(pout_files, fasta_file, output_dir, digest_params):
@@ -85,6 +80,14 @@ def run_merge_pout(pout_files, fasta_file, output_dir, digest_params):
         ['--perc_results'] + pout_files +
         ['--perc_merged', f'{output_dir}/pout_merged.txt', 
          '--fasta', fasta_file] + digest_params)
+
+
+def run_picked_group_fdr_percolator_input(output_dir, fasta_file):
+    picked_group_fdr.main(
+        ['--perc_evidence', f'{output_dir}/pout_merged.txt',
+         '--methods', 'picked_protein_group_no_remap', 
+         '--protein_groups_out', f'{output_dir}/proteinGroups_percolator.txt',
+         '--fasta', fasta_file])
 
 
 # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt#60528393
