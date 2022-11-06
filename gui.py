@@ -212,7 +212,8 @@ class MainWindow(QtWidgets.QWidget):
 
     def _add_pout_field(self, layout):
         # evidence.txt input
-        self.pout_label = QtWidgets.QLabel("Select percolator output files")
+        self.pout_label = QtWidgets.QLabel()
+        self.pout_label.setText('Select percolator output files<br><font color="grey">Add both target and decoy results!</font>')
         #self.pout_label.setMargin(10)
         
         self.pout_widget = QtWidgets.QWidget()
