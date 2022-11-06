@@ -128,6 +128,54 @@ class LogHandler(logging.Handler):
         self.emitter.sigLog.emit(msg)
 
 
+class MultiFileSelect(QtWidgets.QWidget):
+    def __init__(self, file_type, file_extensions, file_hint='', *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.file_type = file_type
+        self.file_hint = file_hint
+        self.file_extensions = file_extensions
+        
+        label_text = f"Select {self.file_type} file(s)"
+        if len(file_hint) > 0:
+            label_text += f'<br><font color="grey">{file_hint}</font>'
+        self.label = QtWidgets.QLabel(label_text)
+        
+        self.hbox_layout = QtWidgets.QHBoxLayout()
+        self.hbox_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.hbox_layout)
+        
+        self.line_edit = QtWidgets.QListWidget()
+        self.line_edit.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        
+        self.vbox_layout = QtWidgets.QVBoxLayout()
+        self.vbox_layout.setContentsMargins(0, 0, 0, 0)
+        self.vbox_layout.setAlignment(Qt.AlignTop)
+        
+        self.browse_button = QtWidgets.QPushButton("Add")
+        self.browse_button.clicked.connect(self.get_files)
+        
+        self.remove_button = QtWidgets.QPushButton("Remove")
+        self.remove_button.clicked.connect(self.remove_files)
+        
+        self.vbox_layout.addWidget(self.browse_button)
+        self.vbox_layout.addWidget(self.remove_button)
+        
+        self.hbox_layout.addWidget(self.line_edit, stretch = 1)
+        self.hbox_layout.addLayout(self.vbox_layout)
+    
+    def get_files(self):
+        filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, f'Open {self.file_type} file(s)' , '', self.file_extensions)
+        self.line_edit.addItems(filenames)
+    
+    def remove_files(self):
+        selected_items = self.line_edit.selectedItems()
+        if not selected_items:
+            return
+        
+        for item in selected_items:
+            self.line_edit.takeItem(self.line_edit.row(item))
+        
+
 class MainWindow(QtWidgets.QWidget):
 
     def __init__(self, *args, **kwargs):
@@ -181,71 +229,12 @@ class MainWindow(QtWidgets.QWidget):
         self.tabs.addTab(self.percolator_tab, "Percolator input")
         
     def _add_evidence_field(self, layout):
-        # evidence.txt input
-        self.evidence_label = QtWidgets.QLabel("Select evidence.txt file(s)")
-        #self.evidence_label.setMargin(10)
-        
-        self.evidence_widget = QtWidgets.QWidget()
-        
-        self.evidence_hbox_layout = QtWidgets.QHBoxLayout()
-        self.evidence_hbox_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.evidence_line_edit = QtWidgets.QListWidget()
-        self.evidence_line_edit.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        
-        self.evidence_widget.setLayout(self.evidence_hbox_layout)
-        
-        self.evidence_vbox_layout = QtWidgets.QVBoxLayout()
-        self.evidence_vbox_layout.setContentsMargins(0, 0, 0, 0)
-        self.evidence_vbox_layout.setAlignment(Qt.AlignTop)
-        
-        self.evidence_browse_button = QtWidgets.QPushButton("Add")
-        self.evidence_browse_button.clicked.connect(self.get_evidence_files)
-        
-        self.evidence_remove_button = QtWidgets.QPushButton("Remove")
-        self.evidence_remove_button.clicked.connect(self.remove_evidence_files)
-        
-        self.evidence_vbox_layout.addWidget(self.evidence_browse_button)
-        self.evidence_vbox_layout.addWidget(self.evidence_remove_button)
-        
-        self.evidence_hbox_layout.addWidget(self.evidence_line_edit, stretch = 1)
-        self.evidence_hbox_layout.addLayout(self.evidence_vbox_layout)
-        
-        layout.addRow(self.evidence_label, self.evidence_widget)
+        self.evidence_widget = MultiFileSelect('evidence.txt', 'Tab separated file (*.txt)')
+        layout.addRow(self.evidence_widget.label, self.evidence_widget)
 
     def _add_pout_field(self, layout):
-        # evidence.txt input
-        self.pout_label = QtWidgets.QLabel()
-        self.pout_label.setText('Select percolator output files<br><font color="grey">Add both target and decoy results!</font>')
-        #self.pout_label.setMargin(10)
-        
-        self.pout_widget = QtWidgets.QWidget()
-        
-        self.pout_hbox_layout = QtWidgets.QHBoxLayout()
-        self.pout_hbox_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.pout_line_edit = QtWidgets.QListWidget()
-        self.pout_line_edit.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        
-        self.pout_widget.setLayout(self.pout_hbox_layout)
-        
-        self.pout_vbox_layout = QtWidgets.QVBoxLayout()
-        self.pout_vbox_layout.setContentsMargins(0, 0, 0, 0)
-        self.pout_vbox_layout.setAlignment(Qt.AlignTop)
-        
-        self.pout_browse_button = QtWidgets.QPushButton("Add")
-        self.pout_browse_button.clicked.connect(self.get_pout_files)
-        
-        self.pout_remove_button = QtWidgets.QPushButton("Remove")
-        self.pout_remove_button.clicked.connect(self.remove_pout_files)
-        
-        self.pout_vbox_layout.addWidget(self.pout_browse_button)
-        self.pout_vbox_layout.addWidget(self.pout_remove_button)
-        
-        self.pout_hbox_layout.addWidget(self.pout_line_edit, stretch = 1)
-        self.pout_hbox_layout.addLayout(self.pout_vbox_layout)
-        
-        layout.addRow(self.pout_label, self.pout_widget)
+        self.pout_widget = MultiFileSelect('percolator output', '', 'Add both target and decoy results!')
+        layout.addRow(self.pout_widget.label, self.pout_widget)
 
     def _add_fasta_field(self, layout):
         # fasta file input
@@ -380,30 +369,6 @@ class MainWindow(QtWidgets.QWidget):
              
         layout.addRow(self.log_text_widget)
         
-    def get_evidence_files(self):
-        filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, 'Open evidence file(s)' , '', 'Tab separated file (*.txt)' )
-        self.evidence_line_edit.addItems(filenames)
-    
-    def remove_evidence_files(self):
-        selected_items = self.evidence_line_edit.selectedItems()
-        if not selected_items:
-            return
-        
-        for item in selected_items:
-            self.evidence_line_edit.takeItem(self.evidence_line_edit.row(item))
-    
-    def get_pout_files(self):
-        filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, 'Open pout file(s)' , '', '' )
-        self.pout_line_edit.addItems(filenames)
-    
-    def remove_pout_files(self):
-        selected_items = self.pout_line_edit.selectedItems()
-        if not selected_items:
-            return
-        
-        for item in selected_items:
-            self.pout_line_edit.takeItem(self.pout_line_edit.row(item))
-    
     def get_fasta_file(self):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open fasta file' , '', 'Fasta file (*.fasta *.fa)' )
         self.fasta_line_edit.setText(filename)
@@ -423,11 +388,11 @@ class MainWindow(QtWidgets.QWidget):
         
         
     def set_buttons_enabled_state(self, enable):
-        self.evidence_browse_button.setEnabled(enable)
-        self.evidence_remove_button.setEnabled(enable)
+        self.evidence_widget.browse_button.setEnabled(enable)
+        self.evidence_widget.remove_button.setEnabled(enable)
         
-        self.pout_browse_button.setEnabled(enable)
-        self.pout_remove_button.setEnabled(enable)
+        self.pout_widget.browse_button.setEnabled(enable)
+        self.pout_widget.remove_button.setEnabled(enable)
         
         self.fasta_browse_button.setEnabled(enable)
         self.output_dir_browse_button.setEnabled(enable)
@@ -442,8 +407,8 @@ class MainWindow(QtWidgets.QWidget):
             self.run_button.clicked.connect(self.stop_picked)
         
     def run_picked(self):
-        evidence_files = [str(self.evidence_line_edit.item(i).text()) for i in range(self.evidence_line_edit.count())]
-        pout_files = [str(self.pout_line_edit.item(i).text()) for i in range(self.pout_line_edit.count())]
+        evidence_files = [str(self.evidence_widget.line_edit.item(i).text()) for i in range(self.evidence_widget.line_edit.count())]
+        pout_files = [str(self.pout_widget.line_edit.item(i).text()) for i in range(self.pout_widget.line_edit.count())]
         fasta_file = self.fasta_line_edit.text()
         output_dir = self.output_dir_line_edit.text()
         digest_params = ["--min-length", str(self.min_length_spinbox.value()),
@@ -474,6 +439,8 @@ class MainWindow(QtWidgets.QWidget):
     
     def closeEvent(self, _):
         self.stop_picked()
+
+
 
 
 if __name__ == '__main__':
