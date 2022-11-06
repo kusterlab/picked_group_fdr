@@ -1,5 +1,9 @@
 # Picked Protein Group FDR
 
+[![PyPI version](https://img.shields.io/pypi/v/picked_group_fdr.svg?logo=pypi&logoColor=FFE873)](https://pypi.org/project/picked_group_fdr/)
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/picked_group_fdr.svg?logo=python&logoColor=FFE873)](https://pypi.org/project/picked_group_fdr/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/picked_group_fdr.svg)](https://pypistats.org/packages/picked_group_fdr)
+
 Scalable, accurate and sensitive protein group FDRs for large-scale mass spectrometry experiments
 
 ## Running Picked Protein Group FDR using the GUI
