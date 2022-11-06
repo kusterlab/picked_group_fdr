@@ -213,6 +213,28 @@ def parsePercolatorOutFile(percOutFile, scoreType = "PEP", razor = False):
         yield peptide, proteins, experiment, score
 
 
+def getPercolatorNativeHeaders():
+    return ['PSMId', 'score', 'q-value', 'posterior_error_prob', 'peptide', 'proteinIds']
+
+
+def getPercolatorColumnIdxs(headers):
+    if 'PSMId' in headers: # native percolator results
+        idCol = headers.index('PSMId')
+        peptCol = headers.index('peptide')
+        scoreCol = headers.index('score')
+        qvalCol = headers.index('q-value')
+        postErrProbCol = headers.index('posterior_error_prob')
+        proteinCol = headers.index('proteinIds')
+    else: # mokapot results
+        idCol = headers.index('SpecId')
+        peptCol = headers.index('Peptide')
+        scoreCol = headers.index('mokapot score')
+        qvalCol = headers.index('mokapot q-value')
+        postErrProbCol = headers.index('mokapot PEP')
+        proteinCol = headers.index('Proteins')
+    return idCol, peptCol, scoreCol, qvalCol, postErrProbCol, proteinCol
+
+
 def parsePercolatorOutFileToDict(percOutFile, resultsDict, inputType = ""):
     if percOutFile.endswith('.csv'):
         delimiter = ','
@@ -221,16 +243,7 @@ def parsePercolatorOutFileToDict(percOutFile, resultsDict, inputType = ""):
     reader = getTsvReader(percOutFile, delimiter)
     headers = next(reader) # save the header
     
-    if 'PSMId' in headers:
-        idCol = headers.index('PSMId')
-        peptCol = headers.index('peptide')
-        scoreCol = headers.index('score')
-        postErrProbCol = headers.index('posterior_error_prob')
-    else: # mokapot results
-        idCol = headers.index('SpecId')
-        peptCol = headers.index('Peptide')
-        scoreCol = headers.index('mokapot score')
-        postErrProbCol = headers.index('mokapot PEP')
+    idCol, peptCol, scoreCol, _, postErrProbCol, _ = getPercolatorColumnIdxs(headers)
     
     logger.info("Parsing Percolator output file")
     fixed_mod_idx = -1

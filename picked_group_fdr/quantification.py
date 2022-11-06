@@ -244,7 +244,7 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
         proteins = digest.getProteins(peptideToProteinMap, helpers.cleanPeptide(peptide))
         # removes peptides from proteins not present in the fasta file, this often includes peptides from contaminants
         if len(proteins) == 0:
-            if not "CON__" in tmp_proteins[0]:
+            if not helpers.isContaminant(tmp_proteins):
                 logger.debug(f'Could not find the peptide {helpers.cleanPeptide(peptide)} in the fasta file')
                 missingPeptidesInFasta += 1
             continue

@@ -14,6 +14,7 @@ import numpy as np
 
 from .. import digest
 from .. import parsers
+from .. import helpers
 from ..picked_group_fdr import ArgumentParserWithLogger
 
 
@@ -56,9 +57,9 @@ def main(argv):
         logger.info("Writing results to stdout")
         writer = parsers.getTsvWriter(sys.stdout)
     
-    charges = list(range(2,7))
-    peptideToProteinMap = getPeptideToProteinMap(fastaFile, args.min_length, args.max_length, args.enzyme, args.cleavages, list(args.special_aas), db = "concat")
+    peptideToProteinMap = digest.getPeptideToProteinMapWithEnzyme(fastaFile, args.min_length, args.max_length, args.enzyme, args.cleavages, list(args.special_aas), db = "concat")
     
+    charges = list(range(2,7))
     writeHeaders(writer, charges)
     
     for andromedaTargetOutFN in andromedaTargetOutFNs:
@@ -176,14 +177,7 @@ def parseMqEvidenceFile(mqEvidenceFile, razor = False):
         if not np.isnan(score) and score > 0.0:
             yield scanNr, charge, fileName, peptide, proteins, experiment, score, deltaScore, mass, deltaMass
 
-def getPeptideToProteinMap(fastaFile, min_len, max_len, enzyme, miscleavages, specialAAs, db):
-    pre, not_post = digest.getCleavageSites(enzyme)
-    
-    if len(fastaFile) > 0:
-        return digest.getPeptideToProteinMap(fastaFile, db, digestion = 'full', min_len = min_len, max_len = max_len, pre = pre, not_post = not_post, miscleavages = miscleavages, methionineCleavage = True, specialAAs = specialAAs)
-    else:
-        return dict()
-    
+
 def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideToProteinMap, decoyPattern = ""):
     logger.info(f"Reading {andromedaOutFN}")
     
@@ -198,7 +192,7 @@ def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideTo
             if len(peptideToProteinMap) > 0:
                 proteins = digest.getProteins(peptideToProteinMap, cleanPeptide[2:-2])
                 if len(proteins) == 0:
-                    if not "CON__" in tmp_proteins[0]:
+                    if not helpers.isContaminant(tmp_proteins):
                         logger.warning(f"Could not find peptide {peptide} ({str(tmp_proteins)}) in fasta database, skipping PSM")
                     continue
             

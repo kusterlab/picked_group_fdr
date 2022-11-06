@@ -371,10 +371,20 @@ def get_peptide_to_protein_map(args, parseId):
     return peptideToProteinMap
 
 
-#function_to_be_profiled = profile(digestfast.getDigestedPeptides) 
-#function_to_be_profiled = profile(digestfast.readFastaMaxQuant)
-#@profile
-def getPeptideToProteinMap(fastaFile, db = "concat", min_len = 6, max_len = 52, pre = ['K', 'R'], not_post = ['P'], digestion = 'full', miscleavages = 2, methionineCleavage = True, useHashKey = False, specialAAs = ['K', 'R'], parseId = parseUntilFirstSpace):
+def getPeptideToProteinMapWithEnzyme(fastaFile, min_len, max_len, enzyme, miscleavages, specialAAs, db):
+    if len(fastaFile) == 0:
+        return dict()
+    
+    pre, not_post = getCleavageSites(enzyme)    
+    return getPeptideToProteinMap(fastaFile, db, digestion = 'full', 
+        min_len = min_len, max_len = max_len, pre = pre, not_post = not_post, 
+        miscleavages = miscleavages, methionineCleavage = True, specialAAs = specialAAs)
+
+
+def getPeptideToProteinMap(fastaFile, db = "concat", min_len = 6, max_len = 52, 
+        pre = ['K', 'R'], not_post = ['P'], digestion = 'full', miscleavages = 2, 
+        methionineCleavage = True, useHashKey = False, specialAAs = ['K', 'R'], 
+        parseId = parseUntilFirstSpace):
     peptideToProteinMap = collections.defaultdict(list)
     proteinToSeqMap = dict()
     for proteinIdx, (protein, seq) in enumerate(readFasta(fastaFile, db, parseId, specialAAs = specialAAs)):

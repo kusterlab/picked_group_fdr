@@ -60,7 +60,7 @@ class ProteinGroupingStrategy(ABC):
 
 class NoGrouping(ProteinGroupingStrategy):
     def needs_peptide_to_protein_map(self):
-        return True
+        return False
     
     def group_proteins(self, peptideInfoList: PeptideInfoList, mqProteinGroupsFile: str) -> ProteinGroups:
         """
@@ -89,7 +89,7 @@ class NoGrouping(ProteinGroupingStrategy):
 
 class SubsetGrouping(ProteinGroupingStrategy):
     def needs_peptide_to_protein_map(self):
-        return True
+        return False
     
     def group_proteins(self, peptideInfoList: PeptideInfoList, mqProteinGroupsFile: str) -> ProteinGroups:
         logger.info("Grouping proteins (subset strategy):")
