@@ -152,9 +152,11 @@ class FileSelect(QtWidgets.QWidget):
         self.label_text = f"Select {self.file_type} file"
         if folder_select:
             self.label_text = f"Select {self.file_type} folder"
+        
+        self.file_hint_text = ""
         if len(file_hint) > 0:
-            self.label_text += f'<br><font color="grey">{self.file_hint}</font>'
-        self.label = QtWidgets.QLabel(self.label_text)
+            self.file_hint_text = f'<br><font color="grey">{self.file_hint}</font>'
+        self.label = QtWidgets.QLabel(self.label_text + self.file_hint_text)
         
         self.hbox_layout = QtWidgets.QHBoxLayout()
         self.hbox_layout.setContentsMargins(0, 0, 0, 0)
@@ -192,10 +194,12 @@ class MultiFileSelect(QtWidgets.QWidget):
         self.file_hint = file_hint
         self.file_extensions = file_extensions
         
-        label_text = f"Select {self.file_type} file(s)"
+        self.label_text = f"Select {self.file_type} file(s)"
+        
+        self.file_hint_text = ""
         if len(file_hint) > 0:
-            label_text += f'<br><font color="grey">{self.file_hint}</font>'
-        self.label = QtWidgets.QLabel(label_text)
+            self.file_hint_text = f'<br><font color="grey">{self.file_hint}</font>'
+        self.label = QtWidgets.QLabel(self.label_text + self.file_hint_text)
         
         self.hbox_layout = QtWidgets.QHBoxLayout()
         self.hbox_layout.setContentsMargins(0, 0, 0, 0)
@@ -221,7 +225,7 @@ class MultiFileSelect(QtWidgets.QWidget):
         self.hbox_layout.addLayout(self.vbox_layout)
     
     def add_files(self):
-        filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, f'Open {self.file_type} file(s)' , '', self.file_extensions)
+        filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, self.label_text, '', self.file_extensions)
         self.line_edit.addItems(filenames)
     
     def remove_files(self):
@@ -240,8 +244,68 @@ class MultiFileSelect(QtWidgets.QWidget):
         self.remove_button.setEnabled(enable)
         
 
-class MainWindow(QtWidgets.QWidget):
+class DigestionParametersGroup(QtWidgets.QGroupBox):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.digestion_group_layout = QtWidgets.QGridLayout()
+        self.setLayout(self.digestion_group_layout)
+        
+        self.min_length_label = QtWidgets.QLabel("Min peptide length")
+        self.min_length_spinbox = QtWidgets.QSpinBox()
+        self.min_length_spinbox.setValue(digest.MIN_PEPLEN_DEFAULT)
+        self.min_length_spinbox.setRange(1,20)
+        
+        self.max_length_label = QtWidgets.QLabel("Max peptide length")
+        self.max_length_spinbox = QtWidgets.QSpinBox()
+        self.max_length_spinbox.setValue(digest.MAX_PEPLEN_DEFAULT)
+        self.max_length_spinbox.setRange(1,100)
+        
+        self.max_cleavages_label = QtWidgets.QLabel("Max miscleavages")
+        self.max_cleavages_spinbox = QtWidgets.QSpinBox()
+        self.max_cleavages_spinbox.setValue(digest.CLEAVAGES_DEFAULT)
+        self.max_cleavages_spinbox.setRange(1,10)
+        
+        self.enzyme_label = QtWidgets.QLabel("Enzyme")
+        self.enzyme_select = QtWidgets.QComboBox()
+        self.enzyme_select.addItems(digest.ENZYME_CLEAVAGE_RULES.keys())
+        self.enzyme_select.setCurrentText(digest.ENZYME_DEFAULT)
+        
+        self.digestion_label = QtWidgets.QLabel("Digestion")
+        self.digestion_select = QtWidgets.QComboBox()
+        self.digestion_select.addItems(["full", "semi", "none"])
+        self.digestion_select.setCurrentText(digest.DIGESTION_DEFAULT)
+        
+        self.special_aas_label = QtWidgets.QLabel("Special AAs")
+        self.special_aas_line_edit = QtWidgets.QLineEdit()
+        self.special_aas_line_edit.setText(digest.SPECIAL_AAS_DEFAULT)
+        
+        self.digestion_group_layout.addWidget(self.enzyme_label, 0, 0)
+        self.digestion_group_layout.addWidget(self.enzyme_select, 0, 1)
+        self.digestion_group_layout.addWidget(self.min_length_label, 0, 2)
+        self.digestion_group_layout.addWidget(self.min_length_spinbox, 0, 3)
+        self.digestion_group_layout.addWidget(self.digestion_label, 0, 4)
+        self.digestion_group_layout.addWidget(self.digestion_select, 0, 5)
+        
+        self.digestion_group_layout.addWidget(self.max_cleavages_label, 1, 0)
+        self.digestion_group_layout.addWidget(self.max_cleavages_spinbox, 1, 1)
+        self.digestion_group_layout.addWidget(self.max_length_label, 1, 2)
+        self.digestion_group_layout.addWidget(self.max_length_spinbox, 1, 3)
+        self.digestion_group_layout.addWidget(self.special_aas_label, 1, 4)
+        self.digestion_group_layout.addWidget(self.special_aas_line_edit, 1, 5)
+        
+        for col in range(6):
+            self.digestion_group_layout.setColumnStretch(col, 1)
+    
+    def get_params(self):
+        return ["--min-length", str(self.min_length_spinbox.value()),
+                "--max-length", str(self.max_length_spinbox.value()),
+                "--cleavages", str(self.max_cleavages_spinbox.value()),
+                "--enzyme", self.enzyme_select.currentText(),
+                "--digestion", self.digestion_select.currentText(),
+                "--special-aas", self.special_aas_line_edit.text()]
 
+class MainWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -252,13 +316,18 @@ class MainWindow(QtWidgets.QWidget):
         self._add_percolator_input_tab()
         self._add_rescoring_input_tab()
         
+        self.fasta_widget = FileSelect('fasta', 'Fasta file (*.fasta *.fa)')
+        self.output_dir_widget = FileSelect('output', '', folder_select=True)        
+        self.digestion_group = DigestionParametersGroup("Digestion parameters")
+        
         layout = QtWidgets.QFormLayout()
         self.setLayout(layout)
         
         layout.addRow(self.tabs)
-        self._add_fasta_field(layout)
-        self._add_output_dir_field(layout)
-        self._add_digestion_params_field(layout)
+        layout.addRow(self.fasta_widget.label, self.fasta_widget)
+        layout.addRow(self.output_dir_widget.label, self.output_dir_widget)
+        layout.addRow(self.digestion_group)
+    
         self._add_run_button(layout)
         self._add_log_textarea(layout)
         
@@ -308,69 +377,6 @@ class MainWindow(QtWidgets.QWidget):
         self.rescoring_tab.setLayout(self.rescoring_layout)
         self.tabs.addTab(self.rescoring_tab, "Rescoring input (e.g. Prosit)")
         
-    def _add_fasta_field(self, layout):        
-        self.fasta_widget = FileSelect('fasta', 'Fasta file (*.fasta *.fa)')
-        layout.addRow(self.fasta_widget.label, self.fasta_widget)
-    
-    def _add_output_dir_field(self, layout):
-        self.output_dir_widget = FileSelect('output', '', folder_select=True)        
-        layout.addRow(self.output_dir_widget.label, self.output_dir_widget)
-
-    def _add_digestion_params_field(self, layout):
-        self.digestion_group = QtWidgets.QGroupBox("Digestion parameters")
-        
-        self.digestion_group_layout = QtWidgets.QGridLayout()
-        
-        self.min_length_label = QtWidgets.QLabel("Min peptide length")
-        self.min_length_spinbox = QtWidgets.QSpinBox()
-        self.min_length_spinbox.setValue(digest.MIN_PEPLEN_DEFAULT)
-        self.min_length_spinbox.setRange(1,20)
-        
-        self.max_length_label = QtWidgets.QLabel("Max peptide length")
-        self.max_length_spinbox = QtWidgets.QSpinBox()
-        self.max_length_spinbox.setValue(digest.MAX_PEPLEN_DEFAULT)
-        self.max_length_spinbox.setRange(1,100)
-        
-        self.max_cleavages_label = QtWidgets.QLabel("Max miscleavages")
-        self.max_cleavages_spinbox = QtWidgets.QSpinBox()
-        self.max_cleavages_spinbox.setValue(digest.CLEAVAGES_DEFAULT)
-        self.max_cleavages_spinbox.setRange(1,10)
-        
-        self.enzyme_label = QtWidgets.QLabel("Enzyme")
-        self.enzyme_select = QtWidgets.QComboBox()
-        self.enzyme_select.addItems(digest.ENZYME_CLEAVAGE_RULES.keys())
-        self.enzyme_select.setCurrentText(digest.ENZYME_DEFAULT)
-        
-        self.digestion_label = QtWidgets.QLabel("Digestion")
-        self.digestion_select = QtWidgets.QComboBox()
-        self.digestion_select.addItems(["full", "semi", "none"])
-        self.digestion_select.setCurrentText(digest.DIGESTION_DEFAULT)
-        
-        self.special_aas_label = QtWidgets.QLabel("Special AAs")
-        self.special_aas_line_edit = QtWidgets.QLineEdit()
-        self.special_aas_line_edit.setText(digest.SPECIAL_AAS_DEFAULT)
-        
-        self.digestion_group_layout.addWidget(self.enzyme_label, 0, 0)
-        self.digestion_group_layout.addWidget(self.enzyme_select, 0, 1)
-        self.digestion_group_layout.addWidget(self.min_length_label, 0, 2)
-        self.digestion_group_layout.addWidget(self.min_length_spinbox, 0, 3)
-        self.digestion_group_layout.addWidget(self.digestion_label, 0, 4)
-        self.digestion_group_layout.addWidget(self.digestion_select, 0, 5)
-        
-        self.digestion_group_layout.addWidget(self.max_cleavages_label, 1, 0)
-        self.digestion_group_layout.addWidget(self.max_cleavages_spinbox, 1, 1)
-        self.digestion_group_layout.addWidget(self.max_length_label, 1, 2)
-        self.digestion_group_layout.addWidget(self.max_length_spinbox, 1, 3)
-        self.digestion_group_layout.addWidget(self.special_aas_label, 1, 4)
-        self.digestion_group_layout.addWidget(self.special_aas_line_edit, 1, 5)
-        
-        for col in range(6):
-            self.digestion_group_layout.setColumnStretch(col, 1)
-        
-        self.digestion_group.setLayout(self.digestion_group_layout)
-        
-        layout.addRow(self.digestion_group)
-    
     def _add_run_button(self, layout):    
         self.run_button = QtWidgets.QPushButton("Run")
         self.run_button.clicked.connect(self.run_picked)
@@ -430,7 +436,7 @@ class MainWindow(QtWidgets.QWidget):
         
         self.fasta_widget.setButtonsEnabled(enable)
         self.output_dir_widget.setButtonsEnabled(enable)
-        #self.run_button.setEnabled(enable)
+
         # Cannot stop a QThread if it doesn't have an own event loop
         self.run_button.clicked.disconnect()
         if enable:
@@ -443,12 +449,7 @@ class MainWindow(QtWidgets.QWidget):
     def run_picked(self):
         fasta_file = self.fasta_widget.get_file()
         output_dir = self.output_dir_widget.get_file()
-        digest_params = ["--min-length", str(self.min_length_spinbox.value()),
-                         "--max-length", str(self.max_length_spinbox.value()),
-                         "--cleavages", str(self.max_cleavages_spinbox.value()),
-                         "--enzyme", self.enzyme_select.currentText(),
-                         "--digestion", self.digestion_select.currentText(),
-                         "--special-aas", self.special_aas_line_edit.text()]
+        digest_params = self.digestion_group.get_params()
         
         evidence_files, pout_files = list(), list()
         if self.tabs.currentIndex() == 2:
