@@ -30,9 +30,15 @@ logger.setLevel(logging.INFO)
 
 def run_picked_group_fdr_all(evidence_files, pout_files, fasta_file, output_dir, digest_params, input_type):
     try:
+        if len(output_dir) == 0:
+            raise RuntimeError("Please specify an output folder")
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
-        if input_type == "percolator":
+        
+        if input_type == "rescoring":
+            run_update_evidence_rescoring(evidence_files, pout_files, output_dir)
+            run_picked_group_fdr(output_dir, fasta_file, digest_params)
+        elif input_type == "percolator":
             run_merge_pout(pout_files, fasta_file, output_dir, digest_params)
             run_picked_group_fdr_percolator_input(output_dir, fasta_file)
         else:
@@ -42,9 +48,9 @@ def run_picked_group_fdr_all(evidence_files, pout_files, fasta_file, output_dir,
             run_picked_group_fdr(output_dir, fasta_file, digest_params)
         
     except SystemExit as e:
-        logger.info(f"Error while running Picked Group FDR, exited with error code {e}.")
+        logger.error(f"Error while running Picked Group FDR, exited with error code: {e}.")
     except Exception as e:
-        logger.info(f"Error while running Picked Group FDR: {e}")
+        logger.error(f"Error while running Picked Group FDR: {e}")
 
 
 def run_andromeda_to_pin(evidence_files, fasta_file, output_dir, digest_params):
@@ -64,6 +70,14 @@ def run_update_evidence(evidence_files, output_dir):
         ['--mq_evidence'] + evidence_files + 
         ['--perc_results', f'{output_dir}/mokapot.psms.txt', f'{output_dir}/mokapot.decoys.psms.txt', 
          '--mq_evidence_out', f'{output_dir}/evidence_percolator.txt'])
+
+
+def run_update_evidence_rescoring(evidence_files, pout_files, output_dir):
+    update_evidence.main(
+        ['--mq_evidence'] + evidence_files + 
+        ['--perc_results'] + pout_files +
+        ['--mq_evidence_out', f'{output_dir}/evidence_percolator.txt',
+         '--pout_input_type', 'prosit'])
 
 
 def run_picked_group_fdr(output_dir, fasta_file, digest_params):
@@ -152,7 +166,7 @@ class MultiFileSelect(QtWidgets.QWidget):
         self.vbox_layout.setAlignment(Qt.AlignTop)
         
         self.browse_button = QtWidgets.QPushButton("Add")
-        self.browse_button.clicked.connect(self.get_files)
+        self.browse_button.clicked.connect(self.add_files)
         
         self.remove_button = QtWidgets.QPushButton("Remove")
         self.remove_button.clicked.connect(self.remove_files)
@@ -163,7 +177,7 @@ class MultiFileSelect(QtWidgets.QWidget):
         self.hbox_layout.addWidget(self.line_edit, stretch = 1)
         self.hbox_layout.addLayout(self.vbox_layout)
     
-    def get_files(self):
+    def add_files(self):
         filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, f'Open {self.file_type} file(s)' , '', self.file_extensions)
         self.line_edit.addItems(filenames)
     
@@ -174,6 +188,13 @@ class MultiFileSelect(QtWidgets.QWidget):
         
         for item in selected_items:
             self.line_edit.takeItem(self.line_edit.row(item))
+    
+    def get_files(self):
+        return [str(self.line_edit.item(i).text()) for i in range(self.line_edit.count())]
+    
+    def setButtonsEnabled(self, enable):
+        self.browse_button.setEnabled(enable)
+        self.remove_button.setEnabled(enable)
         
 
 class MainWindow(QtWidgets.QWidget):
@@ -186,6 +207,7 @@ class MainWindow(QtWidgets.QWidget):
         self.tabs = QtWidgets.QTabWidget()
         self._add_mq_input_tab()
         self._add_percolator_input_tab()
+        self._add_rescoring_input_tab()
         
         layout = QtWidgets.QFormLayout()
         self.setLayout(layout)
@@ -198,8 +220,9 @@ class MainWindow(QtWidgets.QWidget):
         self._add_log_textarea(layout)
         
         # sets up handler that will be used by QueueListener
-        # which will update the LogDialoag
+        # which will update the LogDialog
         handler = LogHandler()
+        handler.setLevel(logging.INFO) # TODO: this doesn't work, debug messages still make it through
         handler.emitter.sigLog.connect(self.log_text_area.widget.appendPlainText)
         
         self.q = multiprocessing.Queue()
@@ -214,7 +237,8 @@ class MainWindow(QtWidgets.QWidget):
         self.mq_tab = QtWidgets.QWidget()
         
         self.mq_layout = QtWidgets.QFormLayout()
-        self._add_evidence_field(self.mq_layout)
+        self.evidence_widget = MultiFileSelect('evidence.txt', 'Tab separated file (*.txt)')
+        self.mq_layout.addRow(self.evidence_widget.label, self.evidence_widget)
         
         self.mq_tab.setLayout(self.mq_layout)
         self.tabs.addTab(self.mq_tab, "MaxQuant input")
@@ -223,19 +247,24 @@ class MainWindow(QtWidgets.QWidget):
         self.percolator_tab = QtWidgets.QWidget()
         
         self.percolator_layout = QtWidgets.QFormLayout()
-        self._add_pout_field(self.percolator_layout)
+        self.pout_widget = MultiFileSelect('percolator output', '', 'Add both target and decoy results!')
+        self.percolator_layout.addRow(self.pout_widget.label, self.pout_widget)
         
         self.percolator_tab.setLayout(self.percolator_layout)
         self.tabs.addTab(self.percolator_tab, "Percolator input")
+    
+    def _add_rescoring_input_tab(self):
+        self.rescoring_tab = QtWidgets.QWidget()
         
-    def _add_evidence_field(self, layout):
-        self.evidence_widget = MultiFileSelect('evidence.txt', 'Tab separated file (*.txt)')
-        layout.addRow(self.evidence_widget.label, self.evidence_widget)
-
-    def _add_pout_field(self, layout):
-        self.pout_widget = MultiFileSelect('percolator output', '', 'Add both target and decoy results!')
-        layout.addRow(self.pout_widget.label, self.pout_widget)
-
+        self.rescoring_layout = QtWidgets.QFormLayout()
+        self.evidence_widget_rescoring = MultiFileSelect('evidence.txt', 'Tab separated file (*.txt)')
+        self.pout_widget_rescoring = MultiFileSelect('percolator output', '', 'Add both target and decoy results!')
+        self.rescoring_layout.addRow(self.evidence_widget_rescoring.label, self.evidence_widget_rescoring)
+        self.rescoring_layout.addRow(self.pout_widget_rescoring.label, self.pout_widget_rescoring)
+        
+        self.rescoring_tab.setLayout(self.rescoring_layout)
+        self.tabs.addTab(self.rescoring_tab, "Rescoring input (e.g. Prosit)")
+        
     def _add_fasta_field(self, layout):
         # fasta file input
         self.fasta_label = QtWidgets.QLabel("Select a fasta file")
@@ -388,11 +417,10 @@ class MainWindow(QtWidgets.QWidget):
         
         
     def set_buttons_enabled_state(self, enable):
-        self.evidence_widget.browse_button.setEnabled(enable)
-        self.evidence_widget.remove_button.setEnabled(enable)
-        
-        self.pout_widget.browse_button.setEnabled(enable)
-        self.pout_widget.remove_button.setEnabled(enable)
+        self.evidence_widget.setButtonsEnabled(enable)
+        self.pout_widget.setButtonsEnabled(enable)
+        self.evidence_widget_rescoring.setButtonsEnabled(enable)
+        self.pout_widget_rescoring.setButtonsEnabled(enable)
         
         self.fasta_browse_button.setEnabled(enable)
         self.output_dir_browse_button.setEnabled(enable)
@@ -407,8 +435,6 @@ class MainWindow(QtWidgets.QWidget):
             self.run_button.clicked.connect(self.stop_picked)
         
     def run_picked(self):
-        evidence_files = [str(self.evidence_widget.line_edit.item(i).text()) for i in range(self.evidence_widget.line_edit.count())]
-        pout_files = [str(self.pout_widget.line_edit.item(i).text()) for i in range(self.pout_widget.line_edit.count())]
         fasta_file = self.fasta_line_edit.text()
         output_dir = self.output_dir_line_edit.text()
         digest_params = ["--min-length", str(self.min_length_spinbox.value()),
@@ -418,10 +444,17 @@ class MainWindow(QtWidgets.QWidget):
                          "--digestion", self.digestion_select.currentText(),
                          "--special-aas", self.special_aas_line_edit.text()]
         
-        if self.tabs.currentIndex() == 1:
+        evidence_files, pout_files = list(), list()
+        if self.tabs.currentIndex() == 2:
+            input_type = "rescoring"
+            evidence_files = self.evidence_widget_rescoring.get_files()
+            pout_files = self.pout_widget_rescoring.get_files()
+        elif self.tabs.currentIndex() == 1:
             input_type = "percolator"
+            pout_files = self.pout_widget.get_files()
         else:
             input_type = "mq"
+            evidence_files = self.evidence_widget.get_files()
         
         self.set_buttons_enabled_state(False)
         self.pool.applyAsync(run_picked_group_fdr_all, (evidence_files, pout_files, fasta_file, output_dir, digest_params, input_type), callback=self.on_picked_finished)

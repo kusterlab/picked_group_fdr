@@ -6,7 +6,7 @@ from typing import List, Dict, Set
 
 from .. import parsers
 from .. import helpers
-from ..picked_group_fdr import ArgumentParserWithLogger
+from ..picked_group_fdr import ArgumentParserWithLogger, __version__, __copyright__
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -55,6 +55,9 @@ def parseArgs(argv):
 
 
 def main(argv):
+    logger.info(f'UpdateEvidence version {__version__}\n{__copyright__}')
+    logger.info(f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}')
+    
     args = parseArgs(argv)
     
     if os.path.isfile(args.mq_evidence_out):
