@@ -142,6 +142,49 @@ class LogHandler(logging.Handler):
         self.emitter.sigLog.emit(msg)
 
 
+class FileSelect(QtWidgets.QWidget):
+    def __init__(self, file_type, file_extensions, file_hint='', folder_select=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.file_type = file_type
+        self.file_hint = file_hint
+        self.file_extensions = file_extensions
+        
+        self.label_text = f"Select {self.file_type} file"
+        if folder_select:
+            self.label_text = f"Select {self.file_type} folder"
+        if len(file_hint) > 0:
+            self.label_text += f'<br><font color="grey">{self.file_hint}</font>'
+        self.label = QtWidgets.QLabel(self.label_text)
+        
+        self.hbox_layout = QtWidgets.QHBoxLayout()
+        self.hbox_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.line_edit = QtWidgets.QLineEdit()
+        self.browse_button = QtWidgets.QPushButton("Browse")
+        if folder_select:
+            self.browse_button.clicked.connect(self.select_dir)
+        else:
+            self.browse_button.clicked.connect(self.select_file)
+        self.hbox_layout.addWidget(self.line_edit, stretch = 1)
+        self.hbox_layout.addWidget(self.browse_button)
+        
+        self.setLayout(self.hbox_layout)
+    
+    def select_file(self):
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, self.label_text, '', self.file_extensions)
+        self.line_edit.setText(filename)
+    
+    def select_dir(self):
+        output_dir = QtWidgets.QFileDialog.getExistingDirectory(self, self.label_text , '', QtWidgets.QFileDialog.ShowDirsOnly)
+        self.line_edit.setText(output_dir)
+    
+    def get_file(self):
+        return self.line_edit.text()
+    
+    def setButtonsEnabled(self, enable):
+        self.browse_button.setEnabled(enable)
+        
+
 class MultiFileSelect(QtWidgets.QWidget):
     def __init__(self, file_type, file_extensions, file_hint='', *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -151,7 +194,7 @@ class MultiFileSelect(QtWidgets.QWidget):
         
         label_text = f"Select {self.file_type} file(s)"
         if len(file_hint) > 0:
-            label_text += f'<br><font color="grey">{file_hint}</font>'
+            label_text += f'<br><font color="grey">{self.file_hint}</font>'
         self.label = QtWidgets.QLabel(label_text)
         
         self.hbox_layout = QtWidgets.QHBoxLayout()
@@ -265,45 +308,13 @@ class MainWindow(QtWidgets.QWidget):
         self.rescoring_tab.setLayout(self.rescoring_layout)
         self.tabs.addTab(self.rescoring_tab, "Rescoring input (e.g. Prosit)")
         
-    def _add_fasta_field(self, layout):
-        # fasta file input
-        self.fasta_label = QtWidgets.QLabel("Select a fasta file")
-        #self.fasta_label.setMargin(10)
-        
-        self.fasta_widget = QtWidgets.QWidget()
-        
-        self.fasta_hbox_layout = QtWidgets.QHBoxLayout()
-        self.fasta_hbox_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.fasta_line_edit = QtWidgets.QLineEdit()
-        self.fasta_browse_button = QtWidgets.QPushButton("Browse")
-        self.fasta_browse_button.clicked.connect(self.get_fasta_file)
-        self.fasta_hbox_layout.addWidget(self.fasta_line_edit, stretch = 1)
-        self.fasta_hbox_layout.addWidget(self.fasta_browse_button)
-        
-        self.fasta_widget.setLayout(self.fasta_hbox_layout)
-        
-        layout.addRow(self.fasta_label, self.fasta_widget)
+    def _add_fasta_field(self, layout):        
+        self.fasta_widget = FileSelect('fasta', 'Fasta file (*.fasta *.fa)')
+        layout.addRow(self.fasta_widget.label, self.fasta_widget)
     
     def _add_output_dir_field(self, layout):
-        # fasta file input
-        self.output_dir_label = QtWidgets.QLabel("Select output folder")
-        #self.output_dir_label.setMargin(10)
-        
-        self.output_dir_widget = QtWidgets.QWidget()
-        
-        self.output_dir_hbox_layout = QtWidgets.QHBoxLayout()
-        self.output_dir_hbox_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.output_dir_line_edit = QtWidgets.QLineEdit()
-        self.output_dir_browse_button = QtWidgets.QPushButton("Browse")
-        self.output_dir_browse_button.clicked.connect(self.get_output_dir)
-        self.output_dir_hbox_layout.addWidget(self.output_dir_line_edit, stretch = 1)
-        self.output_dir_hbox_layout.addWidget(self.output_dir_browse_button)
-        
-        self.output_dir_widget.setLayout(self.output_dir_hbox_layout)
-        
-        layout.addRow(self.output_dir_label, self.output_dir_widget)
+        self.output_dir_widget = FileSelect('output', '', folder_select=True)        
+        layout.addRow(self.output_dir_widget.label, self.output_dir_widget)
 
     def _add_digestion_params_field(self, layout):
         self.digestion_group = QtWidgets.QGroupBox("Digestion parameters")
@@ -343,14 +354,13 @@ class MainWindow(QtWidgets.QWidget):
         self.digestion_group_layout.addWidget(self.enzyme_select, 0, 1)
         self.digestion_group_layout.addWidget(self.min_length_label, 0, 2)
         self.digestion_group_layout.addWidget(self.min_length_spinbox, 0, 3)
-        
-        self.digestion_group_layout.addWidget(self.max_length_label, 1, 2)
-        self.digestion_group_layout.addWidget(self.max_length_spinbox, 1, 3)
-        self.digestion_group_layout.addWidget(self.max_cleavages_label, 1, 0)
-        self.digestion_group_layout.addWidget(self.max_cleavages_spinbox, 1, 1)
-        
         self.digestion_group_layout.addWidget(self.digestion_label, 0, 4)
         self.digestion_group_layout.addWidget(self.digestion_select, 0, 5)
+        
+        self.digestion_group_layout.addWidget(self.max_cleavages_label, 1, 0)
+        self.digestion_group_layout.addWidget(self.max_cleavages_spinbox, 1, 1)
+        self.digestion_group_layout.addWidget(self.max_length_label, 1, 2)
+        self.digestion_group_layout.addWidget(self.max_length_spinbox, 1, 3)
         self.digestion_group_layout.addWidget(self.special_aas_label, 1, 4)
         self.digestion_group_layout.addWidget(self.special_aas_line_edit, 1, 5)
         
@@ -371,6 +381,7 @@ class MainWindow(QtWidgets.QWidget):
     def _add_log_textarea(self, layout):    
         self.log_text_area = QTextEditLogger(self)
         self.log_text_area.setLevel(logging.INFO)
+        self.log_text_area.widget.setMinimumHeight(self.log_text_area.widget.sizeHint().height())
         logger.addHandler(self.log_text_area)
         
         self.log_text_widget = QtWidgets.QWidget()
@@ -397,10 +408,6 @@ class MainWindow(QtWidgets.QWidget):
         self.log_text_widget.setLayout(self.log_text_hbox_layout)
              
         layout.addRow(self.log_text_widget)
-        
-    def get_fasta_file(self):
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open fasta file' , '', 'Fasta file (*.fasta *.fa)' )
-        self.fasta_line_edit.setText(filename)
     
     def get_output_dir(self):
         output_dir = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select output folder' , '', QtWidgets.QFileDialog.ShowDirsOnly)
@@ -415,15 +422,14 @@ class MainWindow(QtWidgets.QWidget):
         with open(filename, 'w') as f:
             f.write(self.log_text_area.widget.toPlainText())
         
-        
     def set_buttons_enabled_state(self, enable):
         self.evidence_widget.setButtonsEnabled(enable)
         self.pout_widget.setButtonsEnabled(enable)
         self.evidence_widget_rescoring.setButtonsEnabled(enable)
         self.pout_widget_rescoring.setButtonsEnabled(enable)
         
-        self.fasta_browse_button.setEnabled(enable)
-        self.output_dir_browse_button.setEnabled(enable)
+        self.fasta_widget.setButtonsEnabled(enable)
+        self.output_dir_widget.setButtonsEnabled(enable)
         #self.run_button.setEnabled(enable)
         # Cannot stop a QThread if it doesn't have an own event loop
         self.run_button.clicked.disconnect()
@@ -435,8 +441,8 @@ class MainWindow(QtWidgets.QWidget):
             self.run_button.clicked.connect(self.stop_picked)
         
     def run_picked(self):
-        fasta_file = self.fasta_line_edit.text()
-        output_dir = self.output_dir_line_edit.text()
+        fasta_file = self.fasta_widget.get_file()
+        output_dir = self.output_dir_widget.get_file()
         digest_params = ["--min-length", str(self.min_length_spinbox.value()),
                          "--max-length", str(self.max_length_spinbox.value()),
                          "--cleavages", str(self.max_cleavages_spinbox.value()),
@@ -472,8 +478,6 @@ class MainWindow(QtWidgets.QWidget):
     
     def closeEvent(self, _):
         self.stop_picked()
-
-
 
 
 if __name__ == '__main__':
