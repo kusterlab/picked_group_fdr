@@ -6,10 +6,11 @@ import os
 
 import numpy as np
 
+from .. import __version__, __copyright__
 from .. import parsers
 from .. import helpers
 from .. import fdr
-from ..picked_group_fdr import ArgumentParserWithLogger, __version__, __copyright__
+from ..picked_group_fdr import ArgumentParserWithLogger
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)

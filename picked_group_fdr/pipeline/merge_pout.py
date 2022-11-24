@@ -7,10 +7,11 @@ import logging
 import numpy as np
 import triqler.qvality as qvality
 
+from .. import __version__, __copyright__
 from .. import helpers
 from .. import digest
 from .. import parsers
-from ..picked_group_fdr import ArgumentParserWithLogger, __version__, __copyright__
+from ..picked_group_fdr import ArgumentParserWithLogger
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)

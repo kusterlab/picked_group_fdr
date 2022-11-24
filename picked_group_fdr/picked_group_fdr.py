@@ -8,7 +8,7 @@ from typing import List, Dict, Tuple, Union
 
 import numpy as np
 
-from . import version
+from . import __version__, __copyright__
 from . import digest
 from . import helpers
 from . import parsers
@@ -32,10 +32,7 @@ from .plotter import Plotter, NoPlotter
 
 logger = logging.getLogger(__name__)
 
-__version__ = version.get_version_from_pyproject()
-__copyright__ = '''Copyright (c) 2020-2022 Matthew The. All rights reserved.
-Written by Matthew The (matthew.the@tum.de) at the
-Chair of Proteomics and Bioanalytics at the Technical University of Munich.'''
+GREETER = f'PickedGroupFDR version {__version__}\n{__copyright__}' 
 
 
 class ArgumentParserWithLogger(argparse.ArgumentParser):
@@ -46,6 +43,7 @@ class ArgumentParserWithLogger(argparse.ArgumentParser):
 
 def parseArgs(argv):
     apars = ArgumentParserWithLogger(
+            description=GREETER,
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     apars.add_argument('--mq_evidence', default=None, metavar = "EV",
@@ -118,7 +116,7 @@ def parseArgs(argv):
 
 
 def main(argv):
-    logger.info(f'PickedGroupFDR version {__version__}\n{__copyright__}')
+    logger.info(GREETER)
     logger.info(f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}')
     
     args = parseArgs(argv)
