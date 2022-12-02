@@ -63,14 +63,17 @@ class TestGetPeptideIntensities:
     postErrProbCutoff = 0.1
     numSilacChannels = 0
     numExperiments = 3
-    np.testing.assert_almost_equal(_getPeptideIntensities(peptideIntensityListThreeFiles, experimentToIdxMap, postErrProbCutoff, numSilacChannels, numExperiments)[0][('_APEPTIDE_', 2)], [25.0, 10.0, 5.0])
+    np.testing.assert_almost_equal(_getPeptideIntensities(peptideIntensityListThreeFiles, experimentToIdxMap, postErrProbCutoff, numSilacChannels, numExperiments)[0], np.array([[25.0, 10.0, 5.0]]))
 
 
 class TestCalculateRatios:
   def test_getLogMedianPeptideRatios(self, peptideIntensities):
-    assert _getLogMedianPeptideRatios(peptideIntensities, 1) == {(0,1) : np.log(2.5), (0, 2): np.log(5.0), (1, 2): np.log(2.0)}
+    logMedianRatios = _getLogMedianPeptideRatios(peptideIntensities, 1)
+    idxPairs, ratios = zip(*sorted(list(logMedianRatios.items())))
+    assert idxPairs == ((0,1), (0,2), (1,2))
+    np.testing.assert_almost_equal(ratios, (np.log(2.5), np.log(5.0), np.log(2.0)))
 
 
 @pytest.fixture
 def peptideIntensities():
-  return {('_APEPTIDE_', 2): [25.0, 10.0, 5.0]}
+  return np.array([[25.0, 10.0, 5.0]])

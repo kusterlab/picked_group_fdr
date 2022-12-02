@@ -18,7 +18,7 @@ from ..utils import multiprocessing_pool as pool
 # imports for typing
 from ..results import ProteinGroupResults
 from .precursor_quant import PrecursorQuant
-
+from . import lfq_helpers
 
 logger = logging.getLogger(__name__)
 
@@ -134,13 +134,15 @@ def _getLFQIntensities(peptideIntensityList: List[PrecursorQuant],
     return intensities
 
 
-def _getPeptideIntensities(
+_getPeptideIntensities = lfq_helpers._getPeptideIntensities
+
+def _getPeptideIntensitiesPython(
         peptideIntensityList: List[PrecursorQuant],
         experimentToIdxMap: Dict[str, int],
         postErrProbCutoff: float,
         numSilacChannels: int,
         numExperiments: int) \
-        -> Tuple[Dict[Tuple[str, int], List[float]], float]:
+        -> Tuple[np.array, float]:
     """
     Collects all precursor intensities per experiment
     """
@@ -150,7 +152,7 @@ def _getPeptideIntensities(
     peptideIntensityList = filter(filterMissingAndUnidentified, peptideIntensityList)
     
     # for each (peptide, charge, experiment, fraction) tuple, sort the
-    # lowest PEP (= most confident PSM) on top
+    # highest intensity on top, in case of a tie, select the lowest PEP (= most confident PSM) 
     def orderByPEP(p): return (p.peptide, p.charge, p.experiment,
                                p.fraction, -1 * p.intensity, p.postErrProb)
     peptideIntensityList = sorted(peptideIntensityList, key=orderByPEP)
@@ -162,9 +164,8 @@ def _getPeptideIntensities(
     prevPrecursor = (None, None)
     for precursor in peptideIntensityList:
         expIdx = experimentToIdxMap[precursor.experiment]
-        # for each (peptide, charge, experiment, fraction) tuple, only
-        # use the intensity of the PSM with the lowest PEP (= most
-        # confident PSM)
+        # for each (peptide, charge) tuple, only sum the intensities of the PSMs
+        # with the highest intensity per fraction
         currPrecursor = (precursor.peptide, precursor.charge)
         currExpFrac = (precursor.experiment, precursor.fraction)
         if prevExpFrac != currExpFrac or prevPrecursor != currPrecursor:
@@ -181,7 +182,8 @@ def _getPeptideIntensities(
                 totalIntensity += precursor.intensity
             prevExpFrac = currExpFrac
             prevPrecursor = currPrecursor
-    return peptideIntensities, totalIntensity
+    intensityMatrix = np.array(list(peptideIntensities.values()))
+    return intensityMatrix, totalIntensity
 
 
 def _applyLargeRatioStabilization(
@@ -222,15 +224,13 @@ def _applyLargeRatioStabilization(
 
 
 def _getLogMedianPeptideRatios(
-        peptideIntensities: Dict[Tuple[str, int], List[float]],
+        intensityMatrix: np.array,
         minPeptideRatiosLFQ: int) -> Dict[Tuple[int, int], float]:
     """
     :param peptideIntensities: rows are peptides, columns are experiments
     :param minPeptideRatiosLFQ: minimum valid ratios needed to perform LFQ
     returns: dictionary of (sample_i, sample_j) -> log(median(ratios))
-    """        
-    intensityMatrix = np.array(list(peptideIntensities.values()))
-    
+    """
     nonzeros_per_column = np.count_nonzero(intensityMatrix, axis=0)
     valid_columns = np.argwhere(
         nonzeros_per_column >= minPeptideRatiosLFQ).flatten()
@@ -240,7 +240,13 @@ def _getLogMedianPeptideRatios(
     
     # replace zeroes by NaNs to automatically filter ratios with one missing value
     intensityMatrix[intensityMatrix == 0] = np.nan
-    columns = [(idx, i, intensityMatrix[:, i]) for idx, i in enumerate(valid_columns)]
+    columns = [(idx, i, np.array(intensityMatrix[:, i])) for idx, i in enumerate(valid_columns)]
+    
+    return _getLogMedianPeptideRatiosLoop(columns, valid_vals, minPeptideRatiosLFQ, intensityMatrix)
+
+_getLogMedianPeptideRatiosLoop = profile(lfq_helpers._getLogMedianPeptideRatiosLoop)
+
+def _getLogMedianPeptideRatiosLoopPython(columns, valid_vals, minPeptideRatiosLFQ):
     peptideRatios, experimentPairs = list(), list()
     for ((idx_i, i, col_i), (idx_j, j, col_j)) in itertools.combinations(
             columns, 2):
@@ -248,8 +254,9 @@ def _getLogMedianPeptideRatios(
             continue
         
         ratios = col_i / col_j
+        
         # vectorization of computing medians is 25% faster than computing 
-        # them in a loop here but requires more memory
+        # them in a loop here but requires much more memory for large datasets
         peptideRatios.append(bn.nanmedian(ratios))
         experimentPairs.append((i,j))
     

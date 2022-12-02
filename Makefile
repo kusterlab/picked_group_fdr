@@ -23,8 +23,15 @@ integration_test:
 performance:
 	python3 -m pytest -s tests/performance_tests
 
+# ~30 seconds, 10 proteins, 600 peptides, 600 samples, 20% missingness
 line_profiler_lfq:
 	kernprof -lv tests/performance_tests/test_lfq.py
+
+flamegraph:
+	perf record -g python3 tests/performance_tests/test_lfq.py
+	perf script > out.perf
+	../FlameGraph/stackcollapse-perf.pl out.perf > out.perf.folded
+	../FlameGraph/flamegraph.pl out.perf.folded --width 2400 > flamegraph.svg
 
 memory_profile:
 	mprof run --include-children --backend psutil_pss python3 -u tests/performance_tests/test_lfq.py | ts '[%H:%M:%.S]'
@@ -33,6 +40,8 @@ memory_profile:
 build: dependencies
 	docker build -f Dockerfile -t $(IMAGE) . || (exit 1)
 
+cython_build:
+	python3 picked_group_fdr/setup.py build_ext --inplace
 
 ####################################################################################
 ### Pipeline including recalculation of PEPs by mokapot (=percolator for Python) ###
