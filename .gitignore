@@ -132,3 +132,5 @@ system*
 data*
 results*
 UPX
+flamegraph.svg
+test_lfq.py.lprof

@@ -1,5 +1,7 @@
 import pytest
 
+import numpy as np
+
 import picked_group_fdr.fdr as fdr
 
 def test_count_below_threshold():
@@ -11,5 +13,5 @@ def test_count_below_threshold_with_decoy_labels():
 
 
 def test_fdr_to_qvals():
-  assert fdr.fdrsToQvals([0.1, 0.01, 0.001, 0.002]) == [0.001, 0.001, 0.001, 0.002]
+  np.testing.assert_almost_equal(fdr.fdrsToQvals([0.1, 0.01, 0.001, 0.002]), [0.001, 0.001, 0.001, 0.002])
 

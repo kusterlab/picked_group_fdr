@@ -56,16 +56,11 @@ def printReportedAndEntrapmentFDRs(reportedQvals, observedQvals):
         writer.writerow([reportedQval, observedQval])
 
 
-def fdrsToQvals(fdrs: List[float]):
+def fdrsToQvals(fdrs: List[float]) -> np.array:
     """
     Makes a list of FDRs monotonically increasing (sometimes referred to as q-values after monotonization)
     """
-    qvals = [0] * len(fdrs)
-    if len(fdrs) > 0:
-        qvals[len(fdrs)-1] = fdrs[-1]
-        for i in range(len(fdrs)-2, -1, -1):
-            qvals[i] = min(qvals[i+1], fdrs[i])
-    return qvals
+    return np.minimum.accumulate(fdrs[::-1])[::-1]
 
 
 def countBelowThreshold(qvals: List[float], qvalThreshold: float, skipForCounting: Optional[List[bool]] = None):
