@@ -35,7 +35,10 @@ build:
       #    - docker build --squash --cache-from $CONTAINER_IMAGE:latest --tag $CONTAINER_IMAGE:git_$CI_COMMIT_SHORT_SHA .
     - docker push $CONTAINER_IMAGE:$CI_COMMIT_REF_SLUG
     - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHORT_SHA
-    - docker push $CONTAINER_IMAGE:latest
+    - |
+        if [ "$CI_COMMIT_BRANCH" == "main" ]; then 
+            docker push $CONTAINER_IMAGE:latest
+        fi
   tags:
     - docker
 

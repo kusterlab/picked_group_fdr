@@ -6,7 +6,7 @@ import logging
 
 import numpy as np
 from scipy.sparse.linalg import lsqr
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, coo_matrix
 import bottleneck as bn
 
 from .. import helpers
@@ -144,43 +144,24 @@ def _getPeptideIntensities(
     """
     Collects all precursor intensities per experiment
     """
-    def filterMissingAndUnidentified(p): 
-        return (p.intensity > 0.0 and
-            (helpers.isMbr(p.postErrProb) or p.postErrProb <= postErrProbCutoff))
-    peptideIntensityList = filter(filterMissingAndUnidentified, peptideIntensityList)
+    peptideIntensityListArray = np.array(peptideIntensityList)
     
-    # for each (peptide, charge, experiment, fraction) tuple, sort the
-    # lowest PEP (= most confident PSM) on top
-    def orderByPEP(p): return (p.peptide, p.charge, p.experiment,
-                               p.fraction, -1 * p.intensity, p.postErrProb)
-    peptideIntensityList = sorted(peptideIntensityList, key=orderByPEP)
+    peptideIntensityListArray = np.delete(peptideIntensityListArray, np.where((peptideIntensityListArray[:, 4] < 0) | ((~np.isnan(peptideIntensityListArray[:, 5]) & (peptideIntensityListArray[:, 5] > postErrProbCutoff))))[0], axis=0)
     
-    peptideIntensities = collections.defaultdict(
-        lambda: [0.0] * numExperiments)
-    totalIntensity = 0.0
-    prevExpFrac = (None, None)
-    prevPrecursor = (None, None)
-    for precursor in peptideIntensityList:
-        expIdx = experimentToIdxMap[precursor.experiment]
-        # for each (peptide, charge, experiment, fraction) tuple, only
-        # use the intensity of the PSM with the lowest PEP (= most
-        # confident PSM)
-        currPrecursor = (precursor.peptide, precursor.charge)
-        currExpFrac = (precursor.experiment, precursor.fraction)
-        if prevExpFrac != currExpFrac or prevPrecursor != currPrecursor:
-            if numSilacChannels > 0:
-                for silacIdx, silacIntensity in enumerate(
-                        precursor.silacIntensities):
-                    silacExpIdx = expIdx * numSilacChannels + silacIdx
-                    peptideIntensities[currPrecursor][silacExpIdx] += (
-                            silacIntensity)
-                    totalIntensity += silacIntensity
-            else:
-                peptideIntensities[currPrecursor][expIdx] += (
-                        precursor.intensity)
-                totalIntensity += precursor.intensity
-            prevExpFrac = currExpFrac
-            prevPrecursor = currPrecursor
+    peptideIntensityListArray = peptideIntensityListArray[np.lexsort((peptideIntensityListArray[:, 0], 
+                                          peptideIntensityListArray[:, 1], 
+                                          peptideIntensityListArray[:, 2], 
+                                          peptideIntensityListArray[:, 3],
+                                          -peptideIntensityListArray[:, 4], 
+                                          peptideIntensityListArray[:, 5]))]
+    peptideIntensityListArray = peptideIntensityListArray[np.unique(peptideIntensityListArray[:, :4], axis=0, return_index=True)[1]]
+    
+    rows, row_pos = np.unique(peptideIntensityListArray[:, :2], return_inverse=True, axis=0)
+    cols, col_pos = np.unique(peptideIntensityListArray[:, 2], return_inverse=True)
+    peptideIntensities = coo_matrix((peptideIntensityListArray[:, 4], (row_pos, col_pos)),
+                             shape=(len(rows), len(cols))).A
+    totalIntensity = peptideIntensities.sum()                      
+    
     return peptideIntensities, totalIntensity
 
 
@@ -229,7 +210,7 @@ def _getLogMedianPeptideRatios(
     :param minPeptideRatiosLFQ: minimum valid ratios needed to perform LFQ
     returns: dictionary of (sample_i, sample_j) -> log(median(ratios))
     """        
-    intensityMatrix = np.array(list(peptideIntensities.values()))
+    intensityMatrix = peptideIntensities
     
     nonzeros_per_column = np.count_nonzero(intensityMatrix, axis=0)
     valid_columns = np.argwhere(

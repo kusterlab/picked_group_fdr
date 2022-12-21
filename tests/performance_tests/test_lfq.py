@@ -1,7 +1,7 @@
-from timeit import Timer
 import random
 import pytest
 import numpy as np
+from timeit import default_timer as timer
 
 from picked_group_fdr.quant.lfq import LFQIntensityColumns
 from picked_group_fdr.quant.precursor_quant import PrecursorQuant
@@ -11,7 +11,7 @@ from picked_group_fdr.results import ProteinGroupResult
 def test_performanceLFQ():
     num_experiments = 600 # most experiments = 600 for prosit job 964 (Chengdong plasma samples)
     num_peptides = 600 # most peptides = 22500 for TTN in WP3 pipeline
-    num_proteins = 50
+    num_proteins = 10
     
     proteinGroupResults = []
     for i in range(num_proteins):
@@ -28,12 +28,15 @@ def test_performanceLFQ():
     columns = [LFQIntensityColumns(silacChannels=[], minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
     
     experimentToIdxMap = getExperimentToIdxMap(num_experiments)
+    
+    start = timer()
+    
     for c in columns:
         #c.append_headers(proteinGroupResults, experiments)
         c.append_columns(proteinGroupResults, experimentToIdxMap, postErrProbCutoff=1.0)
-
-    #t = Timer(lambda: _getLFQIntensities(peptideIntensityList, experimentToIdxMap, 0.1, 1))
-    #print(f"execution time for {num_proteins} runs: {t.timeit(number = num_proteins)}")
+    
+    end = timer()
+    print(f"execution took {'%.1f' % (end - start)} seconds wall clock time")
 
 
 def getPeptideIntensityList(num_experiments, num_peptides):
