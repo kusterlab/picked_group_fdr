@@ -54,6 +54,8 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev
 
 ADD ./picked_group_fdr/ /root/picked_group_fdr
+ADD Makefile* /root/
+ADD config.py /root/
 
 # RUN cd /root/picked_group_fdr && python setup.py build_ext --inplace
 

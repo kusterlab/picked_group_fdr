@@ -33,6 +33,9 @@ memory_profile:
 build: dependencies
 	docker build -f Dockerfile -t $(IMAGE) . || (exit 1)
 
+bootstrap: DATA=/root/data
+bootstrap:
+	bash -c "cp /root/{config.py,Makefile*} $(LOCAL_DIR)"
 
 ####################################################################################
 ### Pipeline including recalculation of PEPs by mokapot (=percolator for Python) ###
