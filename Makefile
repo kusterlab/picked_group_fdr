@@ -23,6 +23,9 @@ integration_test:
 performance:
 	python3 -m pytest -s tests/performance_tests
 
+performance_cprofile:
+	python3 -m cProfile -o program.prof tests/performance_tests/test_lfq.py
+
 line_profiler_lfq:
 	kernprof -lv tests/performance_tests/test_lfq.py
 

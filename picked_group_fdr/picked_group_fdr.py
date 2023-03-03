@@ -65,8 +65,8 @@ def parseArgs(argv):
                          help='''Percolator output file with PSMs or peptides; alternative for --mq_evidence if we want to use Percolator PEPs instead of MaxQuant's PEPs
                                 ''')
 
-    apars.add_argument('--methods', default=None, metavar = "M1,M2",
-                         help='''Use one or more predefined protein group FDR estimation methods, separated by commas.''')
+    apars.add_argument('--methods', default='picked_protein_group', metavar = "M1,M2",
+                         help='''Use one or more predefined protein group FDR estimation methods, separated by commas. Examples of available methods: picked_protein_group, picked_protein_group_mq_input, savitski, maxquant.''')
 
     apars.add_argument('--peptide_protein_map', default=None, metavar = "M",
                          help='''File with mapping from peptides to proteins; alternative for --fasta flag if digestion is time consuming.
@@ -150,7 +150,7 @@ def main(argv):
         
         peptideFile = config['scoreType'].get_evidence_file(args)
         if not peptideFile:
-            logger.warning("No evidence file provided, skipping...")
+            logger.warning(f"No evidence input file found, skipping method \"{label}\". Check if an appropriate method was specified by the --methods flag.")
             continue
         
         if len(peptideToProteinMap) == 0 and (config['grouping'].needs_peptide_to_protein_map() or config['scoreType'].remaps_peptides_to_proteins()):

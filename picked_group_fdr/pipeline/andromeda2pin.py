@@ -115,6 +115,21 @@ def writeHeaders(writer, charges):
 
 
 def parseMqEvidenceFile(mqEvidenceFile, razor = False):
+    """
+    Columns needed (all headers are converted to lower case for the comparison, so no need to fix that):
+    - Sequence (needed if not using a meta input file)
+    - Modified sequence
+    - MS/MS Scan number
+    - Raw file
+    - Charge
+    - Mass
+    - Mass error [ppm] (optional)
+    - One out of: Leading proteins / Proteins
+    - Score
+    - Delta score
+    - Experiment (optional)
+    """
+    
     if mqEvidenceFile.endswith('.csv'):
         delimiter = ','
     else:

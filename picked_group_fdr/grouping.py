@@ -202,7 +202,8 @@ class RescuedGrouping:
         identifiedProteinScores = [pfr.score for pfr in proteinGroupResults if pfr.qValue < 0.01]
         
         if len(identifiedProteinScores) == 0:
-            raise ValueError("Could not calculate rescuing threshold as no proteins were found below 1% FDR")
+            logger.warning("Could not calculate rescuing threshold as no proteins were found below 1% FDR. Setting rescuing threshold to worst scoring protein's score.")
+            identifiedProteinScores = [pfr.score for pfr in proteinGroupResults]
 
         self.score_cutoff = np.power(10, min(identifiedProteinScores)*-1)
         logger.info(f"Rescuing threshold: protein score = {'{0:.3g}'.format(min(identifiedProteinScores))}, peptide PEP = {'{0:.3g}'.format(self.score_cutoff)}")
