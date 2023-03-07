@@ -378,7 +378,7 @@ class ProteinScoringStrategy:
 def compareRazorPeptides(mqEvidenceFile, peptideToProteinMap, proteinGroups, scoreType):
     """Compares the chosen protein by MaxQuant according to the razor peptide rule with our implementation of the razor peptide rule"""
     scoreType = ProteinScoringStrategy("multPEP razor")
-    for peptideRow in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = scoreType):
+    for peptideRow in parsers.parseEvidenceFile(mqEvidenceFile, scoreType = scoreType):
         peptide, tmp_proteins, _, _ = peptideRow
         
         proteins = digest.getProteins(peptideToProteinMap, helpers.cleanPeptide(peptide))

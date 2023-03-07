@@ -66,7 +66,7 @@ def parseArgs(argv):
                                 ''')
 
     apars.add_argument('--methods', default='picked_protein_group', metavar = "M1,M2",
-                         help='''Use one or more predefined protein group FDR estimation methods, separated by commas. Examples of available methods: picked_protein_group, picked_protein_group_mq_input, savitski, maxquant.''')
+                         help='''Use one or more protein group FDR estimation methods, separated by commas. Examples of builtin methods: picked_protein_group, picked_protein_group_mq_input, savitski, maxquant. Alternatively, specify one our more paths to toml files with a .toml extension following the same format as the builtin method toml files.''')
 
     apars.add_argument('--peptide_protein_map', default=None, metavar = "M",
                          help='''File with mapping from peptides to proteins; alternative for --fasta flag if digestion is time consuming.
@@ -148,8 +148,8 @@ def main(argv):
         label = config.get('label', "")
         logger.info(f"Protein group level estimation method: {label} ({methodDescriptionLong})")
         
-        peptideFile = config['scoreType'].get_evidence_file(args)
-        if not peptideFile:
+        evidenceFile = config['scoreType'].get_evidence_file(args)
+        if not evidenceFile:
             logger.warning(f"No evidence input file found, skipping method \"{label}\". Check if an appropriate method was specified by the --methods flag.")
             continue
         
@@ -160,10 +160,10 @@ def main(argv):
         if len(peptideToProteotypicityMap) == 0 and config['scoreType'].use_proteotypicity:
             peptideToProteotypicityMap = proteotypicity.getPeptideToProteotypicityFromFile(args.peptide_proteotypicity_map)
         
-        peptideInfoList = parseMqEvidenceFile(peptideFile, 
-                                              peptideToProteinMap, 
-                                              config['scoreType'], 
-                                              args.suppress_missing_peptide_warning)
+        peptideInfoList = parseEvidenceFile(evidenceFile, 
+                                            peptideToProteinMap, 
+                                            config['scoreType'], 
+                                            args.suppress_missing_peptide_warning)
         
         plotter.set_series_label_base(config.get('label', None))
         proteinGroupResults = getProteinGroupResults(
@@ -235,10 +235,10 @@ def getProteinGroupResults(
     return proteinGroupResults
 
 
-def parseMqEvidenceFile(mqEvidenceFile: str, peptideToProteinMap, scoreType, suppressMissingPeptideWarning: bool) -> PeptideInfoList:
+def parseEvidenceFile(evidenceFile: str, peptideToProteinMap, scoreType, suppressMissingPeptideWarning: bool) -> PeptideInfoList:
     """Returns best score per peptide"""
     peptideInfoList = dict()
-    for peptide, tmp_proteins, _, score in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = scoreType):
+    for peptide, tmp_proteins, _, score in parsers.parseEvidenceFile(evidenceFile, scoreType = scoreType):
         peptide = helpers.cleanPeptide(peptide)
         if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:
             continue

@@ -81,6 +81,12 @@ def get_methods(args):
 def parse_method_toml(method: str):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     method_toml_file = os.path.join(dir_path, 'methods', f'{method}.toml')
+    if not os.path.isfile(method_toml_file):
+        if method.endswith(".toml") and os.path.isfile(method):
+            method_toml_file = method
+        else:
+            raise FileNotFoundError(f"Could not find method {method}. Please ensure that it is one of the builtin methods or that it is a path to a TOML file with a .toml file extension.")
+
     method = toml.load(method_toml_file)
     
     picked_strategy = ProteinCompetitionStrategyFactory(method['pickedStrategy'])

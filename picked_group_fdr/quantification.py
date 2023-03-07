@@ -229,7 +229,7 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
     parsedExperiments = set()
     missingPeptidesInFasta, missingPeptidesInProteinGroups = 0, 0
     
-    for peptide, tmp_proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseMqEvidenceFile(mqEvidenceFile, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
+    for peptide, tmp_proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseEvidenceFile(mqEvidenceFile, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
         if numTmtChannels == -1:
             # There are 3 columns per TMT channel: 
             #     Reporter intensity corrected, 
