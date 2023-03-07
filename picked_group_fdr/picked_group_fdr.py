@@ -54,9 +54,9 @@ def parseArgs(argv):
                                 ''')
 
     apars.add_argument('--fasta', default=None, metavar = "F",
-                         help='''Fasta file to create mapping from peptides to proteins.
-                                                    ''')
-
+                         help='''Fasta file to create mapping from peptides to proteins. This should not contain the decoy sequences, unless you set the --fasta_contains_decoys flag.
+                                 ''')
+                         
     apars.add_argument('--mq_protein_groups', default=None, metavar = "PG",
                          help='''MaxQuant protein groups file; only specify if we want to keep MaxQuant's original grouping instead of Picked Grouping
                                 ''')

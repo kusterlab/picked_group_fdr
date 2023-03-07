@@ -47,7 +47,7 @@ def parseArgs(argv):
                          help='''TSV file with mapping from peptides to proteins.''')
     
     apars.add_argument('--fasta', default=None, metavar = "F",
-                         help='''Fasta file to create mapping from peptides to proteins.''')
+                         help='''Fasta file to create mapping from peptides to proteins. This should not contain the decoy sequences, unless you set the --fasta_contains_decoys flag.''')
     
     apars.add_argument('--fasta_use_uniprot_id',
                          help='''Parse protein identifiers in the fasta file as UniProt IDs, 
@@ -122,15 +122,19 @@ def getPeptideToProteinMaps(args, parseId):
     if args.fasta:
         pre, not_post = digest.getCleavageSites(args.enzyme)
         
+        db = 'concat'
+        if args.fasta_contains_decoys:
+            db = 'target'
+            
         peptideToProteinMap = digest.getPeptideToProteinMap(
-                args.fasta, db = 'concat', digestion = args.digestion, 
+                args.fasta, db = db, digestion = args.digestion, 
                 min_len = args.min_length, max_len = args.max_length, 
                 pre = pre, not_post = not_post, miscleavages = args.cleavages, 
                 methionineCleavage = True, specialAAs = list(args.special_aas),
                 parseId = parseId, useHashKey = (args.digestion == "none"))
         
         peptideToProteinMapIbaq = digest.getPeptideToProteinMap(
-                args.fasta, db = 'concat', digestion = args.digestion, 
+                args.fasta, db = db, digestion = args.digestion, 
                 min_len = minLenIbaq, max_len = maxLenIbaq, 
                 pre = pre, not_post = not_post, miscleavages = 0,
                 methionineCleavage = False, specialAAs = list(args.special_aas),

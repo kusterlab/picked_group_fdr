@@ -148,6 +148,10 @@ def addArguments(apars):
                                          help='''Digestion mode ('full', 'semi' or 'none').
                                                     ''')
 
+    apars.add_argument('--fasta_contains_decoys',
+                         help='Set this flag if your fasta file already contains decoy protein sequences.',
+                         action='store_true')
+
 
 def writeProteinToGeneMap(fastaFile, outputFile):
     writer = csv.writer(open(outputFile, 'w'), delimiter = '\t')
@@ -356,8 +360,12 @@ def get_peptide_to_protein_map(args, parseId):
         if args.enzyme == "no_enzyme":
             args.digestion = "none"
         
+        db = 'concat'
+        if args.fasta_contains_decoys:
+            db = 'target'
+
         peptideToProteinMap = getPeptideToProteinMap(
-                args.fasta, db = 'concat', digestion = args.digestion, 
+                args.fasta, db = db, digestion = args.digestion, 
                 min_len = args.min_length, max_len = args.max_length, 
                 pre = pre, not_post = not_post, 
                 miscleavages = args.cleavages, methionineCleavage = True, 

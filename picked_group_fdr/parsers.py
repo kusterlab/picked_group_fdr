@@ -99,6 +99,12 @@ def parseMqEvidenceFile(mqEvidenceFile, scoreType, forQuantification = False):
     - Raw file
     - Fraction (optional)
     - Id
+    - Reporter intensity corrected (for TMT)
+    - Reporter intensity (for TMT)
+    - Reporter intensity count (for TMT)
+    - Intensity L (for SILAC)
+    - Intensity H (for SILAC)
+    - Intensity M (optional, for SILAC)
     """
     if mqEvidenceFile.endswith('.csv'):
         delimiter = ','
