@@ -82,6 +82,11 @@ def parseMqProteinGroupsFile(mqProteinGroupsFile, protein_column='Protein IDs'):
             yield row[proteinCol].split(";"), float(row[scoreCol])
 
 
+def parseEvidenceFiles(evidenceFiles, scoreType, forQuantification=False):
+    for evidenceFile in evidenceFiles:
+        yield from parseEvidenceFile(evidenceFile, scoreType, forQuantification)
+
+
 def parseEvidenceFile(evidenceFile, scoreType, forQuantification=False):
     if evidenceFile.endswith('.csv'):
         delimiter = ','

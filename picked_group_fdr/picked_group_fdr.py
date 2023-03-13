@@ -46,8 +46,8 @@ def parseArgs(argv):
             description=GREETER,
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    apars.add_argument('--mq_evidence', default=None, metavar = "EV",
-                         help='''MaxQuant evidence file.''')
+    apars.add_argument('--mq_evidence', default=None, metavar = "EV", nargs="+",
+                         help='''MaxQuant evidence file(s).''')
 
     apars.add_argument('--protein_groups_out', default=None, metavar = "PG",
                          help='''Protein groups output file, mimicks a subset of the MQ protein groups columns.
@@ -61,8 +61,8 @@ def parseArgs(argv):
                          help='''MaxQuant protein groups file; only specify if we want to keep MaxQuant's original grouping instead of Picked Grouping
                                 ''')
 
-    apars.add_argument('--perc_evidence', default=None, metavar = "POUT",
-                         help='''Percolator output file with PSMs or peptides; alternative for --mq_evidence if we want to use Percolator PEPs instead of MaxQuant's PEPs
+    apars.add_argument('--perc_evidence', default=None, metavar = "POUT", nargs="+",
+                         help='''Percolator output file(s) with PSMs or peptides; alternative for --mq_evidence if we want to use Percolator PEPs instead of MaxQuant's PEPs
                                 ''')
 
     apars.add_argument('--methods', default='picked_protein_group', metavar = "M1,M2",
@@ -148,8 +148,8 @@ def main(argv):
         label = config.get('label', "")
         logger.info(f"Protein group level estimation method: {label} ({methodDescriptionLong})")
         
-        evidenceFile = config['scoreType'].get_evidence_file(args)
-        if not evidenceFile:
+        evidenceFiles = config['scoreType'].get_evidence_file(args)
+        if not evidenceFiles:
             logger.warning(f"No evidence input file found, skipping method \"{label}\". Check if an appropriate method was specified by the --methods flag.")
             continue
         
@@ -160,10 +160,10 @@ def main(argv):
         if len(peptideToProteotypicityMap) == 0 and config['scoreType'].use_proteotypicity:
             peptideToProteotypicityMap = proteotypicity.getPeptideToProteotypicityFromFile(args.peptide_proteotypicity_map)
         
-        peptideInfoList = parseEvidenceFile(evidenceFile, 
-                                            peptideToProteinMap, 
-                                            config['scoreType'], 
-                                            args.suppress_missing_peptide_warning)
+        peptideInfoList = parseEvidenceFiles(evidenceFiles, 
+                                             peptideToProteinMap, 
+                                             config['scoreType'], 
+                                             args.suppress_missing_peptide_warning)
         
         plotter.set_series_label_base(config.get('label', None))
         proteinGroupResults = getProteinGroupResults(
@@ -235,10 +235,10 @@ def getProteinGroupResults(
     return proteinGroupResults
 
 
-def parseEvidenceFile(evidenceFile: str, peptideToProteinMap, scoreType, suppressMissingPeptideWarning: bool) -> PeptideInfoList:
+def parseEvidenceFiles(evidenceFiles: List[str], peptideToProteinMap, scoreType, suppressMissingPeptideWarning: bool) -> PeptideInfoList:
     """Returns best score per peptide"""
     peptideInfoList = dict()
-    for peptide, tmp_proteins, _, score in parsers.parseEvidenceFile(evidenceFile, scoreType = scoreType):
+    for peptide, tmp_proteins, _, score in parsers.parseEvidenceFiles(evidenceFiles, scoreType = scoreType):
         peptide = helpers.cleanPeptide(peptide)
         if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:
             continue

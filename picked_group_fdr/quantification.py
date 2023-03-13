@@ -160,7 +160,7 @@ def getPeptideToProteinMaps(args, parseId):
     return peptideToProteinMap, numIbaqPeptidesPerProtein
 
 
-def doQuantification(mqEvidenceFile, proteinGroupResults, proteinSequences,
+def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
         peptideToProteinMap, numIbaqPeptidesPerProtein, fileListFile, 
         scoreType, psmQvalCutoff = 0.01, 
         discardSharedPeptides = True, 
@@ -174,8 +174,8 @@ def doQuantification(mqEvidenceFile, proteinGroupResults, proteinSequences,
     if fileListFile:
         experiments, fileMapping, params = parseFileList(fileListFile, params) 
     
-    proteinGroupResults, postErrProbs, numTmtChannels, numSilacChannels, parsedExperiments = parseEvidenceFile(
-            proteinGroupResults, mqEvidenceFile, peptideToProteinMap, 
+    proteinGroupResults, postErrProbs, numTmtChannels, numSilacChannels, parsedExperiments = parseEvidenceFiles(
+            proteinGroupResults, mqEvidenceFiles, peptideToProteinMap, 
             fileMapping, scoreType, discardSharedPeptides)
     
     silacChannels = getSilacChannels(numSilacChannels)
@@ -218,7 +218,7 @@ def doQuantification(mqEvidenceFile, proteinGroupResults, proteinSequences,
         c.append_columns(proteinGroupResults, experimentToIdxMap, postErrProbCutoff)
 
 
-def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap, 
+def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap, 
                                             fileMapping, scoreType, discardSharedPeptides):    
     proteinGroups = ProteinGroups.from_protein_group_results(proteinGroupResults)
     proteinGroups.create_index()
@@ -229,7 +229,7 @@ def parseEvidenceFile(proteinGroupResults, mqEvidenceFile, peptideToProteinMap,
     parsedExperiments = set()
     missingPeptidesInFasta, missingPeptidesInProteinGroups = 0, 0
     
-    for peptide, tmp_proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseEvidenceFile(mqEvidenceFile, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
+    for peptide, tmp_proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseEvidenceFiles(mqEvidenceFiles, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
         if numTmtChannels == -1:
             # There are 3 columns per TMT channel: 
             #     Reporter intensity corrected, 
