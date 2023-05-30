@@ -1,3 +1,10 @@
+v0.4.0
+- Removed proteins without any PSMs below the FDR threshold. Setting the new `--keep_all_proteins` flag reverts to the old behavior.
+- Added support for supplying multiple evidence files
+- Added support for mokapot format and allow users to specify methods with custom toml files
+- Add `--fasta_contains_decoys` flag and functionality
+- Update llvmlite (#4)
+
 v0.3.5
 - Added rescoring input (e.g. Prosit results) to GUI
 

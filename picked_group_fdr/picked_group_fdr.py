@@ -76,6 +76,10 @@ def parseArgs(argv):
                          help='''File with mapping from peptides to proteotypicity.
                                 ''')
 
+    apars.add_argument('--keep_all_proteins', default=None,
+                         help='''Keep proteins that do not have peptides below the PSM FDR filter.''',
+                         action='store_true')
+    
     apars.add_argument('--gene_level',
                          help='Report gene-level statistics instead of protein group-level. This requires the GN= field to be present in the fasta file.',
                          action='store_true')
@@ -170,7 +174,7 @@ def main(argv):
                 peptideInfoList, args.mq_protein_groups, 
                 proteinAnnotations, peptideToProteotypicityMap,
                 config['pickedStrategy'], config['scoreType'], config['grouping'], 
-                plotter)
+                plotter, args.keep_all_proteins)
         
         if args.do_quant:
             doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMap)
@@ -194,7 +198,8 @@ def getProteinGroupResults(
         pickedStrategy: ProteinCompetitionStrategy,
         scoreType: ProteinScoringStrategy,
         groupingStrategy: ProteinGroupingStrategy, 
-        plotter: Union[Plotter, NoPlotter]):
+        plotter: Union[Plotter, NoPlotter],
+        keep_all_proteins: bool):
     proteinGroups = groupingStrategy.group_proteins(peptideInfoList, mqProteinGroupsFile)
     
     # for razor peptide strategy
@@ -224,7 +229,8 @@ def getProteinGroupResults(
         proteinGroupResults = ProteinGroupResults.from_protein_groups(
                 pickedProteinGroups, pickedProteinGroupPeptideInfos, 
                 proteinScores, reportedQvals, 
-                scoreCutoff, proteinAnnotations)
+                scoreCutoff, proteinAnnotations,
+                keep_all_proteins)
 
     if scoreType.use_proteotypicity:
         proteotypicity.calculateProteotypicityScores(pickedProteinGroups, pickedProteinGroupPeptideInfos, peptideToProteotypicityMap, scoreType, scoreCutoff)

@@ -63,14 +63,21 @@ class ProteinGroupResult:
                              numberOfProteins, qValue, score, reverse, potentialContaminant, [], [])
         
     @classmethod
-    def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations):
-        proteinIds = ";".join(proteinGroup)
-        bestPeptide = sorted([(p[0], p[1]) for p in peptideScores])[0][1]
+    def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations, keep_all_proteins):
         numUniquePeptidesPerProtein = cls._get_peptide_counts(peptideScores, scoreCutoff)
-        peptideCountsUnique = ";".join([str(numUniquePeptidesPerProtein[p]) for p in proteinGroup])
-        majorityProteinIds = ";".join([p for p in proteinGroup if numUniquePeptidesPerProtein[p] >= max(numUniquePeptidesPerProtein.values()) / 2])
-        numberOfProteins = len(proteinGroup)
+        peptideCountsUnique = [numUniquePeptidesPerProtein[p] for p in proteinGroup]
+        if sum(peptideCountsUnique) == 0 and not keep_all_proteins:
+            return None
+
+        proteinGroup, peptideCountsUnique = zip(*[(p, num_peptides) for p, num_peptides in zip(proteinGroup, peptideCountsUnique) if num_peptides > 0 or keep_all_proteins])
         
+        bestPeptide = sorted([(p[0], p[1]) for p in peptideScores])[0][1]
+        majorityProteinIds = ";".join([p for p, num_peptides in zip(proteinGroup, peptideCountsUnique) if num_peptides >= max(peptideCountsUnique) / 2])
+        numberOfProteins = len(proteinGroup)
+
+        peptideCountsUnique = ";".join(map(str, peptideCountsUnique))
+        proteinIds = ";".join(proteinGroup)
+                
         proteinNames, geneNames, fastaHeaders = list(), list(), list()
         for p in proteinGroup:
             if p in proteinAnnotations:
@@ -193,13 +200,15 @@ class ProteinGroupResults:
             proteinScores: List[float], 
             reportedQvals: List[float], 
             scoreCutoff: float, 
-            proteinAnnotations) -> ProteinGroupResults:
+            proteinAnnotations,
+            keep_all_proteins: bool) -> ProteinGroupResults:
         protein_group_results = list()
         for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(proteinGroups, proteinGroupPeptideInfos, proteinScores, reportedQvals):
             if helpers.isObsolete(proteinGroup):
                 continue
-            pgr = ProteinGroupResult.from_protein_group(proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations)
-            protein_group_results.append(pgr)
+            pgr = ProteinGroupResult.from_protein_group(proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations, keep_all_proteins)
+            if pgr is not None: # protein groups can get filtered out when they do not have any PSMs below the PSM FDR cutoff
+                protein_group_results.append(pgr)
         
         return cls(protein_group_results)
 

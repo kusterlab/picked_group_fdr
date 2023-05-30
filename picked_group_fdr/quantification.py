@@ -33,7 +33,7 @@ def parseArgs(argv):
     apars = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    apars.add_argument('--mq_evidence', default=None, metavar = "EV", required = True,
+    apars.add_argument('--mq_evidence', default=None, metavar = "EV", required = True, nargs="+",
                          help='''MaxQuant evidence file.''')
     
     apars.add_argument('--mq_protein_groups', default=None, metavar = "PG", required = True,
