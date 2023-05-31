@@ -21,14 +21,17 @@ integration_test:
 	python3 -um picked_group_fdr --mq_evidence ${DATA}/evidence.txt --fasta ${DATA}/db.fasta --enzyme trypsinp --min-length 6 --protein_groups_out ${DATA}/proteinGroups.txt --method picked_protein_group_mq_input
 
 performance:
-	python3 -m pytest -s tests/performance_tests
+	python3 -m pytest -s tests/performance_tests/test_lfq.py
 
+# can be visualized with snakeviz -H 0.0.0.0 -s program.prof
 performance_cprofile:
 	python3 -m cProfile -o program.prof tests/performance_tests/test_lfq.py
 
+# need to run "pip install ." before kernprof to reflect the changes in the package
 line_profiler_lfq:
 	kernprof -lv tests/performance_tests/test_lfq.py
 
+# can be plotted with mprof plot
 memory_profile:
 	mprof run --include-children --backend psutil_pss python3 -u tests/performance_tests/test_lfq.py | ts '[%H:%M:%.S]'
 
