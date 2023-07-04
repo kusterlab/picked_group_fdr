@@ -168,7 +168,7 @@ def parseMqEvidenceFile(reader, headers, scoreType, forQuantification=False):
         else:
             experiment = "Experiment1"
         
-        score = float(row[scoreCol])
+        score = float(row[scoreCol]) if len(row[scoreCol]) > 0 else float('nan')
         
         if forQuantification:
             charge = int(row[chargeCol])
