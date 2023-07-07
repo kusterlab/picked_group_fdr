@@ -63,10 +63,7 @@ FIXED_MODS_DICTS = [DEFAULT_FIXED_MODS, TMT_FIXED_MODS, TMTPRO_FIXED_MODS, ITRAQ
 
 
 def parseMqProteinGroupsFile(mqProteinGroupsFile, protein_column='Protein IDs'):
-    if mqProteinGroupsFile.endswith('.csv'):
-        delimiter = ','
-    else:
-        delimiter = '\t'
+    delimiter = getDelimiter(mqProteinGroupsFile)
         
     reader = getTsvReader(mqProteinGroupsFile, delimiter)
     headers = next(reader) # save the header
@@ -88,10 +85,7 @@ def parseEvidenceFiles(evidenceFiles, scoreType, forQuantification=False):
 
 
 def parseEvidenceFile(evidenceFile, scoreType, forQuantification=False):
-    if evidenceFile.endswith('.csv'):
-        delimiter = ','
-    else:
-        delimiter = '\t'
+    delimiter = getDelimiter(evidenceFile)
     reader = getTsvReader(evidenceFile, delimiter)
     headers = next(reader) # save the header
     
@@ -243,6 +237,13 @@ def isMokapotFile(headers):
     return 'specid' in map(str.lower, headers)
 
 
+def getDelimiter(filename: str):
+    if filename.endswith('.csv'):
+        return ','
+    else:
+        return '\t'
+
+
 def getPercolatorColumnIdxs(headers):
     if isNativePercolatorFile(headers):
         idCol = headers.index('PSMId')
@@ -264,10 +265,7 @@ def getPercolatorColumnIdxs(headers):
 
 
 def parsePercolatorOutFileToDict(percOutFile, resultsDict, inputType = ""):
-    if percOutFile.endswith('.csv'):
-        delimiter = ','
-    else:
-        delimiter = '\t'
+    delimiter = getDelimiter(percOutFile)
     reader = getTsvReader(percOutFile, delimiter)
     headers = next(reader) # save the header
     
