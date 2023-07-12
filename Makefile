@@ -91,3 +91,16 @@ compress: filter_results_gene_level
 all: compress
 
 
+
+
+# run this step manually if mokapot runs out of memory, tested with percolator 3.05
+percolator_subset_training: 
+	percolator --weights $(OUT_DIR_LOCAL)/percolator/andromeda.weights.txt -Y \
+		--testFDR $(PERC_TEST_FDR) \
+		--trainFDR $(PERC_TRAIN_FDR) \
+		--subset-max-train 10000000 \
+		--results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.psms.txt \
+		--decoy-results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoys.psms.txt \
+		--results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.peptides.txt \
+		--decoy-results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoys.peptides.txt \
+		$(OUT_DIR_LOCAL)/percolator/andromeda.tab 2>&1 | tee $(OUT_DIR_LOCAL)/percolator/andromeda.log
