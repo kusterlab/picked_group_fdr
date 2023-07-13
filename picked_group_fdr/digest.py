@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 
 import sys
 import csv
@@ -177,8 +178,10 @@ def parseUniProtId(fastaId):
         return proteinId
 
 
-def readFastaProteins(filePath, db = "concat", parseId = parseUntilFirstSpace, parseProteinName = parseProteinNameFunc, parseGeneName = parseGeneNameFunc):
-    name, seq = None, []
+def readFastaProteins(filePath: str, db = "concat", parseId = parseUntilFirstSpace, parseProteinName = parseProteinNameFunc, parseGeneName = parseGeneNameFunc):
+    if not os.path.isfile(filePath):
+        raise FileNotFoundError(f"Could not find fasta file {filePath}. Please make sure you provided a valid fasta file.")
+    
     with open(filePath, 'r') as fp:
         for line in itertools.chain(fp, [">"]):
             line = line.rstrip()
@@ -286,6 +289,8 @@ def filterFastaFile(fastaFile, filteredFastaFile, proteins):
 
 def getPeptides(fastaFile, db = "concat", min_len = 6, max_len = 50, pre = ['K', 'R'], not_post = ['P'], digestion = 'full', miscleavages = 0, methionineCleavage = True):
     for protein, seq in readFasta(fastaFile, db):
+        if len(seq) == 0:
+            raise ValueError(f"Found an empty sequence for protein id {protein}, please check your fasta file.")
         for peptide in getDigestedPeptides(seq, min_len, max_len, pre, not_post, digestion, miscleavages, methionineCleavage):
             yield peptide
 

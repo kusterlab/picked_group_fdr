@@ -98,21 +98,21 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
                 logger.info('\n'.join([str(i+1) + '\t' + x + '\t' + y for i, (x, y) in enumerate(zip(firstHeaders, headers)) if x != y]))
         
         # these columns will be updated
-        scoreCol = headers.index('score')
-        postErrProbCol = headers.index('pep')
+        scoreCol = parsers.get_column_index(headers, 'score')
+        postErrProbCol = parsers.get_column_index(headers, 'pep')
         
         # these columns are needed to retrieve the PSM
-        rawFileCol = headers.index('raw file')
+        rawFileCol = parsers.get_column_index(headers, 'raw file')
         if 'ms/ms scan number' in headers:
-            scanNrCol = headers.index('ms/ms scan number') # evidence.txt
+            scanNrCol = parsers.get_column_index(headers, 'ms/ms scan number') # evidence.txt
         else:
-            scanNrCol = headers.index('scan number') # msms.txt
-        peptCol = headers.index('modified sequence')
-        idTypeCol = headers.index('type') # MULTI-MSMS MULTI-MATCH MSMS MULTI-SECPEP MULTI-MATCH-MSMS
-        reverseCol = headers.index('reverse')
+            scanNrCol = parsers.get_column_index(headers, 'scan number') # msms.txt
+        peptCol = parsers.get_column_index(headers, 'modified sequence')
+        idTypeCol = parsers.get_column_index(headers, 'type') # MULTI-MSMS MULTI-MATCH MSMS MULTI-SECPEP MULTI-MATCH-MSMS
+        reverseCol = parsers.get_column_index(headers, 'reverse')
         labelingStateCol = None
         if 'labeling state' in headers:
-            labelingStateCol = headers.index('labeling state')
+            labelingStateCol = parsers.get_column_index(headers, 'labeling state')
 
         missingRawFiles = set()
         for row in reader:
@@ -202,11 +202,11 @@ def updatePeptides(peptideFiles, poutFiles, outPeptideFile, msmsFiles, poutInput
                 logger.info('Column\tFirstHeaders\tCurrentHeaders')
                 logger.info('\n'.join([str(i+1) + '\t' + x + '\t' + y for i, (x, y) in enumerate(zip(firstHeaders, headers)) if x != y]))
         
-        scoreCol = headers.index('score')
-        postErrProbCol = headers.index('pep')
+        scoreCol = parsers.get_column_index(headers, 'score')
+        postErrProbCol = parsers.get_column_index(headers, 'pep')
         
-        peptCol = headers.index('sequence')
-        reverseCol = headers.index('reverse')
+        peptCol = parsers.get_column_index(headers, 'sequence')
+        reverseCol = parsers.get_column_index(headers, 'reverse')
         
         for row in reader:
             if len(poutFiles) > 0:

@@ -1,3 +1,4 @@
+import os
 import sys
 import csv
 import re
@@ -68,8 +69,8 @@ def parseMqProteinGroupsFile(mqProteinGroupsFile, protein_column='Protein IDs'):
     reader = getTsvReader(mqProteinGroupsFile, delimiter)
     headers = next(reader) # save the header
     
-    scoreCol = headers.index('Score')
-    proteinCol = headers.index(protein_column)
+    scoreCol = get_column_index(headers, 'Score')
+    proteinCol = get_column_index(headers, protein_column)
     
     logger.info("Parsing MaxQuant proteinGroups.txt file")
     for row in reader:
@@ -183,10 +184,10 @@ def parseMqEvidenceFile(reader, headers, scoreType, forQuantification=False):
 def getHeaderColFunc(headers):
     def getHeaderCol(name, required = False):
         if required:
-            return headers.index(name)
+            return get_column_index(headers, name)
         else:
             if name in headers:
-                return headers.index(name)
+                return get_column_index(headers, name)
             return -1
     return getHeaderCol
 
@@ -244,27 +245,36 @@ def getDelimiter(filename: str):
         return '\t'
 
 
+def get_column_index(headers: List[str], column_name: str):
+    if column_name not in headers:
+        raise ValueError(f"Column {column_name} is missing. Please check your input file.")
+    return headers.index(column_name)
+
+
 def getPercolatorColumnIdxs(headers):
     if isNativePercolatorFile(headers):
-        idCol = headers.index('PSMId')
-        peptCol = headers.index('peptide')
-        scoreCol = headers.index('score')
-        qvalCol = headers.index('q-value')
-        postErrProbCol = headers.index('posterior_error_prob')
-        proteinCol = headers.index('proteinIds')
+        idCol = get_column_index(headers, 'PSMId')
+        peptCol = get_column_index(headers, 'peptide')
+        scoreCol = get_column_index(headers, 'score')
+        qvalCol = get_column_index(headers, 'q-value')
+        postErrProbCol = get_column_index(headers, 'posterior_error_prob')
+        proteinCol = get_column_index(headers, 'proteinIds')
     elif isMokapotFile(headers):
-        idCol = headers.index('SpecId')
-        peptCol = headers.index('Peptide')
-        scoreCol = headers.index('mokapot score')
-        qvalCol = headers.index('mokapot q-value')
-        postErrProbCol = headers.index('mokapot PEP')
-        proteinCol = headers.index('Proteins')
+        idCol = get_column_index(headers, 'SpecId')
+        peptCol = get_column_index(headers, 'Peptide')
+        scoreCol = get_column_index(headers, 'mokapot score')
+        qvalCol = get_column_index(headers, 'mokapot q-value')
+        postErrProbCol = get_column_index(headers, 'mokapot PEP')
+        proteinCol = get_column_index(headers, 'Proteins')
     else:
         raise ValueError("Could not determine percolator input file format. The file should either contain a column named PSMId (native percolator) or SpecId (mokapot).")
     return idCol, peptCol, scoreCol, qvalCol, postErrProbCol, proteinCol
 
 
 def parsePercolatorOutFileToDict(percOutFile, resultsDict, inputType = ""):
+    if not os.path.isfile(percOutFile):
+        raise FileNotFoundError(f"Could not find percolator output file {percOutFile}. Please check if this file exists.")
+    
     delimiter = getDelimiter(percOutFile)
     reader = getTsvReader(percOutFile, delimiter)
     headers = next(reader) # save the header
