@@ -7,6 +7,7 @@ from timeit import default_timer as timer
 from typing import List, Dict, Tuple, Union
 
 import numpy as np
+import picked_group_fdr.digestion_params
 
 from . import __version__, __copyright__
 from . import digest
@@ -53,8 +54,8 @@ def parseArgs(argv):
                          help='''Protein groups output file, mimicks a subset of the MQ protein groups columns.
                                 ''')
 
-    apars.add_argument('--fasta', default=None, metavar = "F",
-                         help='''Fasta file to create mapping from peptides to proteins. This should not contain the decoy sequences, unless you set the --fasta_contains_decoys flag.
+    apars.add_argument('--fasta', default=None, metavar = "F", nargs="+",
+                         help='''Fasta file(s) to create mapping from peptides to proteins. This should not contain the decoy sequences, unless you set the --fasta_contains_decoys flag.
                                  ''')
                          
     apars.add_argument('--mq_protein_groups', default=None, metavar = "PG",
@@ -111,7 +112,7 @@ def parseArgs(argv):
                          help='Plot figures with matplotlib.',
                          action='store_true')
 
-    digest.addArguments(apars)
+    picked_group_fdr.digestion_params.add_digestion_arguments(apars)
 
     # ------------------------------------------------
     args = apars.parse_args(argv)
@@ -128,6 +129,7 @@ def main(argv):
     np.random.seed(1) # set seed for random shuffling of protein groups, see competition.do_competition()
     
     configs = methods.get_methods(args)
+    digestion_params_list = picked_group_fdr.digestion_params.get_digestion_params_list(args)
 
     start = timer()
     
@@ -135,11 +137,11 @@ def main(argv):
     plotter.initPlots()
     
     parseId = digest.parseUntilFirstSpace
-    proteinAnnotations = digest.getProteinAnnotations(args.fasta, parseId)
+    proteinAnnotations = digest.get_protein_annotations_multiple(args.fasta, parseId)
     if args.gene_level:
         if digest.hasGeneNames(proteinAnnotations, minRatioWithGenes=0.5):
             parseId = digest.parseGeneNameFunc
-            proteinAnnotations = digest.getProteinAnnotations(args.fasta, parseId)
+            proteinAnnotations = digest.get_protein_annotations_multiple(args.fasta, parseId)
         else:
             logger.warning("Found fewer than 50% of proteins without gene names in the fasta file, will attempt to infer pseudo-genes based on shared peptides instead")
             for config in configs:
@@ -158,7 +160,7 @@ def main(argv):
             continue
         
         if len(peptideToProteinMap) == 0 and (config['grouping'].needs_peptide_to_protein_map() or config['scoreType'].remaps_peptides_to_proteins()):
-            peptideToProteinMap = digest.get_peptide_to_protein_map(args, parseId)
+            peptideToProteinMap = digest.get_peptide_to_protein_map_from_params(args.fasta, digestion_params_list)
             entrapment.markEntrapmentProteins(peptideToProteinMap, args.mq_protein_groups)
             
         if len(peptideToProteotypicityMap) == 0 and config['scoreType'].use_proteotypicity:
@@ -269,8 +271,10 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
         logger.warning("Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed")
         return
     
+    digestion_params_list = picked_group_fdr.digestion_params.get_digestion_params_list(args)   
+
     logger.info("In silico protein digest for iBAQ")
-    numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(args)
+    numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(args.fasta, digestion_params_list)
     proteinSequences = digest.getProteinSequences(args.fasta, parseId)
     
     quantification.doQuantification(

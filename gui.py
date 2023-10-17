@@ -23,6 +23,7 @@ import picked_group_fdr.pipeline.merge_pout as merge_pout
 import picked_group_fdr.picked_group_fdr as picked_group_fdr
 import picked_group_fdr.utils.multiprocessing_pool as pool
 import picked_group_fdr.digest as digest
+import picked_group_fdr.digestion_params as digestion_params
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -253,32 +254,32 @@ class DigestionParametersGroup(QtWidgets.QGroupBox):
         
         self.min_length_label = QtWidgets.QLabel("Min peptide length")
         self.min_length_spinbox = QtWidgets.QSpinBox()
-        self.min_length_spinbox.setValue(digest.MIN_PEPLEN_DEFAULT)
+        self.min_length_spinbox.setValue(digestion_params.MIN_PEPLEN_DEFAULT)
         self.min_length_spinbox.setRange(1,20)
         
         self.max_length_label = QtWidgets.QLabel("Max peptide length")
         self.max_length_spinbox = QtWidgets.QSpinBox()
-        self.max_length_spinbox.setValue(digest.MAX_PEPLEN_DEFAULT)
+        self.max_length_spinbox.setValue(digestion_params.MAX_PEPLEN_DEFAULT)
         self.max_length_spinbox.setRange(1,100)
         
         self.max_cleavages_label = QtWidgets.QLabel("Max miscleavages")
         self.max_cleavages_spinbox = QtWidgets.QSpinBox()
-        self.max_cleavages_spinbox.setValue(digest.CLEAVAGES_DEFAULT)
+        self.max_cleavages_spinbox.setValue(digestion_params.CLEAVAGES_DEFAULT)
         self.max_cleavages_spinbox.setRange(1,10)
         
         self.enzyme_label = QtWidgets.QLabel("Enzyme")
         self.enzyme_select = QtWidgets.QComboBox()
         self.enzyme_select.addItems(digest.ENZYME_CLEAVAGE_RULES.keys())
-        self.enzyme_select.setCurrentText(digest.ENZYME_DEFAULT)
+        self.enzyme_select.setCurrentText(digestion_params.ENZYME_DEFAULT)
         
         self.digestion_label = QtWidgets.QLabel("Digestion")
         self.digestion_select = QtWidgets.QComboBox()
         self.digestion_select.addItems(["full", "semi", "none"])
-        self.digestion_select.setCurrentText(digest.DIGESTION_DEFAULT)
+        self.digestion_select.setCurrentText(digestion_params.DIGESTION_DEFAULT)
         
         self.special_aas_label = QtWidgets.QLabel("Special AAs")
         self.special_aas_line_edit = QtWidgets.QLineEdit()
-        self.special_aas_line_edit.setText(digest.SPECIAL_AAS_DEFAULT)
+        self.special_aas_line_edit.setText(digestion_params.SPECIAL_AAS_DEFAULT)
         
         self.digestion_group_layout.addWidget(self.enzyme_label, 0, 0)
         self.digestion_group_layout.addWidget(self.enzyme_select, 0, 1)

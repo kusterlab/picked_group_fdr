@@ -18,7 +18,7 @@ test:
 	python3 -m pytest --cov=picked_group_fdr --cov-report html --cov-report term tests/unit_tests
 
 integration_test:
-	python3 -um picked_group_fdr --mq_evidence ${DATA}/evidence.txt --fasta ${DATA}/db.fasta --enzyme trypsinp --min-length 6 --protein_groups_out ${DATA}/proteinGroups.txt --method picked_protein_group_mq_input
+	python3 -um picked_group_fdr --mq_evidence ${DATA}/evidence.txt --fasta ${DATA}/db.fasta --enzyme trypsinp --min-length 6 --protein_groups_out ${DATA}/proteinGroups.txt --method picked_protein_group_mq_input --do_quant
 
 performance:
 	python3 -m pytest -s tests/performance_tests/test_lfq.py

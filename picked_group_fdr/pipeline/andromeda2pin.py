@@ -10,6 +10,7 @@ import logging
 from typing import List
 
 import numpy as np
+import picked_group_fdr.digestion_params
 
 from .. import __version__, __copyright__
 from .. import digest
@@ -88,7 +89,7 @@ def parseArgs(argv):
                                                          against the spectra file.
                                                     ''')
     
-    digest.addArguments(apars)
+    picked_group_fdr.digestion_params.add_digestion_arguments(apars)
                                                     
     # ------------------------------------------------
     args = apars.parse_args(argv)

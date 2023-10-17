@@ -5,6 +5,7 @@ import collections
 import logging
 
 import numpy as np
+import picked_group_fdr.digestion_params
 import triqler.qvality as qvality
 
 from .. import __version__, __copyright__
@@ -40,7 +41,7 @@ def parseArgs(argv):
     apars.add_argument('--perc_merged', default="merged_pout.txt", metavar = "M",
                        help='''Output file with merged pout results.''')
     
-    digest.addArguments(apars)
+    picked_group_fdr.digestion_params.add_digestion_arguments(apars)
                                               
     # ------------------------------------------------
     args = apars.parse_args(argv)

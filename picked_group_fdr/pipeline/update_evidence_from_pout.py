@@ -81,6 +81,7 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
     mqPEPs, prositPEPs = list(), list()
     unexplainedMissingPSMs = 0
     unexplainedPeptides = list()
+    writtenRows = 0
     for evidenceFile in evidenceFiles:
         logger.info(f"Processing {evidenceFile}")
         reader = parsers.getTsvReader(evidenceFile)
@@ -123,21 +124,22 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
                 isDecoy = (row[reverseCol] == "+")
                 idType = row[idTypeCol]
 
-                if poutInputType == "prosit":
-                    fixed_mods_tmp = fixed_mods
-                    if is_heavy_labeled(row, labelingStateCol):
-                        fixed_mods_tmp = parsers.SILAC_HEAVY_FIXED_MODS
-                    peptide = parsers.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
-                else:
-                    peptide = peptideOriginal[1:-1]
-                
                 if len(resultsDict[rawFile]) == 0 and rawFile not in missingRawFiles:
                     logger.warning(f"Could not find any PSMs for raw file {rawFile} in the percolator result files")
                     missingRawFiles.add(rawFile)
                     continue
 
+                peptide = peptideOriginal[1:-1]
+                if poutInputType == "prosit":
+                    fixed_mods_tmp = fixed_mods
+                    if is_heavy_labeled(row, labelingStateCol):
+                        fixed_mods_tmp = parsers.SILAC_HEAVY_FIXED_MODS
+                    peptide = parsers.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
+
                 percResult = resultsDict[rawFile].get((scanNr, peptide), None)
-                if not percResult and poutInputType == "prosit" and has_unknown_silac_label(row, labelingStateCol): # try with heavy labeling for SILAC because labelingState column is not reliable when multiple MS/MS map to the precursor
+                if poutInputType == "prosit" and not percResult and has_unknown_silac_label(row, labelingStateCol):
+                    # if scanNr is not found, retry with heavy labeling for SILAC because 
+                    # labelingState column is not reliable when multiple MS/MS map to the precursor
                     fixed_mods_tmp = parsers.SILAC_HEAVY_FIXED_MODS
                     peptide = parsers.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
                     percResult = resultsDict[rawFile].get((scanNr, peptide), None)
@@ -159,9 +161,11 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
                     #logger.info("Missing PSM in percolator output: " + str(row[rawFileCol]) + " " + str(row[scanNrCol]) + " " + str(row[peptCol]))
                     continue
             
+            writtenRows += 1
             writer.writerow(row)
     
-    logger.info(f"Unexplained missing PSMs in Percolator results: {unexplainedMissingPSMs}")
+    unexplainedPercentage = int(unexplainedMissingPSMs/writtenRows*100)
+    logger.info(f"Unexplained missing PSMs in Percolator results: {unexplainedMissingPSMs} out of {writtenRows} ({unexplainedPercentage}%)")
     if unexplainedMissingPSMs > 0:
         logger.info("\tFirst 10 missing peptides:")
         for peptide in unexplainedPeptides:

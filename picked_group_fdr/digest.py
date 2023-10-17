@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, annotations
 import os
 
 import sys
@@ -6,18 +6,12 @@ import csv
 import itertools
 import collections
 import logging
+from typing import Dict, Iterator, List, Tuple
 
-import numpy as np
+from picked_group_fdr.digestion_params import DigestionParams, add_digestion_arguments, get_digestion_params_list
 
 
 logger = logging.getLogger(__name__)
-
-ENZYME_DEFAULT = "trypsin"
-CLEAVAGES_DEFAULT = 2
-MIN_PEPLEN_DEFAULT = 7
-MAX_PEPLEN_DEFAULT = 60
-SPECIAL_AAS_DEFAULT = "KR"
-DIGESTION_DEFAULT = "full"
 
 ENZYME_CLEAVAGE_RULES = {
     'trypsin': { 'pre': ['K', 'R'], 'not_post': ['P'] },
@@ -35,6 +29,8 @@ ENZYME_CLEAVAGE_RULES = {
 
 def main(argv):
     args = parseArgs()
+
+    digestion_params_list = get_digestion_params_list(args)
     
     if args.prosit_input:
         writer = getTsvWriter(args.prosit_input, delimiter = ',')
@@ -44,38 +40,26 @@ def main(argv):
         writerWithProteins = getTsvWriter(prositInputFileWithProteins, delimiter = ',')
         writerWithProteins.writerow("modified_sequence,collision_energy,precursor_charge,protein".split(","))
         
-        pre, not_post = getCleavageSites(args.enzyme)    
-        for peptide, proteins in getPeptideToProteinMap(
-                    args.fasta, 
-                    db = 'concat', 
-                    digestion = args.digestion, 
-                    min_len = args.min_length, 
-                    max_len = args.max_length, 
-                    pre = pre, 
-                    not_post = not_post, 
-                    miscleavages = args.cleavages, 
-                    methionineCleavage = True, 
-                    specialAAs = list(args.special_aas), 
-                    useHashKey = False).items():
-            if validPrositPeptide(peptide):
-                for charge in [2,3,4]:
-                    writer.writerow([peptide, 30, charge])
-                    writerWithProteins.writerow([peptide, 30, charge, proteins[0]])
+        for peptide, proteins in get_peptide_to_protein_map_from_params(args.fasta, digestion_params_list).items():
+            if not validPrositPeptide(peptide):
+                continue
+            
+            for charge in [2,3,4]:
+                writer.writerow([peptide, 30, charge])
+                writerWithProteins.writerow([peptide, 30, charge, proteins[0]])
          
     if args.peptide_protein_map:
         with open(args.peptide_protein_map + '.params.txt', 'w') as f:
             f.write(" ".join(sys.argv))
-        writer = getTsvWriter(args.peptide_protein_map, delimiter = '\t')
         
-        pre, not_post = getCleavageSites(args.enzyme)    
-        for peptide, proteins in getPeptideToProteinMap(args.fasta, db = 'concat', digestion = args.digestion, min_len = args.min_length, max_len = args.max_length, pre = pre, not_post = not_post, miscleavages = args.cleavages, methionineCleavage = True, specialAAs = list(args.special_aas), useHashKey = False).items():
+        writer = getTsvWriter(args.peptide_protein_map, delimiter = '\t')        
+        for peptide, proteins in get_peptide_to_protein_map_from_params(args.fasta, digestion_params_list).items():
             writer.writerow([peptide, ";".join(proteins)])
     
     if args.ibaq_map:
         writer = getTsvWriter(args.ibaq_map, delimiter = '\t')
-        
-        numPeptidesPerProtein = getNumIbaqPeptidesPerProtein(args)
-        
+
+        numPeptidesPerProtein = getNumIbaqPeptidesPerProtein(args.fasta, digestion_params_list)
         for protein, numPeptides in numPeptidesPerProtein.items():
             writer.writerow([protein, numPeptides])
         
@@ -91,7 +75,7 @@ def parseArgs():
     apars = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    apars.add_argument('--fasta', default=None, metavar = "F", required = True,
+    apars.add_argument('--fasta', default=None, metavar = "F", required = True, nargs="+",
                                          help='''Fasta file used as input
                                                     ''')
     
@@ -110,7 +94,7 @@ def parseArgs():
                                                          (6 <= pepLen <= 30, no miscleavages).
                                                     ''')
                                                                                             
-    addArguments(apars)
+    add_digestion_arguments(apars)
                                                                                                     
     # ------------------------------------------------
     args = apars.parse_args()
@@ -118,49 +102,12 @@ def parseArgs():
     return args
 
     
-def addArguments(apars):    
-    apars.add_argument('-e', '--enzyme', default = ENZYME_DEFAULT, metavar='E',
-                                         help='''Type of enzyme "no_enzyme","elastase","pepsin",
-                                                         "proteinasek","thermolysin","chymotrypsin",
-                                                         "lys-n","lys-c","arg-c","asp-n","glu-c","trypsin",
-                                                         "trypsinp".
-                                                    ''')        
-                                                        
-    apars.add_argument('-c', '--cleavages', default = CLEAVAGES_DEFAULT, metavar='C', type=int,
-                                         help='''Number of allowed miss cleavages used in the search 
-                                                         engine (Only valid when using option -F).
-                                                    ''')
-    
-    apars.add_argument('-l', '--min-length', default = MIN_PEPLEN_DEFAULT, metavar='L', type=int,
-                                         help='''Minimum peptide length allowed used in the search 
-                                                         engine (Only valid when using option -F).
-                                                    ''')
-    
-    apars.add_argument('-t', '--max-length', default = MAX_PEPLEN_DEFAULT, metavar='L', type=int,
-                                         help='''Maximum peptide length allowed used in the search 
-                                                         engine (Only valid when using option -F).
-                                                    ''')                                     
-    
-    apars.add_argument('--special-aas', default = SPECIAL_AAS_DEFAULT, metavar='S', 
-                                         help='''Special AAs that MaxQuant uses for decoy generation.
-                                                    ''')
-    
-    apars.add_argument('--digestion', default = DIGESTION_DEFAULT, metavar='D', 
-                                         help='''Digestion mode ('full', 'semi' or 'none').
-                                                    ''')
-
-    apars.add_argument('--fasta_contains_decoys',
-                         help='Set this flag if your fasta file already contains decoy protein sequences.',
-                         action='store_true')
-
-
 def writeProteinToGeneMap(fastaFile, outputFile):
     writer = csv.writer(open(outputFile, 'w'), delimiter = '\t')
     for proteinName, _ in readFastaTide(fastaFile, db = "target"):
         proteinId = proteinName.split("|")[1]
         geneId = proteinName.split("|")[2].split(" ")[0]
         writer.writerow([proteinId, geneId])
-
 
 
 parseUntilFirstSpace = lambda x : x.split(" ")[0]
@@ -196,7 +143,7 @@ def readFastaProteins(filePath: str, db = "concat", parseId = parseUntilFirstSpa
                     yield ("REV__" + parseId(line[1:]), "", geneName, "")
 
 
-def getProteinAnnotations(fastaFile, parseId):
+def getProteinAnnotations(fastaFile: str, parseId):
     proteinAnnotations = dict()
     
     if not fastaFile:
@@ -205,6 +152,14 @@ def getProteinAnnotations(fastaFile, parseId):
     for protein, proteinName, geneName, fastaHeader in readFastaProteins(fastaFile, parseId = parseId):
         if protein not in proteinAnnotations:
             proteinAnnotations[protein] = (proteinName, geneName, fastaHeader)
+    
+    return proteinAnnotations
+
+
+def get_protein_annotations_multiple(fastaFiles: Iterator[str], parseId) -> Dict[str, Tuple[str, str, str]]:
+    proteinAnnotations = dict()    
+    for fastaFile in fastaFiles:
+        proteinAnnotations = {**proteinAnnotations, **getProteinAnnotations(fastaFile, parseId)}
     
     return proteinAnnotations
 
@@ -271,11 +226,12 @@ def getProteinIds(filePath):
     return set(proteinIds)
 
 
-def getProteinSequences(filePath, parseId):
+def getProteinSequences(filePaths, parseId):
     proteinSequences = dict()
-    for proteinId, proteinSeq in readFasta(filePath, db = 'concat', parseId = parseId):
-        if proteinId not in proteinSequences: # keep only first sequence per identifier
-            proteinSequences[proteinId] = proteinSeq
+    for filePath in filePaths:
+        for proteinId, proteinSeq in readFasta(filePath, db = 'concat', parseId = parseId):
+            if proteinId not in proteinSequences: # keep only first sequence per identifier
+                proteinSequences[proteinId] = proteinSeq
     return proteinSequences
 
 
@@ -358,6 +314,9 @@ def fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCle
             starts = starts[1 + methionineCleaved:]
 
 
+# def get_peptide_to_protein_map_multiple(args, parseId):
+    
+
 def get_peptide_to_protein_map(args, parseId):
     if args.fasta:
         logger.info("In silico protein digest for peptide-protein mapping")
@@ -392,6 +351,18 @@ def getPeptideToProteinMapWithEnzyme(fastaFile, min_len, max_len, enzyme, miscle
     return getPeptideToProteinMap(fastaFile, db, digestion = 'full', 
         min_len = min_len, max_len = max_len, pre = pre, not_post = not_post, 
         miscleavages = miscleavages, methionineCleavage = True, specialAAs = specialAAs)
+
+
+def get_peptide_to_protein_map_from_params(fasta_files: List[str], digestion_params_list: List[DigestionParams]):
+    peptideToProteinMap = collections.defaultdict(list)
+    for fasta_file in fasta_files:
+        for params in digestion_params_list:
+            pre, not_post = getCleavageSites(params.enzyme)
+            for peptide, proteins in getPeptideToProteinMap(fasta_file, params.db, digestion = params.digestion,
+                    min_len = params.min_length, max_len = params.max_length, pre = pre, not_post = not_post, 
+                    miscleavages = params.cleavages, methionineCleavage = params.methionine_cleavage, specialAAs = params.special_aas).items():
+                peptideToProteinMap[peptide].extend(proteins)
+    return peptideToProteinMap
 
 
 def getPeptideToProteinMap(fastaFile, db = "concat", min_len = 6, max_len = 52, 
@@ -476,13 +447,19 @@ def getAllProteins(peptideToProteinMap):
     return list(seenProteins)
 
 
-def getIbaqPeptideToProteinMap(args):
-    pre, not_post = getCleavageSites(args.enzyme)
-    return getPeptideToProteinMap(args.fasta, db = 'concat', digestion = 'full', min_len = max([6, args.min_length]), max_len = min([30, args.max_length]), pre = pre, not_post = not_post, miscleavages = 0, methionineCleavage = False, specialAAs = list(args.special_aas))
+def getIbaqPeptideToProteinMap(fasta_files: List[str], digestion_params_list: List[DigestionParams]):
+    digestion_params_list_ibaq = []
+    for digestion_params in digestion_params_list:
+        digestion_params.min_length = max([6, digestion_params.min_length])
+        digestion_params.max_length = min([30, digestion_params.max_length])
+        digestion_params.cleavages = 0
+        digestion_params.methionine_cleavage = False
+        digestion_params_list_ibaq.append(digestion_params)
+    return get_peptide_to_protein_map_from_params(fasta_files, digestion_params_list_ibaq)
 
 
-def getNumIbaqPeptidesPerProtein(args):
-    peptideToProteinMapIbaq = getIbaqPeptideToProteinMap(args)
+def getNumIbaqPeptidesPerProtein(fasta_files: List[str], digestion_params_list: List[DigestionParams]):
+    peptideToProteinMapIbaq = getIbaqPeptideToProteinMap(fasta_files, digestion_params_list)
     return getNumPeptidesPerProtein(peptideToProteinMapIbaq)
 
 
