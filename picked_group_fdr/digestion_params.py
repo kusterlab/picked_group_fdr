@@ -65,6 +65,7 @@ def get_digestion_params_list(args: Namespace) -> List[DigestionParams]:
         args.max_length,
         args.cleavages,
         args.special_aas,
+        [args.fasta_contains_decoys]
     ]
     param_lengths = [len(p) for p in params_list if len(p) != 1]
     if len(set(param_lengths)) > 1:
@@ -77,28 +78,7 @@ def get_digestion_params_list(args: Namespace) -> List[DigestionParams]:
             param = param*max_params
         params_list_updated.append(param)
 
-    digestion_params_list = []
-    for (
-        enzyme,
-        digestion,
-        min_length,
-        max_length,
-        cleavages,
-        special_aas,
-    ) in zip(*params_list_updated):
-        print(enzyme, special_aas)
-        digestion_params_list.append(
-            DigestionParams(
-                enzyme,
-                digestion,
-                min_length,
-                max_length,
-                cleavages,
-                special_aas,
-                args.fasta_contains_decoys,
-            )
-        )
-    return digestion_params_list
+    return [DigestionParams(*p) for p in zip(*params_list_updated)]
 
 
 def add_digestion_arguments(apars):

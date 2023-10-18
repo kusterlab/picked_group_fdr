@@ -162,7 +162,7 @@ def getPeptideToProteinMaps(args, parseId):
 
 
 def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
-        peptideToProteinMap, numIbaqPeptidesPerProtein, fileListFile, 
+        peptideToProteinMaps, numIbaqPeptidesPerProtein, fileListFile, 
         scoreType, psmQvalCutoff = 0.01, 
         discardSharedPeptides = True, 
         minPeptideRatiosLFQ = 2, 
@@ -176,7 +176,7 @@ def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
         experiments, fileMapping, params = parseFileList(fileListFile, params) 
     
     proteinGroupResults, postErrProbs, numTmtChannels, numSilacChannels, parsedExperiments = parseEvidenceFiles(
-            proteinGroupResults, mqEvidenceFiles, peptideToProteinMap, 
+            proteinGroupResults, mqEvidenceFiles, peptideToProteinMaps, 
             fileMapping, scoreType, discardSharedPeptides)
     
     silacChannels = getSilacChannels(numSilacChannels)
@@ -219,7 +219,7 @@ def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
         c.append_columns(proteinGroupResults, experimentToIdxMap, postErrProbCutoff)
 
 
-def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap, 
+def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMaps, 
                                             fileMapping, scoreType, discardSharedPeptides):    
     proteinGroups = ProteinGroups.from_protein_group_results(proteinGroupResults)
     proteinGroups.create_index()
@@ -228,9 +228,9 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
     sharedPeptidePrecursors, uniquePeptidePrecursors = 0, 0
     numTmtChannels, numSilacChannels = -1, -1
     parsedExperiments = set()
-    missingPeptidesInFasta, missingPeptidesInProteinGroups = 0, 0
+    missingPeptidesInProteinGroups = 0
     
-    for peptide, tmp_proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseEvidenceFiles(mqEvidenceFiles, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
+    for peptide, proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parseEvidenceFiles(mqEvidenceFiles, peptideToProteinMaps = peptideToProteinMaps, scoreType = ProteinScoringStrategy("bestPEP"), forQuantification = True):
         if numTmtChannels == -1:
             # There are 3 columns per TMT channel: 
             #     Reporter intensity corrected, 
@@ -244,18 +244,8 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
         if fileMapping:
             experiment, fraction = fileMapping[rawFile]
         elif experiment not in parsedExperiments:
-            parsedExperiments.add(experiment)
+            parsedExperiments.add(experiment)        
         
-        proteins = digest.getProteins(peptideToProteinMap, helpers.cleanPeptide(peptide))
-        # removes peptides from proteins not present in the fasta file, this often includes peptides from contaminants
-        if len(proteins) == 0:
-            if not helpers.isContaminant(tmp_proteins):
-                logger.debug(f'Could not find the peptide {helpers.cleanPeptide(peptide)} in the fasta file')
-                missingPeptidesInFasta += 1
-            continue
-        
-        proteins = scoreType.filter_proteins(proteins) # filtering for razor peptide approach
-        proteins = helpers.removeDecoyProteinsFromTargetPeptides(proteins)
         proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)
         
         # removes peptides not present in the proteinGroups.txt file
@@ -294,8 +284,8 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
                                                 evidenceId)
                 proteinGroupResults[proteinGroupIdx].precursorQuants.append(precursorQuant)
     
-    if missingPeptidesInFasta > 0:
-        logger.warning(f"Skipped {missingPeptidesInFasta} precursors not present in the fasta file")
+    # if missingPeptidesInFasta > 0:
+    #     logger.warning(f"Skipped {missingPeptidesInFasta} precursors not present in the fasta file")
     
     if missingPeptidesInProteinGroups > 0:
         logger.warning(f"Skipped {missingPeptidesInProteinGroups} precursors from proteins not present in proteinGroups.txt file")

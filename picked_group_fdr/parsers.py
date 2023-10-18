@@ -5,6 +5,8 @@ import re
 from typing import List, Dict, Optional
 import logging
 
+from picked_group_fdr import digest, helpers
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,26 +82,43 @@ def parseMqProteinGroupsFile(mqProteinGroupsFile, protein_column='Protein IDs'):
             yield row[proteinCol].split(";"), float(row[scoreCol])
 
 
-def parseEvidenceFiles(evidenceFiles, scoreType, forQuantification=False):
-    for evidenceFile in evidenceFiles:
-        yield from parseEvidenceFile(evidenceFile, scoreType, forQuantification)
+def parseEvidenceFiles(evidenceFiles, peptideToProteinMaps, scoreType, forQuantification=False, suppressMissingPeptideWarning=False):
+    for evidenceFile, peptideToProteinMap in zip(evidenceFiles, peptideToProteinMaps):
+        yield from parseEvidenceFile(evidenceFile, peptideToProteinMap, scoreType, forQuantification, suppressMissingPeptideWarning)
 
 
-def parseEvidenceFile(evidenceFile, scoreType, forQuantification=False):
+def parseEvidenceFile(evidenceFile, peptideToProteinMap, scoreType, forQuantification=False, suppressMissingPeptideWarning=False):
     delimiter = getDelimiter(evidenceFile)
     reader = getTsvReader(evidenceFile, delimiter)
     headers = next(reader) # save the header
+
+    get_proteins = get_peptide_to_protein_mapper(peptideToProteinMap, scoreType, suppressMissingPeptideWarning)
     
     if isPercolatorFile(headers):
-        yield from parsePercolatorOutFile(reader, headers, scoreType)
+        yield from parsePercolatorOutFile(reader, headers, get_proteins, scoreType)
     else:
         headers = list(map(str.lower, headers)) # convert headers to lowercase since MQ changes the capitalization frequently
         if evidenceFile.endswith('.csv'):
             headers = [x.replace(".", " ") for x in headers]
-        yield from parseMqEvidenceFile(reader, headers, scoreType, forQuantification)
+        yield from parseMqEvidenceFile(reader, headers, get_proteins, scoreType, forQuantification)
 
 
-def parseMqEvidenceFile(reader, headers, scoreType, forQuantification=False):
+def get_peptide_to_protein_mapper(peptideToProteinMap, scoreType, suppressMissingPeptideWarning):
+    def get_proteins(peptide, tmp_proteins):
+        if scoreType.remaps_peptides_to_proteins():
+            proteins = digest.getProteins(peptideToProteinMap, peptide)
+            if len(proteins) == 0:
+                if not helpers.isContaminant(tmp_proteins) and not suppressMissingPeptideWarning:
+                    logger.warning(f"Missing peptide: {peptide} {tmp_proteins}")
+                return None
+        else:
+            proteins = tmp_proteins
+        proteins = scoreType.filter_proteins(proteins) # filtering for razor peptide approach
+        return helpers.removeDecoyProteinsFromTargetPeptides(proteins)
+    return get_proteins
+
+
+def parseMqEvidenceFile(reader, headers, get_proteins, scoreType, forQuantification=False):
     """
     Reads in approximately 100,000 lines per second with forQuantification=False 
     and 50,000 lines per second with forQuantification=True
@@ -157,11 +176,13 @@ def parseMqEvidenceFile(reader, headers, scoreType, forQuantification=False):
             logger.info(f"    Reading line {lineIdx}")
         
         peptide = row[peptCol]
-        proteins = row[proteinCol]
+        proteins = get_proteins(helpers.cleanPeptide(peptide), row[proteinCol].split(";"))
+        if not proteins:
+            continue
+        
+        experiment = "Experiment1"
         if experimentCol >= 0:
-            experiment = row[experimentCol]
-        else:
-            experiment = "Experiment1"
+            experiment = row[experimentCol]            
         
         score = float(row[scoreCol]) if len(row[scoreCol]) > 0 else float('nan')
         
@@ -176,9 +197,9 @@ def parseMqEvidenceFile(reader, headers, scoreType, forQuantification=False):
             tmtIntensities = [row[tmtCol] for tmtCol in tmtCols]
             silacIntensities = [row[silacCol] if len(row[silacCol]) > 0 else 0 for silacCol in silacCols]
             evidenceId = int(row[evidenceIdCol])
-            yield peptide, proteins.split(";"), charge, rawFile, experiment, fraction, intensity, score, tmtIntensities, silacIntensities, evidenceId
+            yield peptide, proteins, charge, rawFile, experiment, fraction, intensity, score, tmtIntensities, silacIntensities, evidenceId
         else:
-            yield peptide, proteins.split(";"), experiment, score
+            yield peptide, proteins, experiment, score
 
 
 def getHeaderColFunc(headers):
@@ -199,7 +220,7 @@ def getHeaderColsStartingWithFunc(headers):
     return getHeaderColsStartingWith
 
 
-def parsePercolatorOutFile(reader, headers, scoreType = "PEP", razor = False):    
+def parsePercolatorOutFile(reader, headers, get_proteins, scoreType = "PEP"):    
     _, peptCol, scoreCol, _, postErrProbCol, proteinCol = getPercolatorColumnIdxs(headers)
     
     if scoreType.get_score_column() == 'posterior_error_prob':
@@ -219,7 +240,9 @@ def parsePercolatorOutFile(reader, headers, scoreType = "PEP", razor = False):
         elif isMokapotFile(headers):
             proteins = row[proteinCol].split('\t')
         
-        yield peptide, proteins, experiment, score
+        proteins = get_proteins(peptide, proteins)
+        if proteins:
+            yield peptide, proteins, experiment, score
 
 
 def getPercolatorNativeHeaders():

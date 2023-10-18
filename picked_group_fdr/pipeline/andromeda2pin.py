@@ -36,27 +36,28 @@ def main(argv):
     decoyPattern = args.pattern
     #numHits = args.matches
     numHits = 1
-    fastaFile = args.databases
     
     if len(percInFN) > 0:
         if os.path.isfile(percInFN):
             logger.info(f"Found output file {percInFN}, remove this file to re-run andromeda2pin.")
             return
-        else:
-            logger.info(f"Writing results to: {percInFN}")
-            writer = parsers.getTsvWriter(percInFN)
+        logger.info(f"Writing results to: {percInFN}")
+        writer = parsers.getTsvWriter(percInFN + ".tmp")
     else:
         logger.info("Writing results to stdout")
         writer = parsers.getTsvWriter(sys.stdout)
-    
-    peptideToProteinMap = digest.getPeptideToProteinMapWithEnzyme(fastaFile, args.min_length, args.max_length, args.enzyme, args.cleavages, list(args.special_aas), db = "concat")
+
+    digestion_params_list = picked_group_fdr.digestion_params.get_digestion_params_list(args)
     
     charges = list(range(2,7))
     writeHeaders(writer, charges)
     
-    for andromedaTargetOutFN in andromedaTargetOutFNs:
+    for andromedaTargetOutFN, digestion_params in zip(andromedaTargetOutFNs, digestion_params_list):
+        peptideToProteinMap = digest.get_peptide_to_protein_map_from_params(args.databases, [digestion_params])
         convertAndromedaOutToPin(andromedaTargetOutFN, writer, charges, numHits, peptideToProteinMap, decoyPattern = decoyPattern)
     
+    if len(percInFN) > 0:
+        os.rename(percInFN + ".tmp", percInFN)
     logger.info("Finished writing percolator input")
 
 
@@ -84,7 +85,7 @@ def parseArgs(argv):
                                          help='''Pattern used to identify the decoy PSMs.
                                                     ''')
     
-    apars.add_argument('-F', '--databases', default = None, metavar='F',
+    apars.add_argument('-F', '--databases', default = None, metavar='F', nargs = "+",
                                          help='''Fasta database used in the search 
                                                          against the spectra file.
                                                     ''')
@@ -212,22 +213,24 @@ def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideTo
         modPeptide, cleanPeptide, pepLen, enzN, enzC, enzInt, numMods = getPeptideStats(peptide, deltaMass)
         absDeltaMass = abs(deltaMass)
         
-        if pepLen >= 6:
-            if len(peptideToProteinMap) > 0:
-                proteins = digest.getProteins(peptideToProteinMap, cleanPeptide[2:-2])
-                if len(proteins) == 0:
-                    if not helpers.isContaminant(tmp_proteins):
-                        logger.warning(f"Could not find peptide {peptide} ({str(tmp_proteins)}) in fasta database, skipping PSM")
-                    continue
-            
-            if len(decoyPattern) > 0:
-                if sum(1 for p in proteins if p.startswith(decoyPattern)) == len(proteins):
-                    label = -1
-                else:
-                    label = 1
-            
-            r = [psmId, label, scanNr, expMass, andromedaScore, deltaScore, pepLen] + [1 if charge == i else 0 for i in charges] + [expMass, enzN, enzC, enzInt, numMods, deltaMass, absDeltaMass, modPeptide] + proteins
-            writer.writerow(r)
+        if pepLen < 6:
+            continue
+
+        if len(peptideToProteinMap) > 0:
+            proteins = digest.getProteins(peptideToProteinMap, cleanPeptide[2:-2])
+            if len(proteins) == 0:
+                if not helpers.isContaminant(tmp_proteins):
+                    logger.warning(f"Could not find peptide {peptide} ({str(tmp_proteins)}) in fasta database, skipping PSM")
+                continue
+        
+        if len(decoyPattern) > 0:
+            if sum(1 for p in proteins if p.startswith(decoyPattern)) == len(proteins):
+                label = -1
+            else:
+                label = 1
+        
+        r = [psmId, label, scanNr, expMass, andromedaScore, deltaScore, pepLen] + [1 if charge == i else 0 for i in charges] + [expMass, enzN, enzC, enzInt, numMods, deltaMass, absDeltaMass, modPeptide] + proteins
+        writer.writerow(r)
 
 def getPeptideStats(peptide, deltaMass, accurateModMasses = False):
     cleanPeptide = peptide[:2]

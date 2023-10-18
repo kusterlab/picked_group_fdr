@@ -146,27 +146,32 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
                     
                 if not isDecoy and rawFile in resultsDict:
                     mqPEPs.append((float(row[postErrProbCol]), idType))
-                    if not percResult and (poutInputType != "prosit" or is_valid_prosit_peptide(peptide)): # mysterious missing PSMs
+                
+                if not percResult:
+                    if poutInputType != "prosit" or is_valid_prosit_peptide(peptide): # mysterious missing PSMs
                         unexplainedMissingPSMs += 1
-                        #logger.info(rawFile, peptide, scanNr)
+                        logger.debug(f"Unexplained missing PSM in percolator output: {rawFile}, {peptide}, {scanNr}")
                         if unexplainedMissingPSMs <= 10:
                             unexplainedPeptides.append(row[peptCol])
-                
-                if percResult:
-                    if not isDecoy:
-                        prositPEPs.append((percResult[1], idType))
-                    row[scoreCol] = percResult[0]
-                    row[postErrProbCol] = percResult[1]
-                else:
-                    #logger.info("Missing PSM in percolator output: " + str(row[rawFileCol]) + " " + str(row[scanNrCol]) + " " + str(row[peptCol]))
+                    logger.debug(f"Missing PSM in percolator output: {rawFile}, {peptide}, {scanNr}")
                     continue
-            
+                
+                if not isDecoy:
+                    prositPEPs.append((percResult[1], idType))
+
+                row[scoreCol] = percResult[0]
+                row[postErrProbCol] = percResult[1]
+                
+            if writtenRows % 500000 == 0:
+                logger.info(f"    Writing line {writtenRows}")
             writtenRows += 1
+            
             writer.writerow(row)
     
     unexplainedPercentage = int(unexplainedMissingPSMs/writtenRows*100)
     logger.info(f"Unexplained missing PSMs in Percolator results: {unexplainedMissingPSMs} out of {writtenRows} ({unexplainedPercentage}%)")
     if unexplainedMissingPSMs > 0:
+        logger.info("If this percentage is low (<5%), it is probably just the result of second peptide hits.")
         logger.info("\tFirst 10 missing peptides:")
         for peptide in unexplainedPeptides:
             logger.info("\t" + peptide)

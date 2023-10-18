@@ -137,17 +137,19 @@ def main(argv):
     plotter.initPlots()
     
     parseId = digest.parseUntilFirstSpace
-    proteinAnnotations = digest.get_protein_annotations_multiple(args.fasta, parseId)
-    if args.gene_level:
-        if digest.hasGeneNames(proteinAnnotations, minRatioWithGenes=0.5):
-            parseId = digest.parseGeneNameFunc
-            proteinAnnotations = digest.get_protein_annotations_multiple(args.fasta, parseId)
-        else:
-            logger.warning("Found fewer than 50% of proteins without gene names in the fasta file, will attempt to infer pseudo-genes based on shared peptides instead")
-            for config in configs:
-                config["grouping"] = PseudoGeneGrouping()
+    proteinAnnotations = dict()
+    if args.fasta:
+        proteinAnnotations = digest.get_protein_annotations_multiple(args.fasta, parseId)
+        if args.gene_level:
+            if digest.hasGeneNames(proteinAnnotations, minRatioWithGenes=0.5):
+                parseId = digest.parseGeneNameFunc
+                proteinAnnotations = digest.get_protein_annotations_multiple(args.fasta, parseId)
+            else:
+                logger.warning("Found fewer than 50% of proteins without gene names in the fasta file, will attempt to infer pseudo-genes based on shared peptides instead")
+                for config in configs:
+                    config["grouping"] = PseudoGeneGrouping()
     
-    peptideToProteinMap = dict()
+    peptideToProteinMaps = list()
     peptideToProteotypicityMap = dict()
     for config in configs:
         methodDescriptionLong = methods.long_description(config['scoreType'], config['grouping'], config['pickedStrategy'], True)
@@ -159,15 +161,22 @@ def main(argv):
             logger.warning(f"No evidence input file found, skipping method \"{label}\". Check if an appropriate method was specified by the --methods flag.")
             continue
         
-        if len(peptideToProteinMap) == 0 and (config['grouping'].needs_peptide_to_protein_map() or config['scoreType'].remaps_peptides_to_proteins()):
-            peptideToProteinMap = digest.get_peptide_to_protein_map_from_params(args.fasta, digestion_params_list)
-            entrapment.markEntrapmentProteins(peptideToProteinMap, args.mq_protein_groups)
+        if len(peptideToProteinMaps) == 0 and (config['grouping'].needs_peptide_to_protein_map() or config['scoreType'].remaps_peptides_to_proteins()):
+            if args.fasta:
+                for digestion_params in digestion_params_list:
+                    peptideToProteinMaps.append(digest.get_peptide_to_protein_map_from_params(args.fasta, [digestion_params]))
+                    entrapment.markEntrapmentProteins(peptideToProteinMaps[-1], args.mq_protein_groups)
+            elif args.peptide_protein_map:
+                logger.info("Loading peptide to protein map")
+                peptideToProteinMaps = [digest.getPeptideToProteinMapFromFile(args.peptide_protein_map, useHashKey = False)]
+            else:
+                sys.exit("No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags")
             
         if len(peptideToProteotypicityMap) == 0 and config['scoreType'].use_proteotypicity:
             peptideToProteotypicityMap = proteotypicity.getPeptideToProteotypicityFromFile(args.peptide_proteotypicity_map)
         
         peptideInfoList = parseEvidenceFiles(evidenceFiles, 
-                                             peptideToProteinMap, 
+                                             peptideToProteinMaps, 
                                              config['scoreType'], 
                                              args.suppress_missing_peptide_warning)
         
@@ -179,7 +188,7 @@ def main(argv):
                 plotter, args.keep_all_proteins)
         
         if args.do_quant:
-            doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMap)
+            doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMaps)
 
         if args.protein_groups_out:
             writeProteinGroups(proteinGroupResults, args.protein_groups_out, config, apply_suffix=len(configs) > 1)
@@ -243,43 +252,49 @@ def getProteinGroupResults(
     return proteinGroupResults
 
 
-def parseEvidenceFiles(evidenceFiles: List[str], peptideToProteinMap, scoreType, suppressMissingPeptideWarning: bool) -> PeptideInfoList:
+def parseEvidenceFiles(evidenceFiles: List[str], peptideToProteinMaps: List[Dict[str, List[str]]], scoreType, suppressMissingPeptideWarning: bool) -> PeptideInfoList:
     """Returns best score per peptide"""
+    if not scoreType.remaps_peptides_to_proteins():
+        peptideToProteinMaps = [None]
+    
+    if len(peptideToProteinMaps) == 1:
+        peptideToProteinMaps = peptideToProteinMaps*len(evidenceFiles)
+    
     peptideInfoList = dict()
-    for peptide, tmp_proteins, _, score in parsers.parseEvidenceFiles(evidenceFiles, scoreType = scoreType):
+    for peptide, proteins, _, score in parsers.parseEvidenceFiles(evidenceFiles, peptideToProteinMaps = peptideToProteinMaps, scoreType = scoreType, suppressMissingPeptideWarning = suppressMissingPeptideWarning):
         peptide = helpers.cleanPeptide(peptide)
         if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:
             continue
-        
-        if scoreType.remaps_peptides_to_proteins():
-            proteins = digest.getProteins(peptideToProteinMap, peptide)
-            if len(proteins) == 0:
-                if not helpers.isContaminant(tmp_proteins) and not suppressMissingPeptideWarning:
-                    logger.warning(f"Missing peptide: {peptide} {tmp_proteins}")
-                continue
-        else:
-            proteins = tmp_proteins
 
-        proteins = helpers.removeDecoyProteinsFromTargetPeptides(proteins)
         peptideInfoList[peptide] = [score, proteins]
 
     return peptideInfoList
 
 
-def doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMap):
+def doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMaps):
     if not config['scoreType'].can_do_quantification():
         logger.warning("Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed")
         return
     
-    digestion_params_list = picked_group_fdr.digestion_params.get_digestion_params_list(args)   
+    proteinSequences = {}
+    if args.fasta:
+        digestion_params_list = picked_group_fdr.digestion_params.get_digestion_params_list(args)
 
-    logger.info("In silico protein digest for iBAQ")
-    numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(args.fasta, digestion_params_list)
-    proteinSequences = digest.getProteinSequences(args.fasta, parseId)
+        logger.info("In silico protein digest for iBAQ")
+        numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(args.fasta, digestion_params_list)
+        proteinSequences = digest.getProteinSequences(args.fasta, parseId)
+    elif args.peptide_protein_map:
+        logger.warning("Found peptide_protein_map (instead of fasta input): ")
+        logger.warning("- calculating iBAQ values using all peptides in peptide_protein_map.")
+        logger.warning("- cannot compute sequence coverage.")
+        numIbaqPeptidesPerProtein = digest.getNumPeptidesPerProtein(peptideToProteinMaps[0])
+    else:
+        sys.exit("No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags")
+            
     
     quantification.doQuantification(
             args.mq_evidence, proteinGroupResults, proteinSequences,
-            peptideToProteinMap, numIbaqPeptidesPerProtein, 
+            peptideToProteinMaps, numIbaqPeptidesPerProtein, 
             args.file_list_file, config['scoreType'], minPeptideRatiosLFQ=args.lfq_min_peptide_ratios, numThreads=args.num_threads)
 
 

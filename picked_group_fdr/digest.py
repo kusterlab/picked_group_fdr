@@ -314,35 +314,6 @@ def fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCle
             starts = starts[1 + methionineCleaved:]
 
 
-# def get_peptide_to_protein_map_multiple(args, parseId):
-    
-
-def get_peptide_to_protein_map(args, parseId):
-    if args.fasta:
-        logger.info("In silico protein digest for peptide-protein mapping")
-        pre, not_post = getCleavageSites(args.enzyme)
-        if args.enzyme == "no_enzyme":
-            args.digestion = "none"
-        
-        db = 'concat'
-        if args.fasta_contains_decoys:
-            db = 'target'
-
-        peptideToProteinMap = getPeptideToProteinMap(
-                args.fasta, db = db, digestion = args.digestion, 
-                min_len = args.min_length, max_len = args.max_length, 
-                pre = pre, not_post = not_post, 
-                miscleavages = args.cleavages, methionineCleavage = True, 
-                specialAAs = list(args.special_aas), useHashKey = (args.digestion == "none"), parseId = parseId)
-    elif args.peptide_protein_map:
-        logger.info("Loading peptide to protein map")
-        peptideToProteinMap = getPeptideToProteinMapFromFile(args.peptide_protein_map, useHashKey = False)
-    else:
-        sys.exit("No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags")
-    
-    return peptideToProteinMap
-
-
 def getPeptideToProteinMapWithEnzyme(fastaFile, min_len, max_len, enzyme, miscleavages, specialAAs, db):
     if len(fastaFile) == 0:
         return dict()
