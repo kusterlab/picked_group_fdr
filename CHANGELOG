@@ -1,3 +1,9 @@
+vx.x.x
+- Added support for proteases that cleave before an amino acid, e.g. Asp-N, Lys-N
+- Fix for empty score field in evidence file
+- Add better detection of maxquant evidence files (#7)
+- Added support for combining evidence files with different proteases
+
 v0.4.0
 - Removed proteins without any PSMs below the FDR threshold from protein groups output. Setting the new `--keep_all_proteins` flag reverts to the old behavior.
 - Added support for supplying multiple evidence files

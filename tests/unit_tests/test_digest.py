@@ -63,9 +63,10 @@ class TestSemiSpecificDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 2
         methionineCleavage = True
-        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEF', 
              'ABCDEFG', 
              'ABCDEFGH', 
@@ -78,9 +79,10 @@ class TestSemiSpecificDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 2
         methionineCleavage = True
-        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['MABCDE',
              'MABCDEF', 
              'MABCDEFG', 
@@ -98,9 +100,10 @@ class TestSemiSpecificDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 1
         methionineCleavage = True
-        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['MABCDE',
              'MABCDEF',
              'MABCDEFK',
@@ -118,9 +121,10 @@ class TestSemiSpecificDigest:
         max_len = 7
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 2
         methionineCleavage = True
-        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEF', 
              'ABCDEFG', 
                 'BCDEFGH', 
@@ -132,9 +136,10 @@ class TestSemiSpecificDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 0
         methionineCleavage = True
-        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEF', 
              'ABCDEFG', 
              'ABCDEFGK', 
@@ -147,9 +152,10 @@ class TestSemiSpecificDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 1
         methionineCleavage = True
-        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEF', 
              'ABCDEFG', 
              'ABCDEFGK',
@@ -166,9 +172,10 @@ class TestSemiSpecificDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 0
         methionineCleavage = True
-        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEF', 
              'ABCDEFK', 
              'ABCDEFKP', 
@@ -185,9 +192,10 @@ class TestFullDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 2
         methionineCleavage = True
-        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEFGH'])
     
     def test_fullDigest_methionineCleavage(self):
@@ -196,9 +204,10 @@ class TestFullDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 2
         methionineCleavage = True
-        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['MABCDEFGH',
               'ABCDEFGH'])
     
@@ -209,9 +218,10 @@ class TestFullDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 1
         methionineCleavage = True
-        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['MABCDEFGHK',
              'MABCDEFGHKK',
               'ABCDEFGHK',
@@ -223,9 +233,10 @@ class TestFullDigest:
         max_len = 7
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 2
         methionineCleavage = True
-        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             [])
     
     def test_fullDigest_noMiscleavage(self):
@@ -234,9 +245,10 @@ class TestFullDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 0
         methionineCleavage = True
-        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEFGK'])
     
     def test_fullDigest_oneMiscleavage(self):
@@ -245,9 +257,10 @@ class TestFullDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 1
         methionineCleavage = True
-        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEFGK',
              'ABCDEFGKX'])
     
@@ -257,8 +270,22 @@ class TestFullDigest:
         max_len = 30
         pre = ['K', 'R']
         not_post = ['P']
+        post = []
         miscleavages = 0
         methionineCleavage = True
-        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)) == set(
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
             ['ABCDEFKPX'])
+    
+    def test_fullDigest_post(self):
+        seq = 'ABCDEFKPXAAA'
+        min_len = 6
+        max_len = 30
+        pre = ['']
+        not_post = ['']
+        post = ['K']
+        miscleavages = 0
+        methionineCleavage = True
+        assert set(digest.fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)) == set(
+            ['ABCDEF',
+                   'KPXAAA'])
 

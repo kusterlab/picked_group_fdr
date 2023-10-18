@@ -267,11 +267,11 @@ def getPeptideStats(peptide, deltaMass, accurateModMasses = False):
         else:
             modPeptide += peptide[aaIdx]
             cleanPeptide += peptide[aaIdx]
-            if digest.isEnzymatic(cleanPeptide[-2], cleanPeptide[-1], not_post = [], methionineCleavage = False):
+            if digest.is_enzymatic_advanced(cleanPeptide[-2], cleanPeptide[-1], not_post = [], methionineCleavage = False):
                 enzInt += 1
         aaIdx += 1
-    enzN = int(digest.isEnzymatic(cleanPeptide[0], cleanPeptide[2], not_post = [])) # Andromeda uses Trypsin/P
-    enzC = int(digest.isEnzymatic(cleanPeptide[-3], cleanPeptide[-1], not_post = []))
+    enzN = int(digest.is_enzymatic_advanced(cleanPeptide[0], cleanPeptide[2], not_post = [])) # Andromeda uses Trypsin/P
+    enzC = int(digest.is_enzymatic_advanced(cleanPeptide[-3], cleanPeptide[-1], not_post = []))
     pepLen = len(cleanPeptide) - 4
     return modPeptide, cleanPeptide, pepLen, enzN, enzC, enzInt, numMods
 

@@ -30,17 +30,19 @@ def calculateProteinFDRs(proteinGroups, proteinScores):
 
         skipForCounting = helpers.isDecoy(proteinGroup) or helpers.isObsolete(proteinGroup)
         proteinGroupInfoList.append((reportedFdr, observedFdr, skipForCounting))
-        
-    logger.info(f"Decoys: {numDecoys}, Entrapments: {numEntrapments}, Pool: {numTargets - numEntrapments}")
+    
+    logger.info(f"Targets: {numTargets}, Decoys: {numDecoys}")
+    if numEntrapments > 1:
+        logger.info(f"Targets: {numTargets}, Entrapments: {numEntrapments}, Targets-Entrapments: {numTargets - numEntrapments}, Decoys: {numDecoys}")
     
     if len(proteinGroupInfoList) == 0:
         raise Exception("No proteins with scores found, make sure that protein identifiers are consistent in the evidence and fasta files")
     
     reportedFdrs, observedFdrs, skipForCounting = zip(*proteinGroupInfoList)
     reportedQvals, observedQvals = fdrsToQvals(reportedFdrs), fdrsToQvals(observedFdrs)
-    logger.info(f"#Targets at 1% decoy FDR: {countBelowThreshold(reportedQvals, 0.01, skipForCounting)}")
+    logger.info(f"#Target protein groups at 1% decoy FDR: {countBelowThreshold(reportedQvals, 0.01, skipForCounting)}")
     if numEntrapments > 1:
-        logger.info(f"#Targets at 1% entrapment FDR: {countBelowThreshold(observedFdrs, 0.01, skipForCounting)}")
+        logger.info(f"#Target protein groups at 1% entrapment FDR: {countBelowThreshold(observedFdrs, 0.01, skipForCounting)}")
         logger.info(f"Decoy FDR at 1% entrapment FDR: {'%.2g' % (reportedQvals[countBelowThreshold(observedFdrs, 0.01)])}")
         logger.info(f"Entrapment FDR at 1% decoy FDR: {'%.2g' % (observedFdrs[countBelowThreshold(reportedQvals, 0.01)])}")
         

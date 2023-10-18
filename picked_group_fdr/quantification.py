@@ -121,7 +121,7 @@ def getPeptideToProteinMaps(args, parseId):
     
     logger.info("Loading peptide to protein map...")
     if args.fasta:
-        pre, not_post = digest.getCleavageSites(args.enzyme)
+        pre, not_post, post = digest.getCleavageSites(args.enzyme)
         
         db = 'concat'
         if args.fasta_contains_decoys:
@@ -130,18 +130,18 @@ def getPeptideToProteinMaps(args, parseId):
         peptideToProteinMap = digest.getPeptideToProteinMap(
                 args.fasta, db = db, digestion = args.digestion, 
                 min_len = args.min_length, max_len = args.max_length, 
-                pre = pre, not_post = not_post, miscleavages = args.cleavages, 
+                pre = pre, not_post = not_post, post = post, miscleavages = args.cleavages, 
                 methionineCleavage = True, specialAAs = list(args.special_aas),
                 parseId = parseId, useHashKey = (args.digestion == "none"))
         
         peptideToProteinMapIbaq = digest.getPeptideToProteinMap(
                 args.fasta, db = db, digestion = args.digestion, 
                 min_len = minLenIbaq, max_len = maxLenIbaq, 
-                pre = pre, not_post = not_post, miscleavages = 0,
+                pre = pre, not_post = not_post, post = post, miscleavages = 0,
                 methionineCleavage = False, specialAAs = list(args.special_aas),
                 parseId = parseId, useHashKey = (args.digestion == "none"))
     elif args.peptide_protein_map:
-        pre, not_post = digest.getCleavageSites(args.enzyme)
+        pre, not_post, post = digest.getCleavageSites(args.enzyme)
         
         peptideToProteinMap = digest.getPeptideToProteinMapFromFile(
                 args.peptide_protein_map, useHashKey = True)
@@ -151,7 +151,7 @@ def getPeptideToProteinMaps(args, parseId):
             peptideLen = len(peptide)
             if (peptideLen >= minLenIbaq and 
                     peptideLen <= maxLenIbaq and 
-                    not digest.hasMiscleavage(peptide, pre, not_post)):
+                    not digest.hasMiscleavage(peptide, pre, not_post, post)):
                 peptideToProteinMapIbaq[peptide] = proteins
     else:
         sys.exit('No peptide to protein map found, use either the --fasta or the --peptide_protein_map arguments')

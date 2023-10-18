@@ -14,16 +14,27 @@ from picked_group_fdr.digestion_params import DigestionParams, add_digestion_arg
 logger = logging.getLogger(__name__)
 
 ENZYME_CLEAVAGE_RULES = {
-    'trypsin': { 'pre': ['K', 'R'], 'not_post': ['P'] },
-    'trypsinp': { 'pre': ['K', 'R'], 'not_post': [] },
-    'no_enzyme': { 'pre': [], 'not_post': [] },
-    'chymotrypsin': { 'pre': ['F', 'W', 'Y', 'L'], 'not_post': ['P'] },
-    'proteinasek': { 'pre': ['A', 'E', 'F', 'I', 'L', 'T', 'V', 'W', 'Y'], 'not_post': [] },
-    'elastase': { 'pre': ['L', 'V', 'A', 'G'], 'not_post': ['P'] },
-    'lys-c': { 'pre': ['K'], 'not_post': ['P'] },
-    'arg-c': { 'pre': ['R'], 'not_post': ['P'] },
-    'glu-c': { 'pre': ['E'], 'not_post': ['P'] },
-    'v8-de': { 'pre': ['N', 'D', 'E', 'Q'], 'not_post': ['P'] }
+    'trypsin': { 'pre': ['K', 'R'], 'not_post': ['P'], 'post': [] },
+    'trypsinp': { 'pre': ['K', 'R'], 'not_post': [], 'post': [] },
+    'no_enzyme': { 'pre': [], 'not_post': [], 'post': [] },
+    'chymotrypsin': { 'pre': ['F', 'W', 'Y', 'L'], 'not_post': ['P'], 'post': [] },
+    'proteinasek': { 'pre': ['A', 'E', 'F', 'I', 'L', 'T', 'V', 'W', 'Y'], 'not_post': [], 'post': [] },
+    'elastase': { 'pre': ['L', 'V', 'A', 'G'], 'not_post': ['P'], 'post': [] },
+    'clostripain': { 'pre': ['R'], 'not_post': [''], 'post': [] },
+    'cyanogen-bromide': { 'pre': ['M'], 'not_post': [''], 'post': [] },
+    'iodosobenzoate': { 'pre': ['W'], 'not_post': [''], 'post': [] },
+    'proline-endopeptidase': { 'pre': ['P'], 'not_post': [''], 'post': [] },
+    'staph-protease': { 'pre': ['E'], 'not_post': [''], 'post': [] },
+    'asp-n': { 'pre': [''], 'not_post': [''], 'post': ['D'] },
+    'lys-c': { 'pre': ['K'], 'not_post': ['P'], 'post': [] },
+    'lys-cp': { 'pre': ['K'], 'not_post': [''], 'post': [] },
+    'lys-n': { 'pre': [''], 'not_post': [''], 'post': ['K'] },
+    'arg-c': { 'pre': ['R'], 'not_post': ['P'], 'post': [] },
+    'glu-c': { 'pre': ['E'], 'not_post': ['P'], 'post': [] },
+    'pepsin-a': { 'pre': ['F', 'L'], 'not_post': ['P'], 'post': [] },
+    'elastase-trypsin-chymotrypsin': { 'pre': ['A', 'L', 'I', 'V', 'F', 'K', 'R', 'W', 'F', 'Y'], 'not_post': ['P'], 'post': [] },
+    'lysarginase': { 'pre': [''], 'not_post': [''], 'post': ['K', 'R'] }, # TODO
+    'v8-de': { 'pre': ['N', 'D', 'E', 'Q'], 'not_post': ['P'], 'post': [] }
     }
 
 
@@ -243,7 +254,7 @@ def filterFastaFile(fastaFile, filteredFastaFile, proteins):
                 #f.write('>decoy_' + prot + '\n' + seq[::-1] + '\n')
 
 
-def getPeptides(fastaFile, db = "concat", min_len = 6, max_len = 50, pre = ['K', 'R'], not_post = ['P'], digestion = 'full', miscleavages = 0, methionineCleavage = True):
+def getPeptides(fastaFile, db = "concat", min_len = 6, max_len = 50, pre = ['K', 'R'], not_post = ['P'], post = [], digestion = 'full', miscleavages = 0, methionineCleavage = True):
     for protein, seq in readFasta(fastaFile, db):
         if len(seq) == 0:
             raise ValueError(f"Found an empty sequence for protein id {protein}, please check your fasta file.")
@@ -252,13 +263,13 @@ def getPeptides(fastaFile, db = "concat", min_len = 6, max_len = 50, pre = ['K',
 
 
 #@profile
-def getDigestedPeptides(seq, min_len = 6, max_len = 50, pre = ['K', 'R'], not_post = ['P'], digestion = 'full', miscleavages = 0, methionineCleavage = True):
+def getDigestedPeptides(seq, min_len = 6, max_len = 50, pre = ['K', 'R'], not_post = ['P'], post = [], digestion = 'full', miscleavages = 0, methionineCleavage = True):
     if digestion == 'none':
         yield from nonSpecificDigest(seq, min_len, max_len)
     elif digestion == 'semi':
-        yield from semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)
+        yield from semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)
     else:
-        yield from fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage)
+        yield from fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage)
 
 
 def nonSpecificDigest(seq, min_len, max_len):
@@ -269,13 +280,13 @@ def nonSpecificDigest(seq, min_len, max_len):
                 yield seq[i:j]
 
 
-def semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage):
+def semiSpecificDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage):
     lenS, starts = len(seq), [0]
     methionineCleavage = methionineCleavage and seq[0] == "M"
     length_accepted = lambda x : x >= min_len and x <= max_len
     
     for i in range(lenS + 1):
-        isCleavageSite = (seq[min([lenS-1,i])] in pre and seq[min([lenS-1,i+1])] not in not_post)
+        isCleavageSite = is_enzymatic(seq[min([lenS-1,i])], seq[min([lenS-1,i+1])], pre, not_post, post)
         isMethionineCleavageSite = (i == 0 and methionineCleavage)
         if i == lenS or isCleavageSite or isMethionineCleavageSite:
             # peptides with enzymatic C-terminal (both enzymatic and non-enzymatic N-terminal)
@@ -295,13 +306,13 @@ def semiSpecificDigest(seq, min_len, max_len, pre, not_post, miscleavages, methi
                     yield (seq[start : i + 1])
 
 
-def fullDigest(seq, min_len, max_len, pre, not_post, miscleavages, methionineCleavage):
+def fullDigest(seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage):
     lenS, starts = len(seq), [0]
     methionineCleavage = methionineCleavage and seq[0] == "M"
     length_accepted = lambda x : x >= min_len and x <= max_len
     
     cleavageSites = [0] if methionineCleavage else []    
-    cleavageSites.extend([i for i in range(lenS) if seq[i] in pre and seq[min([lenS-1,i+1])] not in not_post])
+    cleavageSites.extend([i for i in range(lenS) if is_enzymatic(seq[i], seq[min([lenS-1,i+1])], pre, not_post, post)])
     cleavageSites.append(lenS)
     for i in cleavageSites:
         for start in starts:
@@ -318,9 +329,9 @@ def getPeptideToProteinMapWithEnzyme(fastaFile, min_len, max_len, enzyme, miscle
     if len(fastaFile) == 0:
         return dict()
     
-    pre, not_post = getCleavageSites(enzyme)    
+    pre, not_post, post = getCleavageSites(enzyme)    
     return getPeptideToProteinMap(fastaFile, db, digestion = 'full', 
-        min_len = min_len, max_len = max_len, pre = pre, not_post = not_post, 
+        min_len = min_len, max_len = max_len, pre = pre, not_post = not_post, post = post,
         miscleavages = miscleavages, methionineCleavage = True, specialAAs = specialAAs)
 
 
@@ -328,16 +339,24 @@ def get_peptide_to_protein_map_from_params(fasta_files: List[str], digestion_par
     peptideToProteinMap = collections.defaultdict(list)
     for fasta_file in fasta_files:
         for params in digestion_params_list:
-            pre, not_post = getCleavageSites(params.enzyme)
+            pre, not_post, post = getCleavageSites(params.enzyme)
             for peptide, proteins in getPeptideToProteinMap(fasta_file, params.db, digestion = params.digestion,
-                    min_len = params.min_length, max_len = params.max_length, pre = pre, not_post = not_post, 
+                    min_len = params.min_length, max_len = params.max_length, pre = pre, not_post = not_post, post = post,
                     miscleavages = params.cleavages, methionineCleavage = params.methionine_cleavage, specialAAs = params.special_aas).items():
                 peptideToProteinMap[peptide].extend(proteins)
     return peptideToProteinMap
 
 
+def merge_peptide_to_protein_maps(peptide_protein_maps: Iterator[Dict[str, List[str]]]):
+    peptideToProteinMap = collections.defaultdict(list)
+    for peptide_protein_map in peptide_protein_maps:
+        for peptide, proteins in peptide_protein_map.items():
+            peptideToProteinMap[peptide].extend(proteins)
+    return peptideToProteinMap
+
+
 def getPeptideToProteinMap(fastaFile, db = "concat", min_len = 6, max_len = 52, 
-        pre = ['K', 'R'], not_post = ['P'], digestion = 'full', miscleavages = 2, 
+        pre = ['K', 'R'], not_post = ['P'], post = [], digestion = 'full', miscleavages = 2, 
         methionineCleavage = True, useHashKey = False, specialAAs = ['K', 'R'], 
         parseId = parseUntilFirstSpace):
     peptideToProteinMap = collections.defaultdict(list)
@@ -348,7 +367,7 @@ def getPeptideToProteinMap(fastaFile, db = "concat", min_len = 6, max_len = 52,
         seenPeptides = set()
         proteinToSeqMap[protein] = seq
         #for peptide in digestfast.getDigestedPeptides(seq, min_len, max_len, pre, not_post, digestion, miscleavages, methionineCleavage):
-        for peptide in getDigestedPeptides(seq, min_len, max_len, pre, not_post, digestion, miscleavages, methionineCleavage):
+        for peptide in getDigestedPeptides(seq, min_len, max_len, pre, not_post, post, digestion, miscleavages, methionineCleavage):
             peptide = peptide
             if useHashKey:
                 hashKey = peptide[:6]
@@ -449,16 +468,21 @@ def getCleavageSites(enzyme):
         
     pre = ENZYME_CLEAVAGE_RULES[enzyme]['pre']
     not_post = ENZYME_CLEAVAGE_RULES[enzyme]['not_post']    
-    return pre, not_post
+    post = ENZYME_CLEAVAGE_RULES[enzyme]['post']
+    return pre, not_post, post
 
     
-def isEnzymatic(aa1, aa2, pre = ['K', 'R'], not_post = ['P'], methionineCleavage = True):
-    return aa1 == "-" or aa2 == "-" or (aa1 in pre and aa2 not in not_post) or (methionineCleavage and aa1 == "M")
+def is_enzymatic_advanced(aa1, aa2, pre = ['K', 'R'], not_post = ['P'], post = [], methionineCleavage = True):
+    return aa1 == "-" or aa2 == "-" or is_enzymatic(aa1, aa2, pre, not_post, post) or (methionineCleavage and aa1 == "M")
 
 
-def hasMiscleavage(seq, pre = ['K', 'R'], not_post = ['P']):
+def is_enzymatic(aa1, aa2, pre, not_post, post):
+    return (aa1 in pre and aa2 not in not_post) or (aa2 in post)
+
+
+def hasMiscleavage(seq, pre = ['K', 'R'], not_post = ['P'], post = []):
     for i in range(len(seq) - 1):
-        if isEnzymatic(seq[i], seq[i+1], pre, not_post):
+        if is_enzymatic_advanced(seq[i], seq[i+1], pre, not_post, post):
             return True
     return False
 
