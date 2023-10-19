@@ -20,7 +20,7 @@ test:
 integration_test:
 	python3 -um picked_group_fdr --mq_evidence ${DATA}/evidence.txt --fasta ${DATA}/db.fasta --enzyme trypsinp --min-length 6 --protein_groups_out ${DATA}/proteinGroups.txt --method picked_protein_group_mq_input --do_quant
 
-# to test the pipeline, run: DOCKER_CMD="" IMAGE="" LOCAL_DIR=$(pwd)/data/lfq_example make all
+# to test the pipeline, run: DOCKER_CMD="" IMAGE="" LOCAL_DIR=$(pwd)/data/lfq_example OUT_DIR_LOCAL=$(pwd)/data/lfq_example make all
 # the rule below somehow messes up the percolator output file paths to /root/data
 # pipeline_test: DOCKER_CMD=
 # pipeline_test: IMAGE=
@@ -93,7 +93,7 @@ filter_results_gene_level: filter_results
 		$(IMAGE) bash -c "python3 -u -m picked_group_fdr.pipeline.filter_fdr_maxquant --mq_protein_groups $(OUT_DIR_LOCAL)/percolator/geneGroups.txt --mq_protein_groups_out $(OUT_DIR_LOCAL)/percolator/geneGroups_fdr0.01.txt --fdr_cutoff 0.01 --psm_level_fdr > $(OUT_DIR_LOCAL)/percolator/filter_results_gene_level.log" || (echo "6" > $(DATA)err.out; exit 6)
 
 compress: filter_results_gene_level
-	zip -j -r -9 "$(OUT_DIR)/results.zip" "$(OUT_DIR_LOCAL)/percolator/" || (echo "" > $(DATA)err.out; exit 7)
+	zip -j -r -9 "$(OUT_DIR)/results.zip" "$(OUT_DIR)/percolator/" || (echo "" > $(DATA)err.out; exit 7)
 
 all: compress
 

@@ -95,7 +95,7 @@ def parseArgs(argv):
         help="""Use one or more protein group FDR estimation methods, separated by 
                 commas. Examples of builtin methods: picked_protein_group, 
                 picked_protein_group_mq_input, savitski, maxquant. Alternatively, 
-                specify one our more paths to toml files with a .toml extension 
+                specify one or more paths to toml files with a .toml extension 
                 following the same format as the builtin method toml files.""",
     )
 
