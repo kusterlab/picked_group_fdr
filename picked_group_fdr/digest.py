@@ -1,5 +1,6 @@
 from __future__ import print_function, annotations
 import os
+from pathlib import Path
 
 import sys
 import csv
@@ -361,9 +362,11 @@ def getPeptideToProteinMap(fastaFile, db = "concat", min_len = 6, max_len = 52,
         parseId = parseUntilFirstSpace):
     peptideToProteinMap = collections.defaultdict(list)
     proteinToSeqMap = dict()
+
+    logger.info(f"Parsing fasta file: {Path(fastaFile).name}")
     for proteinIdx, (protein, seq) in enumerate(readFasta(fastaFile, db, parseId, specialAAs = specialAAs)):
-        if (proteinIdx+1) % 10000 == 0:
-            logger.info(f"Digesting protein {proteinIdx+1}")
+        if proteinIdx % 10000 == 0:
+            logger.info(f"Digesting protein {proteinIdx}")
         seenPeptides = set()
         proteinToSeqMap[protein] = seq
         #for peptide in digestfast.getDigestedPeptides(seq, min_len, max_len, pre, not_post, digestion, miscleavages, methionineCleavage):

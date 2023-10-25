@@ -31,9 +31,9 @@ def calculateProteinFDRs(proteinGroups, proteinScores):
         skipForCounting = helpers.isDecoy(proteinGroup) or helpers.isObsolete(proteinGroup)
         proteinGroupInfoList.append((reportedFdr, observedFdr, skipForCounting))
     
-    logger.info(f"Targets: {numTargets}, Decoys: {numDecoys}")
+    logger.info(f"#Protein groups: Target = {numTargets}; Decoys = {numDecoys}")
     if numEntrapments > 1:
-        logger.info(f"Targets: {numTargets}, Entrapments: {numEntrapments}, Targets-Entrapments: {numTargets - numEntrapments}, Decoys: {numDecoys}")
+        logger.info(f"    Entrapments: {numEntrapments}; Targets-Entrapments = {numTargets - numEntrapments}")
     
     if len(proteinGroupInfoList) == 0:
         raise Exception("No proteins with scores found, make sure that protein identifiers are consistent in the evidence and fasta files")

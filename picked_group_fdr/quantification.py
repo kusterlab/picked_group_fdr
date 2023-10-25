@@ -310,13 +310,13 @@ def printNumPeptidesAtFDR(postErrProbs, postErrProbCutoff):
             peptidesPerRawFileMbr[rawFile].append(peptide)
             peptidesPerExperimentMbr[experiment].append(peptide)
 
-    logger.info("Peptide counts per rawfile (1% PSM-level FDR):")
+    logger.info("Precursor counts per rawfile (1% PSM-level FDR):")
     for rawFile, peptides in sorted(peptidesPerRawFile.items()):
         numPeptides = len(set(peptides))
         numPeptidesWithMbr = len(set(peptides + peptidesPerRawFileMbr[rawFile]))
         logger.info(f"    {rawFile}: {numPeptides} {'(' + str(numPeptidesWithMbr) + ' with MBR)' if numPeptidesWithMbr > numPeptides else ''}")
     
-    logger.info("Peptide counts per experiment (1% PSM-level FDR):")
+    logger.info("Precursor counts per experiment (1% PSM-level FDR):")
     for experiment, peptides in sorted(peptidesPerExperiment.items()):
         numPeptides = len(set(peptides))
         numPeptidesWithMbr = len(set(peptides + peptidesPerExperimentMbr[experiment]))

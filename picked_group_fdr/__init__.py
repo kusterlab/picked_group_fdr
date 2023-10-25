@@ -19,7 +19,7 @@ except ImportError:
     except DistributionNotFound:
         pass
 
-__copyright__ = '''Copyright (c) 2020-2022 Matthew The. All rights reserved.
+__copyright__ = '''Copyright (c) 2020-2023 Matthew The. All rights reserved.
 Written by Matthew The (matthew.the@tum.de) at the
 Chair of Proteomics and Bioanalytics at the Technical University of Munich.'''
 

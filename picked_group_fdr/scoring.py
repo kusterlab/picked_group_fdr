@@ -371,7 +371,7 @@ class ProteinScoringStrategy:
                 for proteinGroupIdx in proteinGroupIdxs:
                     proteinGroupPeptideInfos[proteinGroupIdx].append((score, peptide, proteins))
         
-        logger.info(f"Shared peptides: {sharedPeptides}; Unique peptides: {uniquePeptides}")
+        logger.info(f"#Precursors: Shared peptides = {sharedPeptides}; Unique peptides = {uniquePeptides}")
         return proteinGroupPeptideInfos
     
 
