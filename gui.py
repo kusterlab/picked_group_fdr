@@ -58,8 +58,9 @@ class LogHandler(logging.Handler):
         self.emitter = self.LogEmitter()
 
     def emit(self, record):
-        msg = self.format(record)
-        self.emitter.sigLog.emit(msg)
+        if record.levelno >= logging.INFO: # for some reason setLevel does not work
+            msg = self.format(record)
+            self.emitter.sigLog.emit(msg)
 
     # https://stackoverflow.com/questions/53288877/python-multiprocessing-sending-child-process-logging-to-gui-running-in-parent
     class LogEmitter(QObject):
@@ -347,9 +348,6 @@ class MainWindow(QtWidgets.QWidget):
         # sets up handler that will be used by QueueListener
         # which will update the LogDialog with messages from the pipeline
         handler = LogHandler()
-        handler.setLevel(
-            logging.INFO
-        )  # TODO: this doesn't work, debug messages still make it through
         handler.emitter.sigLog.connect(self.log_text_area.widget.appendPlainText)
 
         self.q = multiprocessing.Queue()
