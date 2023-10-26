@@ -289,16 +289,6 @@ class MultiFileSelectTable(QtWidgets.QWidget):
             )
         return digestion_params_list
 
-        # return digestion_params.DigestionParams(
-        #     self.enzyme_select.currentText(),
-        #     self.digestion_select.currentText(),
-        #     self.min_length_spinbox.value(),
-        #     self.max_length_spinbox.value(),
-        #     self.max_cleavages_spinbox.value(),
-        #     self.special_aas_line_edit.text(),
-        #     False
-        # )
-
 
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
@@ -463,6 +453,8 @@ class MainWindow(QtWidgets.QWidget):
         output_dir = self.output_dir_widget.get_file()
         
         evidence_files, pout_files, digest_params = list(), list(), list()
+        do_quant = False
+        lfq_min_peptide_ratios = 1
         if self.tabs.currentIndex() == 1:
             input_type = "percolator"
             pout_files = self.pout_widget.get_files()
@@ -474,9 +466,12 @@ class MainWindow(QtWidgets.QWidget):
             
             evidence_files = self.evidence_widget.get_files()
             digest_params = self.evidence_widget.get_digestion_params()
+
+            do_quant = self.do_quant_checkbox.isChecked()
+            lfq_min_peptide_ratios = self.min_lfq_peptides_spinbox.value()
         
         self.set_buttons_enabled_state(False)
-        self.pool.applyAsync(pipeline.run_picked_group_fdr_all, (evidence_files, pout_files, fasta_files, output_dir, digest_params, input_type), callback=self.on_picked_finished)
+        self.pool.applyAsync(pipeline.run_picked_group_fdr_all, (evidence_files, pout_files, fasta_files, output_dir, digest_params, input_type, do_quant, lfq_min_peptide_ratios), callback=self.on_picked_finished)
     
     def on_picked_finished(self, return_code):
         self.set_buttons_enabled_state(True)

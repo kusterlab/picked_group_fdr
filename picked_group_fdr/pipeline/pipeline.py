@@ -23,6 +23,8 @@ def run_picked_group_fdr_all(
     output_dir: str,
     digest_params_list: List[DigestionParams],
     input_type: str,
+    do_quant: bool,
+    lfq_min_peptide_ratios: int,
 ):
     digest_params = digestion_params_list_to_arg_list(digest_params_list)
     try:
@@ -31,12 +33,25 @@ def run_picked_group_fdr_all(
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
 
-        if input_type == "rescoring":
+        if input_type in ["rescoring", "mq"]:
+            pout_input_type = "prosit"
+            if input_type == "mq":
+                pout_input_type = "andromeda"
+                pin_files = run_andromeda_to_pin(
+                    evidence_files, fasta_files, output_dir, digest_params_list
+                )
+                pout_files = run_mokapot(pin_files, output_dir)
+
             evidence_files_rescored = run_update_evidence(
-                evidence_files, pout_files, output_dir, pout_input_type="prosit"
+                evidence_files, pout_files, output_dir, pout_input_type
             )
             run_picked_group_fdr(
-                evidence_files_rescored, output_dir, fasta_files, digest_params
+                evidence_files_rescored,
+                output_dir,
+                fasta_files,
+                digest_params,
+                do_quant,
+                lfq_min_peptide_ratios,
             )
         elif input_type == "percolator_remap":  # currently not accessible by the GUI
             run_merge_pout_remap(pout_files, fasta_files, output_dir, digest_params)
@@ -44,15 +59,8 @@ def run_picked_group_fdr_all(
         elif input_type == "percolator":
             run_picked_group_fdr_percolator_input(pout_files, output_dir)
         else:
-            pin_files = run_andromeda_to_pin(
-                evidence_files, fasta_files, output_dir, digest_params_list
-            )
-            pout_files = run_mokapot(pin_files, output_dir)
-            evidence_files_rescored = run_update_evidence(
-                evidence_files, pout_files, output_dir, pout_input_type="andromeda"
-            )
-            run_picked_group_fdr(
-                evidence_files_rescored, output_dir, fasta_files, digest_params
+            logger.error(
+                f"Error while running Picked Group FDR, unknown input type: {input_type}."
             )
 
     except SystemExit as e:
@@ -129,7 +137,16 @@ def run_picked_group_fdr(
     output_dir: str,
     fasta_files: List[str],
     digest_params: List[str],
+    do_quant: bool,
+    lfq_min_peptide_ratios: int,
 ):
+    quant_flags = []
+    if do_quant:
+        quant_flags = [
+            "--do_quant",
+            "--lfq_min_peptide_ratios",
+            str(lfq_min_peptide_ratios),
+        ]
     picked_group_fdr.main(
         ["--mq_evidence"]
         + evidence_files
@@ -143,6 +160,7 @@ def run_picked_group_fdr(
         ]
         + fasta_files
         + digest_params
+        + quant_flags
     )
 
 
