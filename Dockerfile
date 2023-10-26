@@ -46,6 +46,9 @@ ENV LANG C.UTF-8
 RUN pip install -U pip
 RUN pip install poetry
 
+# urllib3 v2.0 only supports OpenSSL 1.1.1+
+RUN pip install urllib3==1.26.6
+
 ADD pyproject.toml /root/pyproject.toml
 ADD poetry.lock /root/poetry.lock
 
