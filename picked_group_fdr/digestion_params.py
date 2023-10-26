@@ -46,6 +46,16 @@ class DigestionParams:
         self.use_hash_key = self.digestion == "none"
 
 
+def digestion_params_list_to_arg_list(digestion_params_list: List[DigestionParams]) -> List[str]:
+    return (
+        ["--min-length"] + [str(p.min_length) for p in digestion_params_list] +
+        ["--max-length"] + [str(p.max_length) for p in digestion_params_list] +
+        ["--cleavages"] + [str(p.cleavages) for p in digestion_params_list] +
+        ["--enzyme"] + [p.enzyme for p in digestion_params_list] +
+        ["--digestion"] + [p.digestion for p in digestion_params_list] +
+        ["--special-aas"] + ["".join(p.special_aas) for p in digestion_params_list]
+    )
+
 def get_digestion_params_list(args: Namespace) -> List[DigestionParams]:
     """Takes the parsed arguments from argparse and returns a list of DigestionParams.
 

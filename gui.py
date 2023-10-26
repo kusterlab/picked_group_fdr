@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal # https://realpython.com/python-pyqt-qthread/
+from PyQt5.QtCore import Qt, QObject, pyqtSignal # https://realpython.com/python-pyqt-qthread/
 
 import sys
 
@@ -10,7 +10,6 @@ import logging
 from logging.handlers import QueueListener
 import time
 import multiprocessing
-
 
 import picked_group_fdr.utils.multiprocessing_pool as pool
 import picked_group_fdr.digest as digest
@@ -23,6 +22,10 @@ logger.setLevel(logging.INFO)
 
 # https://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt#60528393
 class QTextEditLogger(logging.Handler, QObject):
+    """Text area which prints logs from both the pipeline and GUI.
+
+    Messages from the pipeline are passed through with the pyqtSignal.
+    """    
     appendPlainText = pyqtSignal(str)
     
     def __init__(self, parent):
@@ -40,11 +43,6 @@ class QTextEditLogger(logging.Handler, QObject):
         self.appendPlainText.emit(self.format(record))
 
 
-# https://stackoverflow.com/questions/53288877/python-multiprocessing-sending-child-process-logging-to-gui-running-in-parent
-class LogEmitter(QObject):
-    sigLog = pyqtSignal(str)
-
-
 class LogHandler(logging.Handler):
     def __init__(self):
         super().__init__()
@@ -52,11 +50,16 @@ class LogHandler(logging.Handler):
         formatter.converter = time.gmtime
         self.setFormatter(formatter)
 
-        self.emitter = LogEmitter()
+        self.emitter = self.LogEmitter()
 
     def emit(self, record):
         msg = self.format(record)
         self.emitter.sigLog.emit(msg)
+    
+    # https://stackoverflow.com/questions/53288877/python-multiprocessing-sending-child-process-logging-to-gui-running-in-parent
+    class LogEmitter(QObject):
+        sigLog = pyqtSignal(str)
+
 
 
 class FileSelect(QtWidgets.QWidget):
@@ -161,66 +164,141 @@ class MultiFileSelect(QtWidgets.QWidget):
         self.remove_button.setEnabled(enable)
         
 
-class DigestionParametersGroup(QtWidgets.QGroupBox):
-    def __init__(self, *args, **kwargs):
+class MultiFileSelectTable(QtWidgets.QWidget):
+    def __init__(self, file_type, file_extensions, file_hint='', *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.file_type = file_type
+        self.file_hint = file_hint
+        self.file_extensions = file_extensions
         
-        self.digestion_group_layout = QtWidgets.QGridLayout()
-        self.setLayout(self.digestion_group_layout)
+        self.label_text = f"Select {self.file_type} file(s)"
         
-        self.min_length_label = QtWidgets.QLabel("Min peptide length")
-        self.min_length_spinbox = QtWidgets.QSpinBox()
-        self.min_length_spinbox.setValue(digestion_params.MIN_PEPLEN_DEFAULT)
-        self.min_length_spinbox.setRange(1,20)
+        self.file_hint_text = ""
+        if len(file_hint) > 0:
+            self.file_hint_text = f'<br><font color="grey">{self.file_hint}</font>'
+        self.label = QtWidgets.QLabel(self.label_text + self.file_hint_text)
         
-        self.max_length_label = QtWidgets.QLabel("Max peptide length")
-        self.max_length_spinbox = QtWidgets.QSpinBox()
-        self.max_length_spinbox.setValue(digestion_params.MAX_PEPLEN_DEFAULT)
-        self.max_length_spinbox.setRange(1,100)
+        self.hbox_layout = QtWidgets.QHBoxLayout()
+        self.hbox_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.hbox_layout)
         
-        self.max_cleavages_label = QtWidgets.QLabel("Max miscleavages")
-        self.max_cleavages_spinbox = QtWidgets.QSpinBox()
-        self.max_cleavages_spinbox.setValue(digestion_params.CLEAVAGES_DEFAULT)
-        self.max_cleavages_spinbox.setRange(1,10)
+        table_headers = {
+            "Evidence file": 310, 
+            "Min len": 70, 
+            "Max len": 70,
+            "Miscleav.": 70,
+            "Enzyme": 100, 
+            "Digestion": 100, 
+            "Special AAs": 90
+        }
+        self.table_edit = QtWidgets.QTableWidget(0, len(table_headers))
+        self.table_edit.setMinimumHeight(150);
+        self.table_edit.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.table_edit.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.table_edit.setTextElideMode(Qt.ElideMiddle)
+        self.table_edit.setWordWrap(False)
+        for column_idx, column_width in enumerate(table_headers.values()):
+            self.table_edit.setColumnWidth(column_idx, column_width)
+        self.table_edit.setHorizontalHeaderLabels(table_headers.keys())
+        self.table_edit.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.table_edit.horizontalHeader().setHighlightSections(False)
+        self.table_edit.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.table_edit.verticalHeader().setMaximumSectionSize(22)
         
-        self.enzyme_label = QtWidgets.QLabel("Enzyme")
-        self.enzyme_select = QtWidgets.QComboBox()
-        self.enzyme_select.addItems(digest.ENZYME_CLEAVAGE_RULES.keys())
-        self.enzyme_select.setCurrentText(digestion_params.ENZYME_DEFAULT)
+        self.add_remove_buttons = QtWidgets.QHBoxLayout()
+        self.add_remove_buttons.setContentsMargins(0, 0, 0, 0)
+        self.add_remove_buttons.setAlignment(Qt.AlignTop)
         
-        self.digestion_label = QtWidgets.QLabel("Digestion")
-        self.digestion_select = QtWidgets.QComboBox()
-        self.digestion_select.addItems(["full", "semi", "none"])
-        self.digestion_select.setCurrentText(digestion_params.DIGESTION_DEFAULT)
+        self.browse_button = QtWidgets.QPushButton("Add")
+        self.browse_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.browse_button.clicked.connect(self.add_files)
         
-        self.special_aas_label = QtWidgets.QLabel("Special AAs")
-        self.special_aas_line_edit = QtWidgets.QLineEdit()
-        self.special_aas_line_edit.setText(digestion_params.SPECIAL_AAS_DEFAULT)
+        self.remove_button = QtWidgets.QPushButton("Remove")
+        self.remove_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.remove_button.clicked.connect(self.remove_files)
         
-        self.digestion_group_layout.addWidget(self.enzyme_label, 0, 0)
-        self.digestion_group_layout.addWidget(self.enzyme_select, 0, 1)
-        self.digestion_group_layout.addWidget(self.min_length_label, 0, 2)
-        self.digestion_group_layout.addWidget(self.min_length_spinbox, 0, 3)
-        self.digestion_group_layout.addWidget(self.digestion_label, 0, 4)
-        self.digestion_group_layout.addWidget(self.digestion_select, 0, 5)
+        self.add_remove_buttons.addWidget(self.browse_button)
+        self.add_remove_buttons.addWidget(self.remove_button)
         
-        self.digestion_group_layout.addWidget(self.max_cleavages_label, 1, 0)
-        self.digestion_group_layout.addWidget(self.max_cleavages_spinbox, 1, 1)
-        self.digestion_group_layout.addWidget(self.max_length_label, 1, 2)
-        self.digestion_group_layout.addWidget(self.max_length_spinbox, 1, 3)
-        self.digestion_group_layout.addWidget(self.special_aas_label, 1, 4)
-        self.digestion_group_layout.addWidget(self.special_aas_line_edit, 1, 5)
-        
-        for col in range(6):
-            self.digestion_group_layout.setColumnStretch(col, 1)
+        self.hbox_layout.addWidget(self.table_edit, stretch = 1)
     
-    def get_params(self):
-        return ["--min-length", str(self.min_length_spinbox.value()),
-                "--max-length", str(self.max_length_spinbox.value()),
-                "--cleavages", str(self.max_cleavages_spinbox.value()),
-                "--enzyme", self.enzyme_select.currentText(),
-                "--digestion", self.digestion_select.currentText(),
-                "--special-aas", self.special_aas_line_edit.text()]
+    def add_files(self):
+        filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(self, self.label_text, '', self.file_extensions)
+        for filename in filenames:
+            self.table_edit.insertRow(self.table_edit.rowCount())
+            row_idx = self.table_edit.rowCount()-1
+            self.table_edit.setItem(row_idx, 0, QtWidgets.QTableWidgetItem(filename))
+            
+            min_length_spinbox = QtWidgets.QSpinBox()
+            min_length_spinbox.setValue(digestion_params.MIN_PEPLEN_DEFAULT)
+            min_length_spinbox.setRange(1,20)
+            self.table_edit.setCellWidget(row_idx, 1, min_length_spinbox)
+
+            max_length_spinbox = QtWidgets.QSpinBox()
+            max_length_spinbox.setValue(digestion_params.MAX_PEPLEN_DEFAULT)
+            max_length_spinbox.setRange(1,100)
+            self.table_edit.setCellWidget(row_idx, 2, max_length_spinbox)
+
+            max_cleavages_spinbox = QtWidgets.QSpinBox()
+            max_cleavages_spinbox.setValue(digestion_params.CLEAVAGES_DEFAULT)
+            max_cleavages_spinbox.setRange(1,10)
+            self.table_edit.setCellWidget(row_idx, 3, max_cleavages_spinbox)
+            
+            enzyme_select = QtWidgets.QComboBox()
+            enzyme_select.addItems(digest.ENZYME_CLEAVAGE_RULES.keys())
+            enzyme_select.setCurrentText(digestion_params.ENZYME_DEFAULT)
+            self.table_edit.setCellWidget(row_idx, 4, enzyme_select)
+
+            digestion_select = QtWidgets.QComboBox()
+            digestion_select.addItems(["full", "semi", "none"])
+            digestion_select.setCurrentText(digestion_params.DIGESTION_DEFAULT)
+            self.table_edit.setCellWidget(row_idx, 5, digestion_select)
+            
+            special_aas_line_edit = QtWidgets.QLineEdit()
+            special_aas_line_edit.setText(digestion_params.SPECIAL_AAS_DEFAULT)
+            self.table_edit.setCellWidget(row_idx, 6, special_aas_line_edit)
+    
+    def remove_files(self):
+        selected_items = self.table_edit.selectedItems()
+        if not selected_items:
+            return
+        
+        for item in selected_items:
+            self.table_edit.removeRow(self.table_edit.row(item))
+    
+    def get_files(self):
+        return [str(self.table_edit.item(i, 0).text()) for i in range(self.table_edit.rowCount())]
+    
+    def setButtonsEnabled(self, enable):
+        self.browse_button.setEnabled(enable)
+        self.remove_button.setEnabled(enable)
+    
+    def get_digestion_params(self):
+        digestion_params_list = list()
+        for row_idx in range(self.table_edit.rowCount()):
+            digestion_params_list.append(
+                digestion_params.DigestionParams(
+                    self.table_edit.cellWidget(row_idx, 4).currentText(), # enzyme
+                    self.table_edit.cellWidget(row_idx, 5).currentText(), # digestion
+                    self.table_edit.cellWidget(row_idx, 1).value(), # min_length
+                    self.table_edit.cellWidget(row_idx, 2).value(), # max_length
+                    self.table_edit.cellWidget(row_idx, 3).value(), # max_cleavages
+                    self.table_edit.cellWidget(row_idx, 6).text(), # special_aas
+                    fasta_contains_decoys=False,
+                )
+            )
+        return digestion_params_list
+
+        # return digestion_params.DigestionParams(
+        #     self.enzyme_select.currentText(),
+        #     self.digestion_select.currentText(),
+        #     self.min_length_spinbox.value(),
+        #     self.max_length_spinbox.value(),
+        #     self.max_cleavages_spinbox.value(),
+        #     self.special_aas_line_edit.text(),
+        #     False
+        # )
+
 
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
@@ -231,25 +309,20 @@ class MainWindow(QtWidgets.QWidget):
         self.tabs = QtWidgets.QTabWidget()
         self._add_mq_input_tab()
         self._add_percolator_input_tab()
-        self._add_rescoring_input_tab()
         
-        self.fasta_widget = FileSelect('fasta', 'Fasta file (*.fasta *.fa)')
-        self.output_dir_widget = FileSelect('output', '', folder_select=True)        
-        self.digestion_group = DigestionParametersGroup("Digestion parameters")
+        self.output_dir_widget = FileSelect('output', '', folder_select=True)
         
         layout = QtWidgets.QFormLayout()
         self.setLayout(layout)
         
         layout.addRow(self.tabs)
-        layout.addRow(self.fasta_widget.label, self.fasta_widget)
         layout.addRow(self.output_dir_widget.label, self.output_dir_widget)
-        layout.addRow(self.digestion_group)
     
         self._add_run_button(layout)
         self._add_log_textarea(layout)
         
         # sets up handler that will be used by QueueListener
-        # which will update the LogDialog
+        # which will update the LogDialog with messages from the pipeline
         handler = LogHandler()
         handler.setLevel(logging.INFO) # TODO: this doesn't work, debug messages still make it through
         handler.emitter.sigLog.connect(self.log_text_area.widget.appendPlainText)
@@ -260,18 +333,52 @@ class MainWindow(QtWidgets.QWidget):
 
         self.pool = pool.JobPool(processes=1, warningFilter="default", queue=self.q)
         
-        self.resize(800, self.height())
+        self.resize(900, self.height())
 
     def _add_mq_input_tab(self):
         self.mq_tab = QtWidgets.QWidget()
         
         self.mq_layout = QtWidgets.QFormLayout()
-        self.evidence_widget = MultiFileSelect('evidence.txt', 'Tab separated file (*.txt)')
-        self.mq_layout.addRow(self.evidence_widget.label, self.evidence_widget)
-        
+        self.evidence_widget = MultiFileSelectTable('evidence.txt', 'Tab separated file (*.txt)')
+        self.mq_layout.addRow(self.evidence_widget.label)
+        self.mq_layout.addRow(self.evidence_widget)
+        self.mq_layout.addRow(self.evidence_widget.add_remove_buttons)
+
+        self.fasta_widget = MultiFileSelect('fasta', 'Fasta file (*.fasta *.fa)')
+        self.mq_layout.addRow(self.fasta_widget.label, self.fasta_widget)
+
+        self.rescoring_checkbox = QtWidgets.QCheckBox("Use rescoring results (e.g. Prosit)")
+        self.rescoring_checkbox.stateChanged.connect(self._disable_enable_rescoring_panel)
+
+        self.mq_layout.addRow(self.rescoring_checkbox)
+
+        self.pout_widget_rescoring = MultiFileSelect('percolator output', '', 'Add both target and decoy results!')
+        self.pout_widget_rescoring.setDisabled(True)
+        self.pout_widget_rescoring.label.setDisabled(True)
+        self.mq_layout.addRow(self.pout_widget_rescoring.label, self.pout_widget_rescoring)
+
+        self.do_quant_checkbox = QtWidgets.QCheckBox("Do quantification")
+        self.do_quant_checkbox.setChecked(True)
+        self.do_quant_checkbox.stateChanged.connect(self._disable_enable_quant_panel)
+        self.mq_layout.addRow(self.do_quant_checkbox)
+
+        self.min_lfq_peptides_label = QtWidgets.QLabel("LFQ min peptides")
+        self.min_lfq_peptides_spinbox = QtWidgets.QSpinBox()
+        self.min_lfq_peptides_spinbox.setValue(2)
+        self.min_lfq_peptides_spinbox.setRange(1,5)
+        self.mq_layout.addRow(self.min_lfq_peptides_label, self.min_lfq_peptides_spinbox)
+
         self.mq_tab.setLayout(self.mq_layout)
-        self.tabs.addTab(self.mq_tab, "MaxQuant input")
+        self.tabs.addTab(self.mq_tab, "MaxQuant/Prosit input")
     
+    def _disable_enable_rescoring_panel(self):
+        self.pout_widget_rescoring.setDisabled(not self.rescoring_checkbox.isChecked())
+        self.pout_widget_rescoring.label.setDisabled(not self.rescoring_checkbox.isChecked())
+
+    def _disable_enable_quant_panel(self):
+        self.min_lfq_peptides_spinbox.setDisabled(not self.do_quant_checkbox.isChecked())
+        self.min_lfq_peptides_label.setDisabled(not self.do_quant_checkbox.isChecked())
+
     def _add_percolator_input_tab(self):
         self.percolator_tab = QtWidgets.QWidget()
         
@@ -280,22 +387,11 @@ class MainWindow(QtWidgets.QWidget):
         self.percolator_layout.addRow(self.pout_widget.label, self.pout_widget)
         
         self.percolator_tab.setLayout(self.percolator_layout)
-        self.tabs.addTab(self.percolator_tab, "Percolator input")
-    
-    def _add_rescoring_input_tab(self):
-        self.rescoring_tab = QtWidgets.QWidget()
-        
-        self.rescoring_layout = QtWidgets.QFormLayout()
-        self.evidence_widget_rescoring = MultiFileSelect('evidence.txt', 'Tab separated file (*.txt)')
-        self.pout_widget_rescoring = MultiFileSelect('percolator output', '', 'Add both target and decoy results!')
-        self.rescoring_layout.addRow(self.evidence_widget_rescoring.label, self.evidence_widget_rescoring)
-        self.rescoring_layout.addRow(self.pout_widget_rescoring.label, self.pout_widget_rescoring)
-        
-        self.rescoring_tab.setLayout(self.rescoring_layout)
-        self.tabs.addTab(self.rescoring_tab, "Rescoring input (e.g. Prosit)")
+        self.tabs.addTab(self.percolator_tab, "Percolator/MSFragger input")
         
     def _add_run_button(self, layout):    
         self.run_button = QtWidgets.QPushButton("Run")
+        self.run_button.setStyleSheet("background-color: CornflowerBlue")
         self.run_button.clicked.connect(self.run_picked)
         self.run_button.setContentsMargins(20,100,20,100)
         
@@ -348,7 +444,6 @@ class MainWindow(QtWidgets.QWidget):
     def set_buttons_enabled_state(self, enable):
         self.evidence_widget.setButtonsEnabled(enable)
         self.pout_widget.setButtonsEnabled(enable)
-        self.evidence_widget_rescoring.setButtonsEnabled(enable)
         self.pout_widget_rescoring.setButtonsEnabled(enable)
         
         self.fasta_widget.setButtonsEnabled(enable)
@@ -364,24 +459,24 @@ class MainWindow(QtWidgets.QWidget):
             self.run_button.clicked.connect(self.stop_picked)
         
     def run_picked(self):
-        fasta_file = self.fasta_widget.get_file()
+        fasta_files = self.fasta_widget.get_files()
         output_dir = self.output_dir_widget.get_file()
-        digest_params = self.digestion_group.get_params()
         
-        evidence_files, pout_files = list(), list()
-        if self.tabs.currentIndex() == 2:
-            input_type = "rescoring"
-            evidence_files = self.evidence_widget_rescoring.get_files()
-            pout_files = self.pout_widget_rescoring.get_files()
-        elif self.tabs.currentIndex() == 1:
+        evidence_files, pout_files, digest_params = list(), list(), list()
+        if self.tabs.currentIndex() == 1:
             input_type = "percolator"
             pout_files = self.pout_widget.get_files()
         else:
             input_type = "mq"
+            if self.rescoring_checkbox.isChecked():
+                input_type = "rescoring"
+                pout_files = self.pout_widget_rescoring.get_files()
+            
             evidence_files = self.evidence_widget.get_files()
+            digest_params = self.evidence_widget.get_digestion_params()
         
         self.set_buttons_enabled_state(False)
-        self.pool.applyAsync(pipeline.run_picked_group_fdr_all, (evidence_files, pout_files, fasta_file, output_dir, digest_params, input_type), callback=self.on_picked_finished)
+        self.pool.applyAsync(pipeline.run_picked_group_fdr_all, (evidence_files, pout_files, fasta_files, output_dir, digest_params, input_type), callback=self.on_picked_finished)
     
     def on_picked_finished(self, return_code):
         self.set_buttons_enabled_state(True)

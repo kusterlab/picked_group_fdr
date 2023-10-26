@@ -491,7 +491,7 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
     )
 
 
-def writeProteinGroups(proteinGroupResults, protein_groups_out, config, apply_suffix):
+def writeProteinGroups(proteinGroupResults: ProteinGroupResults, protein_groups_out, config, apply_suffix):
     if apply_suffix:
         base, ext = os.path.splitext(protein_groups_out)
         label = config.get("label", None)

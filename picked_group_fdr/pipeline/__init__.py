@@ -6,5 +6,4 @@ from .pipeline import (
     run_picked_group_fdr,
     run_picked_group_fdr_percolator_input,
     run_update_evidence,
-    run_update_evidence_rescoring,
 )

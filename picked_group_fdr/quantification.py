@@ -288,7 +288,7 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
     #     logger.warning(f"Skipped {missingPeptidesInFasta} precursors not present in the fasta file")
     
     if missingPeptidesInProteinGroups > 0:
-        logger.warning(f"Skipped {missingPeptidesInProteinGroups} precursors from proteins not present in proteinGroups.txt file")
+        logger.debug(f"Skipped {missingPeptidesInProteinGroups} precursors from proteins not present in proteinGroups.txt file")
     
     logger.info(f"Found {uniquePeptidePrecursors} precursors from unique and {sharedPeptidePrecursors} precursors from shared peptides")
     
