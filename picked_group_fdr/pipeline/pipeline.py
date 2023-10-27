@@ -9,7 +9,7 @@ from joblib import parallel_backend
 from ..digestion_params import DigestionParams, digestion_params_list_to_arg_list
 
 from .. import picked_group_fdr
-from . import andromeda2pin, merge_pout
+from . import andromeda2pin, merge_pout, filter_fdr_maxquant
 from . import update_evidence_from_pout as update_evidence
 
 
@@ -26,7 +26,6 @@ def run_picked_group_fdr_all(
     do_quant: bool,
     lfq_min_peptide_ratios: int,
 ):
-    digest_params = digestion_params_list_to_arg_list(digest_params_list)
     try:
         if len(output_dir) == 0:
             raise RuntimeError("Please specify an output folder")
@@ -42,19 +41,26 @@ def run_picked_group_fdr_all(
                 )
                 pout_files = run_mokapot(pin_files, output_dir)
 
-            evidence_files_rescored = run_update_evidence(
-                evidence_files, pout_files, output_dir, pout_input_type
+            evidence_files_rescored = [
+                f"{output_dir}/evidence_{idx}.txt" for idx in range(len(evidence_files))
+            ]
+            run_update_evidence(
+                evidence_files, pout_files, evidence_files_rescored, pout_input_type
             )
+            
+            protein_groups_out = f"{output_dir}/proteinGroups_percolator.txt"
             run_picked_group_fdr(
                 evidence_files_rescored,
-                output_dir,
+                protein_groups_out,
                 fasta_files,
-                digest_params,
+                digest_params_list,
                 do_quant,
                 lfq_min_peptide_ratios,
             )
         elif input_type == "percolator_remap":  # currently not accessible by the GUI
-            run_merge_pout_remap(pout_files, fasta_files, output_dir, digest_params)
+            run_merge_pout_remap(
+                pout_files, fasta_files, output_dir, digest_params_list
+            )
             run_picked_group_fdr_percolator_input_remap(output_dir, fasta_files)
         elif input_type == "percolator":
             run_picked_group_fdr_percolator_input(pout_files, output_dir)
@@ -112,12 +118,15 @@ def run_mokapot(pin_files: List[str], output_dir: str):
 def run_update_evidence(
     evidence_files: List[str],
     pout_files: List[str],
-    output_dir: str,
+    evidence_files_rescored: List[str],
     pout_input_type: str,
 ):
-    evidence_files_rescored = list()
-    for idx, evidence_file in enumerate(evidence_files):
-        evidence_file_rescored = f"{output_dir}/evidence_{idx}.txt"
+    if len(evidence_files) != len(evidence_files_rescored):
+        logger.error("Unequal number of input and output evidence files.")
+
+    for evidence_file, evidence_file_rescored in zip(
+        evidence_files, evidence_files_rescored
+    ):
         update_evidence.main(
             ["--mq_evidence", evidence_file, "--perc_results"]
             + pout_files
@@ -128,18 +137,17 @@ def run_update_evidence(
                 pout_input_type,
             ]
         )
-        evidence_files_rescored.append(evidence_file_rescored)
-    return evidence_files_rescored
 
 
 def run_picked_group_fdr(
     evidence_files: List[str],
-    output_dir: str,
+    protein_groups_out: str,
     fasta_files: List[str],
-    digest_params: List[str],
+    digest_params_list: List[DigestionParams],
     do_quant: bool,
     lfq_min_peptide_ratios: int,
 ):
+    digest_params_str = digestion_params_list_to_arg_list(digest_params_list)
     quant_flags = []
     if do_quant:
         quant_flags = [
@@ -155,11 +163,11 @@ def run_picked_group_fdr(
             "picked_protein_group_mq_input",
             "--do_quant",
             "--protein_groups_out",
-            f"{output_dir}/proteinGroups_percolator.txt",
+            protein_groups_out,
             "--fasta",
         ]
         + fasta_files
-        + digest_params
+        + digest_params_str
         + quant_flags
     )
 
@@ -179,14 +187,15 @@ def run_merge_pout_remap(
     pout_files: List[str],
     fasta_files: List[str],
     output_dir: str,
-    digest_params: List[str],
+    digest_params_list: List[DigestionParams],
 ):
+    digest_params_str = digestion_params_list_to_arg_list(digest_params_list)
     merge_pout.main(
         ["--perc_results"]
         + pout_files
         + ["--perc_merged", f"{output_dir}/pout_merged.txt", "--fasta"]
         + fasta_files
-        + digest_params
+        + digest_params_str
     )
 
 
@@ -219,4 +228,19 @@ def run_picked_group_fdr_percolator_input_remap(
             "--fasta",
         ]
         + fasta_files
+    )
+
+
+def run_filter_fdr_maxquant(
+    protein_groups_files: List[str], protein_groups_out: str, fdr_cutoff: float = 0.01
+):
+    filter_fdr_maxquant.main(
+        ["--mq_protein_groups"]
+        + protein_groups_files
+        + [
+            "--mq_protein_groups_out",
+            protein_groups_out,
+            "--fdr_cutoff",
+            str(fdr_cutoff),
+        ]
     )

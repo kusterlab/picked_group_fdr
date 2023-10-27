@@ -155,7 +155,7 @@ def parseArgs(argv):
         default=1,
         type=int,
         metavar="T",
-        help="""Maximum number of threads to use.""",
+        help="""Maximum number of threads to use. Currently only speeds up the MaxLFQ part.""",
     )
 
     apars.add_argument(

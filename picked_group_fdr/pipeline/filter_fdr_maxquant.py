@@ -34,7 +34,7 @@ def parseArgs(argv):
                          help='proteinGroups.txt filtered at 100% FDR file(s)')
     
     apars.add_argument('--mq_protein_groups_out', default=None, metavar="O", required=False,
-                         help='Output path for filtered msms.txt or evidence.txt file.')
+                         help='Output path for filtered proteinGroups.txt.')
                                          
     apars.add_argument('--perc_in', default=None, metavar="M", nargs='+', required=False,
                          help='Percolator PSMs or peptide-level file.')
