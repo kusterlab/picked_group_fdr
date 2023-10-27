@@ -98,6 +98,8 @@ class ProteinGroups:
         for protein in proteins:    
             if protein in self.protein_to_group_idx_map:
                 proteinGroupIdxs.add(self._get_protein_group_idx(protein, check_idx_valid))
+            else:
+                proteinGroupIdxs.add(-1)
         return proteinGroupIdxs
     
     def merge_groups(self, superSetProtein: str, protein: str):

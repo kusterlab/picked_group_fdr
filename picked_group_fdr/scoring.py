@@ -366,7 +366,7 @@ class ProteinScoringStrategy:
                 raise Exception(f"Could not find any of the proteins {proteins} in the ProteinGroups object, check if the identifier format is the same. \
                                   1st protein group in ProteinGroups object: {proteinGroups.protein_groups[0]}")
             
-            if not self.use_shared_peptides and len(proteinGroupIdxs) > 1: # ignore shared peptides
+            if not self.use_shared_peptides and helpers.isSharedPeptide(proteinGroupIdxs): # ignore shared peptides
                 sharedPeptides += 1
                 continue
             

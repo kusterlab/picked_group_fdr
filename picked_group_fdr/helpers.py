@@ -25,7 +25,7 @@ def isMbr(postErrProb: float) -> bool:
 
 
 def isSharedPeptide(proteinGroupIdxs: List[int]) -> bool:
-    return len(proteinGroupIdxs) > 1
+    return len(proteinGroupIdxs) > 1 or proteinGroupIdxs == [-1]
 
 
 def removeDecoyProteinsFromTargetPeptides(proteins: List[str]) -> List[str]:

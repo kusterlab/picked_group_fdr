@@ -1,8 +1,9 @@
 import collections
-from typing import List, Set, Dict, Tuple
+from typing import List, Set, Dict
 import logging
 
 from . import graphs
+from . import helpers
 from .protein_groups import ProteinGroups
 from .peptide_info import PeptideInfoList
 
@@ -31,7 +32,7 @@ class ObservedPeptides:
         for peptide, (score, proteins) in peptideInfoList.items():
             if proteinGroups:
                 proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)            
-                if len(proteinGroupIdxs) != 1:
+                if helpers.isSharedPeptide(proteinGroupIdxs):
                     continue
 
             self.peptide_to_proteins_dict[peptide] = proteins
@@ -146,8 +147,8 @@ class ObservedPeptides:
         returns protein group idxs of protein groups with >=1 unique peptide(s)
         """
         identifiedProteinGroupIdxs = set()
-        for peptide, proteins in self.peptide_to_proteins_dict.items():
+        for _, proteins in self.peptide_to_proteins_dict.items():
             proteinGroupIdxsForPeptide = proteinGroups.get_protein_group_idxs(proteins)
-            if len(proteinGroupIdxsForPeptide) == 1:
+            if not helpers.isSharedPeptide(proteinGroupIdxsForPeptide):
                 identifiedProteinGroupIdxs.add(list(proteinGroupIdxsForPeptide)[0])
         return identifiedProteinGroupIdxs
