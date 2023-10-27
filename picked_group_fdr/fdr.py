@@ -33,7 +33,7 @@ def calculateProteinFDRs(proteinGroups, proteinScores):
     
     logger.info(f"#Protein groups: Target = {numTargets}; Decoys = {numDecoys}")
     if numEntrapments > 1:
-        logger.info(f"    Entrapments: {numEntrapments}; Targets-Entrapments = {numTargets - numEntrapments}")
+        logger.info(f"    Entrapments = {numEntrapments}; Targets-Entrapments = {numTargets - numEntrapments}")
     
     if len(proteinGroupInfoList) == 0:
         raise Exception("No proteins with scores found, make sure that protein identifiers are consistent in the evidence and fasta files")
@@ -73,4 +73,19 @@ def countBelowThreshold(qvals: List[float], qvalThreshold: float, skipForCountin
         return len([1 for x in qvals if x < qvalThreshold])
     else:
         return len([1 for x, skip in zip(qvals, skipForCounting) if x < qvalThreshold and not skip])
+
+
+def calcPostErrProbCutoff(postErrProbs, psmQvalCutoff):
+    postErrProbCutoff = 1.0
+    sumPEP = 0.0
+    numPSMs = 0
+    for postErrProb in sorted(postErrProbs):
+        if not np.isfinite(postErrProb):
+            continue
+        sumPEP += postErrProb
+        numPSMs += 1
+        if sumPEP / numPSMs > psmQvalCutoff:
+            postErrProbCutoff = postErrProb
+            break
+    return postErrProbCutoff
  

@@ -103,6 +103,7 @@ def parseArgs(argv):
         "--peptide_protein_map",
         default=None,
         metavar="M",
+        nargs="+",
         help="""File with mapping from peptides to proteins; alternative for 
                 --fasta flag if digestion is time consuming.""",
     )
@@ -389,13 +390,13 @@ def getProteinGroupResults(
             pickedProteinGroups, proteinScores
         )
 
-        scoreCutoff = groupingStrategy.score_cutoff if rescue_step else float("inf")
+        peptide_score_cutoff = scoreType.peptide_score_cutoff if rescue_step else float("inf")
         proteinGroupResults = ProteinGroupResults.from_protein_groups(
             pickedProteinGroups,
             pickedProteinGroupPeptideInfos,
             proteinScores,
             reportedQvals,
-            scoreCutoff,
+            peptide_score_cutoff,
             proteinAnnotations,
             keep_all_proteins,
         )
@@ -406,7 +407,7 @@ def getProteinGroupResults(
             pickedProteinGroupPeptideInfos,
             peptideToProteotypicityMap,
             scoreType,
-            scoreCutoff,
+            peptide_score_cutoff,
         )
 
     plotter.set_series_label(

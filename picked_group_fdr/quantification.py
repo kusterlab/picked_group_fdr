@@ -11,6 +11,7 @@ import triqler.parsers
 from . import digest
 from . import helpers
 from . import parsers
+from .fdr import calcPostErrProbCutoff
 from .results import ProteinGroupResults
 from .protein_groups import ProteinGroups
 from .scoring import ProteinScoringStrategy
@@ -189,7 +190,7 @@ def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
     # (2) in contrast to MaxQuant, we set a global precursor-level FDR 
     #         instead of a per raw file PSM-level FDR
     postErrProbCutoff = calcPostErrProbCutoff([x[0] for x in postErrProbs if not helpers.isMbr(x[0])], psmQvalCutoff)
-    logger.info(f"PEP-cutoff corresponding to {psmQvalCutoff*100}% PSM-level FDR: {postErrProbCutoff}")
+    logger.info(f"PEP-cutoff corresponding to {psmQvalCutoff*100:g}% PSM-level FDR: {postErrProbCutoff}")
     
     printNumPeptidesAtFDR(postErrProbs, postErrProbCutoff)
     
@@ -256,33 +257,34 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
         
         if discardSharedPeptides and helpers.isSharedPeptide(proteinGroupIdxs):
             sharedPeptidePrecursors += 1
-        else:
-            uniquePeptidePrecursors += 1
+            continue
         
-            if not helpers.isDecoy(proteins):
-                postErrProbs.append((postErrProb, rawFile, experiment, peptide))
-            
-            if len(tmtCols) > 0:
-                tmtCols = np.array(tmtCols, dtype = 'float64')
-            else:
-                tmtCols = None
-            
-            if len(silacCols) > 0:
-                silacCols = np.array(silacCols, dtype = 'float64')
-            else:
-                silacCols = None
+        uniquePeptidePrecursors += 1
+    
+        if not helpers.isDecoy(proteins):
+            postErrProbs.append((postErrProb, rawFile, experiment, peptide))
+        
+        if len(tmtCols) > 0:
+            tmtCols = np.array(tmtCols, dtype = 'float64')
+        else:
+            tmtCols = None
+        
+        if len(silacCols) > 0:
+            silacCols = np.array(silacCols, dtype = 'float64')
+        else:
+            silacCols = None
 
-            for proteinGroupIdx in proteinGroupIdxs:
-                precursorQuant = PrecursorQuant(peptide, 
-                                                charge, 
-                                                experiment, 
-                                                fraction, 
-                                                intensity, 
-                                                postErrProb,
-                                                tmtCols,
-                                                silacCols,
-                                                evidenceId)
-                proteinGroupResults[proteinGroupIdx].precursorQuants.append(precursorQuant)
+        for proteinGroupIdx in proteinGroupIdxs:
+            precursorQuant = PrecursorQuant(peptide, 
+                                            charge, 
+                                            experiment, 
+                                            fraction, 
+                                            intensity, 
+                                            postErrProb,
+                                            tmtCols,
+                                            silacCols,
+                                            evidenceId)
+            proteinGroupResults[proteinGroupIdx].precursorQuants.append(precursorQuant)
     
     # if missingPeptidesInFasta > 0:
     #     logger.warning(f"Skipped {missingPeptidesInFasta} precursors not present in the fasta file")
@@ -362,21 +364,6 @@ def parseFileList(fileListFile, params):
             params["groups"].append([])
         params["groups"][params["groupLabels"].index(condition)].append(experiments.index(experiment))
     return experiments, fileMapping, params
-
-
-def calcPostErrProbCutoff(postErrProbs, psmQvalCutoff):
-    postErrProbCutoff = 1.0
-    sumPEP = 0.0
-    numPSMs = 0
-    for postErrProb in sorted(postErrProbs):
-        if not np.isfinite(postErrProb):
-            continue
-        sumPEP += postErrProb
-        numPSMs += 1
-        if sumPEP / numPSMs > psmQvalCutoff:
-            postErrProbCutoff = postErrProb
-            break
-    return postErrProbCutoff
 
 
 def retainOnlyIdentifiedPrecursors(peptideIntensityList, postErrProbCutoff):

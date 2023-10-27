@@ -246,11 +246,12 @@ class ProteinScoringStrategy:
     use_razor: bool
     use_shared_peptides: bool
     protein_score: ProteinScore
+    peptide_score_cutoff: float
     score_origin: ScoreOrigin
     peptide_counts_per_protein: Dict[str, int]
     best_peptide_score_per_protein: Dict[str, float]
     
-    def __init__(self, score_description, mq_protein_groups_file = ""):
+    def __init__(self, score_description, mq_protein_groups_file = "", peptide_qval_cutoff = 0.01):
         if "multPEP" in score_description:
             self.protein_score = MultPEPScore()
         elif "bestPEP" in score_description:
@@ -265,6 +266,7 @@ class ProteinScoringStrategy:
         self.use_razor = "razor" in score_description
         self.use_proteotypicity = "proteotypicity" in score_description
         self.use_shared_peptides = "with_shared" in score_description
+        self.peptide_qval_cutoff = peptide_qval_cutoff
         
         if "Perc" in score_description:
             # Add "remap" to the scoreType if the fasta database used for protein grouping is different from the one used by Percolator
@@ -355,7 +357,7 @@ class ProteinScoringStrategy:
         logger.info("Assigning peptides to protein groups")
         sharedPeptides, uniquePeptides = 0, 0
         proteinGroupPeptideInfos = [list() for _ in range(len(proteinGroups))]
-        
+        postErrProbs = list()
         for peptide, (score, proteins) in peptideInfoList.items():
             proteins = self.filter_proteins(proteins) # filtering for razor peptide approach
             
@@ -366,11 +368,16 @@ class ProteinScoringStrategy:
             
             if not self.use_shared_peptides and len(proteinGroupIdxs) > 1: # ignore shared peptides
                 sharedPeptides += 1
-            else:
-                uniquePeptides += 1
-                for proteinGroupIdx in proteinGroupIdxs:
-                    proteinGroupPeptideInfos[proteinGroupIdx].append((score, peptide, proteins))
+                continue
+            
+            uniquePeptides += 1
+            for proteinGroupIdx in proteinGroupIdxs:
+                proteinGroupPeptideInfos[proteinGroupIdx].append((score, peptide, proteins))
+            
+            if not helpers.isDecoy(proteins) and not helpers.isMbr(score):
+                postErrProbs.append(score)
         
+        self.peptide_score_cutoff = fdr.calcPostErrProbCutoff(postErrProbs, self.peptide_qval_cutoff)
         logger.info(f"#Precursors: Shared peptides = {sharedPeptides}; Unique peptides = {uniquePeptides}")
         return proteinGroupPeptideInfos
     

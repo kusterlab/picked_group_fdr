@@ -35,7 +35,7 @@ def run_picked_group_fdr_all(
 
         protein_groups_out = f"{output_dir}/proteinGroups.txt"
         protein_groups_filtered_out = (
-            f"{output_dir}/proteinGroups.fdr{fdr_cutoff*100}.txt"
+            f"{output_dir}/proteinGroups.fdr{fdr_cutoff*100:g}.txt"
         )
         if input_type in ["rescoring", "mq"]:
             pout_input_type = "prosit"

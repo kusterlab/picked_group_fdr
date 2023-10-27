@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-import picked_group_fdr.quantification as pq
+import picked_group_fdr.fdr as pq
 
 
 def test_calcPostErrProbCutoff():
