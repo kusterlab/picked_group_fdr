@@ -58,7 +58,7 @@ class LogHandler(logging.Handler):
         self.emitter = self.LogEmitter()
 
     def emit(self, record):
-        if record.levelno >= logging.INFO: # for some reason setLevel does not work
+        if record.levelno >= logging.INFO:  # for some reason setLevel does not work
             msg = self.format(record)
             self.emitter.sigLog.emit(msg)
 
@@ -336,11 +336,21 @@ class MainWindow(QtWidgets.QWidget):
 
         self.output_dir_widget = FileSelect("output", "", folder_select=True)
 
+        self.fdr_cutoff_spinbox_label = QtWidgets.QLabel("Protein group-level FDR cutoff")
+        self.fdr_cutoff_spinbox = QtWidgets.QDoubleSpinBox()
+        self.fdr_cutoff_spinbox.setValue(0.01)
+        self.fdr_cutoff_spinbox.setRange(0, 1)
+        self.fdr_cutoff_spinbox.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
+
         layout = QtWidgets.QFormLayout()
         self.setLayout(layout)
 
         layout.addRow(self.tabs)
+        layout.addRow(self.fdr_cutoff_spinbox_label, self.fdr_cutoff_spinbox)
         layout.addRow(self.output_dir_widget.label, self.output_dir_widget)
+
 
         self._add_run_button(layout)
         self._add_log_textarea(layout)
@@ -393,15 +403,24 @@ class MainWindow(QtWidgets.QWidget):
         self.do_quant_checkbox = QtWidgets.QCheckBox("Do quantification")
         self.do_quant_checkbox.setChecked(True)
         self.do_quant_checkbox.stateChanged.connect(self._disable_enable_quant_panel)
-        self.mq_layout.addRow(self.do_quant_checkbox)
+
+        self.min_lfq_peptides = QtWidgets.QHBoxLayout()
 
         self.min_lfq_peptides_label = QtWidgets.QLabel("LFQ min peptides")
+        self.min_lfq_peptides_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+        )
+        self.min_lfq_peptides.addWidget(self.min_lfq_peptides_label)
+
         self.min_lfq_peptides_spinbox = QtWidgets.QSpinBox()
         self.min_lfq_peptides_spinbox.setValue(2)
         self.min_lfq_peptides_spinbox.setRange(1, 5)
-        self.mq_layout.addRow(
-            self.min_lfq_peptides_label, self.min_lfq_peptides_spinbox
+        self.min_lfq_peptides_spinbox.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
         )
+        self.min_lfq_peptides.addWidget(self.min_lfq_peptides_spinbox)
+
+        self.mq_layout.addRow(self.do_quant_checkbox, self.min_lfq_peptides)
 
         self.mq_tab.setLayout(self.mq_layout)
         self.tabs.addTab(self.mq_tab, "MaxQuant/Prosit input")
@@ -455,12 +474,12 @@ class MainWindow(QtWidgets.QWidget):
         self.log_text_button_vbox_layout.setContentsMargins(0, 0, 0, 0)
         self.log_text_button_vbox_layout.setAlignment(Qt.AlignTop)
 
-        self.log_text_clear_button = QtWidgets.QPushButton("Clear")
+        self.log_text_clear_button = QtWidgets.QPushButton("Clear logs")
         self.log_text_clear_button.clicked.connect(
             lambda: self.log_text_area.widget.clear()
         )
 
-        self.log_text_save_button = QtWidgets.QPushButton("Save")
+        self.log_text_save_button = QtWidgets.QPushButton("Save logs")
         self.log_text_save_button.clicked.connect(self.save_log_file)
 
         self.log_text_button_vbox_layout.addWidget(self.log_text_clear_button)
@@ -513,6 +532,7 @@ class MainWindow(QtWidgets.QWidget):
     def run_picked(self):
         fasta_files = self.fasta_widget.get_files()
         output_dir = self.output_dir_widget.get_file()
+        fdr_cutoff = self.fdr_cutoff_spinbox.value()
 
         evidence_files, pout_files, digest_params = list(), list(), list()
         do_quant = False
@@ -544,6 +564,7 @@ class MainWindow(QtWidgets.QWidget):
                 input_type,
                 do_quant,
                 lfq_min_peptide_ratios,
+                fdr_cutoff,
             ),
             callback=self.on_picked_finished,
         )

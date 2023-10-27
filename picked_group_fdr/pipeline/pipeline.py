@@ -13,7 +13,7 @@ from . import andromeda2pin, merge_pout, filter_fdr_maxquant
 from . import update_evidence_from_pout as update_evidence
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def run_picked_group_fdr_all(
@@ -25,6 +25,7 @@ def run_picked_group_fdr_all(
     input_type: str,
     do_quant: bool,
     lfq_min_peptide_ratios: int,
+    fdr_cutoff: float,
 ):
     try:
         if len(output_dir) == 0:
@@ -32,6 +33,10 @@ def run_picked_group_fdr_all(
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
 
+        protein_groups_out = f"{output_dir}/proteinGroups.txt"
+        protein_groups_filtered_out = (
+            f"{output_dir}/proteinGroups.fdr{fdr_cutoff*100}.txt"
+        )
         if input_type in ["rescoring", "mq"]:
             pout_input_type = "prosit"
             if input_type == "mq":
@@ -47,8 +52,6 @@ def run_picked_group_fdr_all(
             run_update_evidence(
                 evidence_files, pout_files, evidence_files_rescored, pout_input_type
             )
-            
-            protein_groups_out = f"{output_dir}/proteinGroups_percolator.txt"
             run_picked_group_fdr(
                 evidence_files_rescored,
                 protein_groups_out,
@@ -58,16 +61,23 @@ def run_picked_group_fdr_all(
                 lfq_min_peptide_ratios,
             )
         elif input_type == "percolator_remap":  # currently not accessible by the GUI
+            pout_merged = f"{output_dir}/pout_merged.txt"
             run_merge_pout_remap(
                 pout_files, fasta_files, output_dir, digest_params_list
             )
-            run_picked_group_fdr_percolator_input_remap(output_dir, fasta_files)
+            run_picked_group_fdr_percolator_input_remap(
+                pout_merged, fasta_files, protein_groups_out
+            )
         elif input_type == "percolator":
-            run_picked_group_fdr_percolator_input(pout_files, output_dir)
+            run_picked_group_fdr_percolator_input(pout_files, protein_groups_out)
         else:
             logger.error(
                 f"Error while running Picked Group FDR, unknown input type: {input_type}."
             )
+
+        run_filter_fdr_maxquant(
+            [protein_groups_out], protein_groups_filtered_out, fdr_cutoff
+        )
 
     except SystemExit as e:
         logger.error(
@@ -174,32 +184,34 @@ def run_picked_group_fdr(
 
 def run_merge_pout(
     pout_files: List[str],
-    output_dir: str,
+    pout_merged: str,
 ):
     merge_pout.main(
         ["--perc_results"]
         + pout_files
-        + ["--perc_merged", f"{output_dir}/pout_merged.txt"]
+        + ["--perc_merged", pout_merged]
     )
 
 
 def run_merge_pout_remap(
     pout_files: List[str],
     fasta_files: List[str],
-    output_dir: str,
+    pout_merged: str,
     digest_params_list: List[DigestionParams],
 ):
     digest_params_str = digestion_params_list_to_arg_list(digest_params_list)
     merge_pout.main(
         ["--perc_results"]
         + pout_files
-        + ["--perc_merged", f"{output_dir}/pout_merged.txt", "--fasta"]
+        + ["--perc_merged", pout_merged, "--fasta"]
         + fasta_files
         + digest_params_str
     )
 
 
-def run_picked_group_fdr_percolator_input(pout_files: List[str], output_dir: str):
+def run_picked_group_fdr_percolator_input(
+    pout_files: List[str], protein_groups_out: str
+):
     picked_group_fdr.main(
         [
             "--perc_evidence",
@@ -209,22 +221,22 @@ def run_picked_group_fdr_percolator_input(pout_files: List[str], output_dir: str
             "--methods",
             "picked_protein_group_no_remap",
             "--protein_groups_out",
-            f"{output_dir}/proteinGroups_percolator.txt",
+            protein_groups_out,
         ]
     )
 
 
 def run_picked_group_fdr_percolator_input_remap(
-    output_dir: str, fasta_files: List[str]
+    pout_merged: str, fasta_files: List[str], protein_groups_out: str
 ):
     picked_group_fdr.main(
         [
             "--perc_evidence",
-            f"{output_dir}/pout_merged.txt",
+            pout_merged,
             "--methods",
             "picked_protein_group_no_remap",
             "--protein_groups_out",
-            f"{output_dir}/proteinGroups_percolator.txt",
+            protein_groups_out,
             "--fasta",
         ]
         + fasta_files
