@@ -19,6 +19,7 @@ ENZYME_CLEAVAGE_RULES = {
     'trypsinp': { 'pre': ['K', 'R'], 'not_post': [], 'post': [] },
     'no_enzyme': { 'pre': [], 'not_post': [], 'post': [] },
     'chymotrypsin': { 'pre': ['F', 'W', 'Y', 'L'], 'not_post': ['P'], 'post': [] },
+    'chymotrypsin+': { 'pre': ['F', 'W', 'Y', 'L', 'M'], 'not_post': [], 'post': [] },
     'proteinasek': { 'pre': ['A', 'E', 'F', 'I', 'L', 'T', 'V', 'W', 'Y'], 'not_post': [], 'post': [] },
     'elastase': { 'pre': ['L', 'V', 'A', 'G'], 'not_post': ['P'], 'post': [] },
     'clostripain': { 'pre': ['R'], 'not_post': [''], 'post': [] },
@@ -34,9 +35,9 @@ ENZYME_CLEAVAGE_RULES = {
     'glu-c': { 'pre': ['E'], 'not_post': ['P'], 'post': [] },
     'pepsin-a': { 'pre': ['F', 'L'], 'not_post': ['P'], 'post': [] },
     'elastase-trypsin-chymotrypsin': { 'pre': ['A', 'L', 'I', 'V', 'F', 'K', 'R', 'W', 'F', 'Y'], 'not_post': ['P'], 'post': [] },
-    'lysarginase': { 'pre': [''], 'not_post': [''], 'post': ['K', 'R'] }, # TODO
+    'lysarginase': { 'pre': [''], 'not_post': [''], 'post': ['K', 'R'] },
     'v8-de': { 'pre': ['N', 'D', 'E', 'Q'], 'not_post': ['P'], 'post': [] }
-    }
+}
 
 
 def main(argv):

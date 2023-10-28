@@ -32,29 +32,43 @@ class DigestionParams:
         fasta_contains_decoys,
     ):
         self.enzyme = enzyme
+
         self.digestion = digestion
+        if self.enzyme == "no_enzyme":
+            self.digestion = "none"
+
         self.min_length = min_length
         self.max_length = max_length
         self.cleavages = cleavages
-        self.special_aas = list(special_aas)
+
+        self.special_aas = list()
+        if special_aas != "none":
+            self.special_aas = list(special_aas)
 
         self.methionine_cleavage = True
         self.db = "target" if fasta_contains_decoys else "concat"
-        if self.enzyme == "no_enzyme":
-            self.digestion = "none"
 
         self.use_hash_key = self.digestion == "none"
 
 
-def digestion_params_list_to_arg_list(digestion_params_list: List[DigestionParams]) -> List[str]:
+def digestion_params_list_to_arg_list(
+    digestion_params_list: List[DigestionParams],
+) -> List[str]:
     return (
-        ["--min-length"] + [str(p.min_length) for p in digestion_params_list] +
-        ["--max-length"] + [str(p.max_length) for p in digestion_params_list] +
-        ["--cleavages"] + [str(p.cleavages) for p in digestion_params_list] +
-        ["--enzyme"] + [p.enzyme for p in digestion_params_list] +
-        ["--digestion"] + [p.digestion for p in digestion_params_list] +
-        ["--special-aas"] + ["".join(p.special_aas) for p in digestion_params_list]
+        ["--min-length"]
+        + [str(p.min_length) for p in digestion_params_list]
+        + ["--max-length"]
+        + [str(p.max_length) for p in digestion_params_list]
+        + ["--cleavages"]
+        + [str(p.cleavages) for p in digestion_params_list]
+        + ["--enzyme"]
+        + [p.enzyme for p in digestion_params_list]
+        + ["--digestion"]
+        + [p.digestion for p in digestion_params_list]
+        + ["--special-aas"]
+        + ["".join(p.special_aas) for p in digestion_params_list]
     )
+
 
 def get_digestion_params_list(args: Namespace) -> List[DigestionParams]:
     """Takes the parsed arguments from argparse and returns a list of DigestionParams.
@@ -67,7 +81,7 @@ def get_digestion_params_list(args: Namespace) -> List[DigestionParams]:
 
     Returns:
         List[DigestionParams]: list of DigestionParams with length of longest digestion parameter argument.
-    """    
+    """
     params_list = [
         args.enzyme,
         args.digestion,
@@ -75,7 +89,7 @@ def get_digestion_params_list(args: Namespace) -> List[DigestionParams]:
         args.max_length,
         args.cleavages,
         args.special_aas,
-        [args.fasta_contains_decoys]
+        [args.fasta_contains_decoys],
     ]
     param_lengths = [len(p) for p in params_list if len(p) != 1]
     if len(set(param_lengths)) > 1:
@@ -85,43 +99,77 @@ def get_digestion_params_list(args: Namespace) -> List[DigestionParams]:
     params_list_updated = []
     for param in params_list:
         if len(param) == 1:
-            param = param*max_params
+            param = param * max_params
         params_list_updated.append(param)
 
     return [DigestionParams(*p) for p in zip(*params_list_updated)]
 
 
 def add_digestion_arguments(apars):
-    apars.add_argument('-e', '--enzyme', default = [ENZYME_DEFAULT], metavar='E', nargs="+",
-                                         help='''Type of enzyme "no_enzyme","elastase","pepsin",
-                                                         "proteinasek","thermolysin","chymotrypsin",
-                                                         "lys-n","lys-c","arg-c","asp-n","glu-c","trypsin",
-                                                         "trypsinp".
-                                                    ''')
+    apars.add_argument(
+        "-e",
+        "--enzyme",
+        default=[ENZYME_DEFAULT],
+        metavar="E",
+        nargs="+",
+        help="""Enzyme used for digestion. Available enzymes are 
+                "trypsin","trypsinp","no_enzyme","elastase","pepsin", 
+                "proteinasek","thermolysin","chymotrypsin","chymotrypsin+",
+                "lys-n","lys-c","lys-cp","arg-c","asp-n","glu-c".""",
+    )
 
-    apars.add_argument('-c', '--cleavages', default = [CLEAVAGES_DEFAULT], metavar='C', type=int, nargs="+",
-                                         help='''Number of allowed miss cleavages used in the search 
-                                                         engine (Only valid when using option -F).
-                                                    ''')
+    apars.add_argument(
+        "-c",
+        "--cleavages",
+        default=[CLEAVAGES_DEFAULT],
+        metavar="C",
+        type=int,
+        nargs="+",
+        help="""Number of allowed miss cleavages used in the search engine.""",
+    )
 
-    apars.add_argument('-l', '--min-length', default = [MIN_PEPLEN_DEFAULT], metavar='L', type=int, nargs="+",
-                                         help='''Minimum peptide length allowed used in the search 
-                                                         engine (Only valid when using option -F).
-                                                    ''')
+    apars.add_argument(
+        "-l",
+        "--min-length",
+        default=[MIN_PEPLEN_DEFAULT],
+        metavar="L",
+        type=int,
+        nargs="+",
+        help="""Minimum peptide length allowed used in the search engine.""",
+    )
 
-    apars.add_argument('-t', '--max-length', default = [MAX_PEPLEN_DEFAULT], metavar='L', type=int, nargs="+",
-                                         help='''Maximum peptide length allowed used in the search 
-                                                         engine (Only valid when using option -F).
-                                                    ''')
+    apars.add_argument(
+        "-t",
+        "--max-length",
+        default=[MAX_PEPLEN_DEFAULT],
+        metavar="L",
+        type=int,
+        nargs="+",
+        help="""Maximum peptide length allowed used in the search engine.""",
+    )
 
-    apars.add_argument('--special-aas', default = [SPECIAL_AAS_DEFAULT], metavar='S', nargs="+",
-                                         help='''Special AAs that MaxQuant uses for decoy generation.
-                                                    ''')
+    apars.add_argument(
+        "--special-aas",
+        default=[SPECIAL_AAS_DEFAULT],
+        metavar="S",
+        nargs="+",
+        help="""Special AAs that MaxQuant uses for decoy generation. 
+                Amino acids are written as a single string with all 
+                amino acids, e.g. "RK". To specify no amino acids, 
+                supply the string "none".""",
+    )
 
-    apars.add_argument('--digestion', default = [DIGESTION_DEFAULT], metavar='D', nargs="+",
-                                         help='''Digestion mode ('full', 'semi' or 'none').
-                                                    ''')
+    apars.add_argument(
+        "--digestion",
+        default=[DIGESTION_DEFAULT],
+        metavar="D",
+        nargs="+",
+        help="""Digestion mode ('full', 'semi' or 'none').
+                                                    """,
+    )
 
-    apars.add_argument('--fasta_contains_decoys',
-                         help='Set this flag if your fasta file already contains decoy protein sequences.',
-                         action='store_true')
+    apars.add_argument(
+        "--fasta_contains_decoys",
+        help="Set this flag if your fasta file already contains decoy protein sequences.",
+        action="store_true",
+    )
