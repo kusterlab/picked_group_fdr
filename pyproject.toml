@@ -29,8 +29,6 @@ pyqt5 = {version = "^5.15.7", optional = true}
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
 pytest-cov = "^2.12.1"
-
-[tool.poetry.group.dev.dependencies]
 ipykernel = "^6.26.0"
 memory-profiler = "^0.61.0"
 
