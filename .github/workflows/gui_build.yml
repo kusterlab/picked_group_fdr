@@ -52,7 +52,7 @@ jobs:
           mamba init powershell
           ls
           cd ./gui_tools
-          & ./build_gui.bat
+          ./build_gui.bat
           cd ..
       - name: Add built .exe to release
         uses: svenstaro/upload-release-action@v2
