@@ -50,8 +50,9 @@ jobs:
         shell: bash -el {0}
         run: |
           mamba init powershell
-          cd .\gui_tools\
-          & .\build_gui.bat
+          ls
+          cd ./gui_tools
+          & ./build_gui.bat
           cd ..
       - name: Add built .exe to release
         uses: svenstaro/upload-release-action@v2
