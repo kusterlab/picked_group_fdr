@@ -1,8 +1,14 @@
-vx.x.x
+v0.5.0
 - Added support for proteases that cleave before an amino acid, e.g. Asp-N, Lys-N
 - Fix for empty score field in evidence file
 - Add better detection of maxquant evidence files (#7)
 - Added support for combining evidence files with different proteases
+- Updated GUI to support different digestion parameters per evidence file
+- Fix log levels in GUI
+- Added example scripts and notebook for book chapter analysis
+- Add check for shared peptides to protein groups that were filtered out because they had no reliable peptides
+- Change peptide count to use score cutoff for peptide FDR instead of protein FDR
+- Improved log messages
 
 v0.4.0
 - Removed proteins without any PSMs below the FDR threshold from protein groups output. Setting the new `--keep_all_proteins` flag reverts to the old behavior.
