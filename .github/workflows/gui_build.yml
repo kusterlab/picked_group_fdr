@@ -5,7 +5,6 @@ on:
   push:
     tags:
       - 'rel-*'
-      - 'gui-test-*'
 
 jobs:
   build-windows:
@@ -34,13 +33,23 @@ jobs:
 
           Unzip ".\UPX\upx-3.96-win64.zip" ".\UPX\upx-3.96\"
       - name: Create conda environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.9
+          mamba-version: "*"
+          channels: conda-forge,defaults
+          channel-priority: true
+          activate-environment: picked_group_fdr_gui
+      - name: Install dependencies
+        shell: bash -el {0}
         run: |
-          C:\Miniconda\condabin\conda.bat create -n picked_group_fdr_gui python=3.9
-          C:\Miniconda\condabin\conda.bat init powershell
-          C:\Miniconda\condabin\conda.bat activate picked_group_fdr_gui
-          C:\Miniconda\condabin\conda.bat install -c conda-forge nomkl
-          C:\Miniconda\condabin\conda.bat install -c conda-forge numpy scipy pandas networkx pyqt pyinstaller bottleneck toml threadpoolctl
-          C:\Miniconda\condabin\conda.bat install -c bioconda mokapot triqler
+          mamba install -c conda-forge nomkl
+          mamba install -c conda-forge numpy scipy pandas networkx pyqt pyinstaller bottleneck toml threadpoolctl
+          mamba install -c bioconda mokapot triqler
+      - name: Build exe and compress with UPX
+        shell: bash -el {0}
+        run: |
+          mamba init powershell
           cd .\gui_tools\
           & .\build_gui.bat
           cd ..
