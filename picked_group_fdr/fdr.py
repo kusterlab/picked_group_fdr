@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Optional
+from typing import List, Optional
 from datetime import datetime
 
 import numpy as np
@@ -47,6 +47,49 @@ def calculateProteinFDRs(proteinGroups, proteinScores):
         logger.info(f"Entrapment FDR at 1% decoy FDR: {'%.2g' % (observedFdrs[countBelowThreshold(reportedQvals, 0.01)])}")
         
         #printReportedAndEntrapmentFDRs(reportedQvals, observedQvals)
+    
+    return reportedQvals, observedQvals
+
+
+def calculatePeptideFDRs(peptideScores, scoreType):    
+    decoyScores, entrapmentScores, poolScores = list(), list(), list()
+    fdrs = list()
+    reportedFdr, observedFdr = 0, 0
+    sumPEP = np.nextafter(0,1)
+    for score, _, proteins in peptideScores:
+        if helpers.isContaminant(proteins):
+            continue
+            
+        if helpers.isDecoy(proteins):
+            decoyScores.append(score)
+        else:
+            if entrapment.isEntrapment(proteins):
+                entrapmentScores.append(score)
+            else:
+                poolScores.append(score)
+            if "PEPavg" in scoreType.long_description():
+                sumPEP += score
+                reportedFdr = sumPEP / (len(entrapmentScores) + len(poolScores))
+            else:
+                reportedFdr = (len(decoyScores) + 1) / (len(poolScores) + len(entrapmentScores) + 1)
+            observedFdr = (len(entrapmentScores) + 1) / (len(poolScores) + len(entrapmentScores) + 1)
+            fdrs.append((reportedFdr, observedFdr))
+        # print(score, reportedFdr, observedFdr, helpers.isDecoy(proteins), entrapment.isEntrapment(proteins), sep='\t')
+                
+    numDecoys = len(decoyScores)
+    numEntrapments = len(entrapmentScores)
+    numTargets = len(poolScores) + len(entrapmentScores)
+    logger.info(f"#Peptides: Target = {numTargets}; Decoys = {numDecoys}")
+    if numEntrapments > 1:
+        logger.info(f"    Entrapments = {numEntrapments}; Targets-Entrapments = {numTargets - numEntrapments}")
+    
+    reportedFdrs, observedFdrs = zip(*fdrs)
+    reportedQvals, observedQvals = fdrsToQvals(reportedFdrs), fdrsToQvals(observedFdrs)
+    logger.info(f"#Target peptides at 1% decoy FDR: {countBelowThreshold(reportedQvals, 0.01)}")
+    if numEntrapments > 1:
+        logger.info(f"#Target peptides at 1% entrapment FDR: {countBelowThreshold(observedFdrs, 0.01)}")
+        logger.info(f"Decoy FDR at 1% entrapment FDR: {'%.2g' % (reportedQvals[countBelowThreshold(observedFdrs, 0.01)])}")
+        logger.info(f"Entrapment FDR at 1% decoy FDR: {'%.2g' % (observedFdrs[countBelowThreshold(reportedQvals, 0.01)])}")
     
     return reportedQvals, observedQvals
 

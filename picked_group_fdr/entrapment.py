@@ -26,7 +26,7 @@ def markEntrapmentProteins(peptideToProteinMap: Dict, mqProteinGroupsFile: str) 
 
 def getEntrapmentProteins(mqProteinGroupsFile: str) -> Set[str]:
     entrapmentProteins = set()
-    for proteinGroup, proteinScore in parsers.parseMqProteinGroupsFile(mqProteinGroupsFile):
+    for proteinGroup, proteinScore in parsers.parseProteinGroupsFile(mqProteinGroupsFile):
         for protein in proteinGroup:
             if "_entrapment" in protein:
                 entrapmentProteins.add(protein)
@@ -38,6 +38,6 @@ def markEntrapment(proteins: List[str], entrapmentProteins: Set[str]) -> List[st
 
 
 def isEntrapment(proteinGroup: List[str]) -> bool:
-    return len([1 for x in proteinGroup if "_entrapment" in x or "Random_" in x or "REV__" in x]) == len(proteinGroup)
+    return len([1 for x in proteinGroup if "_entrapment" in x or "Random_" in x or "REV__" in x or "mimic" in x]) == len(proteinGroup)
     #return len([1 for x in proteinGroup if "Random_" in x or "REV__" in x]) == len(proteinGroup)
 

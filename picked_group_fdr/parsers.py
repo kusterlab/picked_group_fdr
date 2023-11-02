@@ -5,6 +5,8 @@ import re
 from typing import List, Dict, Optional
 import logging
 
+import numpy as np
+
 from picked_group_fdr import digest, helpers
 
 logger = logging.getLogger(__name__)
@@ -65,21 +67,94 @@ FIXED_MODS_UNIMOD = [TMT_UNIMOD, TMTPRO_UNIMOD, ITRAQ4_UNIMOD, ITRAQ8_UNIMOD]
 FIXED_MODS_DICTS = [DEFAULT_FIXED_MODS, TMT_FIXED_MODS, TMTPRO_FIXED_MODS, ITRAQ4_FIXED_MODS, ITRAQ8_FIXED_MODS]
 
 
-def parseMqProteinGroupsFile(mqProteinGroupsFile, protein_column='Protein IDs'):
-    delimiter = getDelimiter(mqProteinGroupsFile)
+def parseProteinGroupsFiles(protein_groups_files: List[str], are_decoy_file: List[bool], **kwargs):
+    for mqProteinGroupsFile, is_decoy_file in zip(protein_groups_files, are_decoy_file):
+        yield from parseProteinGroupsFile(mqProteinGroupsFile, is_decoy_file=is_decoy_file, **kwargs)
+
+
+def parseProteinGroupsFile(protein_groups_file: str, protein_column: str='Protein IDs', score_column: str='Score', is_decoy_file: bool=False):
+    """Parse protein groups file from MaxQuant or ProteomeDiscoverer.
+
+    For PD with Chimerys, the column names are:
+    - protein_column="Accession"
+    - score_column="Score CHIMERY CHIMERYS"
+
+    Args:
+        mqProteinGroupsFile (_type_): _description_
+        protein_column (str, optional): _description_. Defaults to 'Protein IDs'.
+        score_column (str, optional): _description_. Defaults to 'Score'.
+        is_decoy_file (bool, optional): _description_. Defaults to False.
+
+    Yields:
+        _type_: _description_
+    """    
+    delimiter = getDelimiter(protein_groups_file)
         
-    reader = getTsvReader(mqProteinGroupsFile, delimiter)
+    reader = getTsvReader(protein_groups_file, delimiter)
     headers = next(reader) # save the header
     
-    scoreCol = get_column_index(headers, 'Score')
+    scoreCol = get_column_index(headers, score_column)
     proteinCol = get_column_index(headers, protein_column)
     
-    logger.info("Parsing MaxQuant proteinGroups.txt file")
+    logger.info(f"Parsing proteinGroups file: {protein_groups_file}")
     for row in reader:
-        if len(row[scoreCol]) == 0:
-            yield row[proteinCol].split(";"), -100.0
-        else:
-            yield row[proteinCol].split(";"), float(row[scoreCol])
+        proteins = list(map(str.strip, row[proteinCol].split(";")))
+        if is_decoy_file:
+            proteins = [f"REV__{p}" for p in proteins]
+        score = -100.0
+        if len(row[scoreCol]) > 0:
+            score = float(row[scoreCol])
+        yield proteins, score
+
+
+def parsePeptidesFiles(peptides_files: List[str], are_decoy_file: List[bool], **kwargs):
+    for peptide_file, is_decoy_file in zip(peptides_files, are_decoy_file):
+        yield from parsePeptidesFile(peptide_file, is_decoy_file=is_decoy_file, **kwargs)
+
+
+def parsePeptidesFile(peptides_file: str, peptide_column: str="Modified sequence", protein_column: str='Protein IDs', score_column: str='Score', is_decoy_file: bool=False):
+    """Parse protein groups file from MaxQuant or ProteomeDiscoverer.
+
+    For PD with Chimerys, the column names are:
+    - protein_column="Accession"
+    - score_column="Score CHIMERY CHIMERYS"
+
+    Args:
+        peptides_file (_type_): evidence.txt or msms.txt
+        peptide_column (str, optional): column name for peptide sequence. Defaults to 'Protein IDs'.
+        protein_column (str, optional): column name for protein identifiers. Defaults to 'Protein IDs'.
+        score_column (str, optional): column name for score. Defaults to 'Score'.
+        is_decoy_file (bool, optional): if this file only contains decoy peptides. Defaults to False.
+
+    Yields:
+        (str, str, str, float): Peptide, Proteins, Experiment, Score
+    """    
+    delimiter = getDelimiter(peptides_file)
+        
+    reader = getTsvReader(peptides_file, delimiter)
+    headers = next(reader) # save the header
+    
+    peptideCol = get_column_index(headers, peptide_column)
+    scoreCol = get_column_index(headers, score_column)
+    if not is_decoy_file:
+        proteinCol = get_column_index(headers, protein_column)
+
+    experiment = "Experiment1"
+    
+    logger.info(f"Parsing peptides file: {peptides_file}")
+    for row in reader:
+        proteins = []
+        if is_decoy_file:
+            proteins = ["REV__protein"]
+        elif len(row[proteinCol]) > 0:
+            proteins = list(map(str.strip, row[proteinCol].split(";")))
+        
+        score = -100.0
+        if len(row[scoreCol]) > 0:
+            score = float(row[scoreCol])
+            if np.isnan(score):
+                continue
+        yield row[peptideCol], proteins, experiment, score
 
 
 def parseEvidenceFiles(evidenceFiles, peptideToProteinMaps, scoreType, forQuantification=False, suppressMissingPeptideWarning=False):

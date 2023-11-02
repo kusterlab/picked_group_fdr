@@ -75,7 +75,7 @@ class MQProteinScore(ProteinScore):
         
     def get_protein_scores_from_file(self):
         proteinGroupPeptideInfos = list()
-        for proteinGroup, proteinScore in parsers.parseMqProteinGroupsFile(self.mq_protein_groups_file):
+        for proteinGroup, proteinScore in parsers.parseProteinGroupsFile(self.mq_protein_groups_file):
             proteinGroupPeptideInfos.append([(proteinScore, "NA", proteinGroup)])
         return proteinGroupPeptideInfos
 
