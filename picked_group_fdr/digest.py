@@ -123,14 +123,19 @@ def writeProteinToGeneMap(fastaFile, outputFile):
         writer.writerow([proteinId, geneId])
 
 
-parseUntilFirstSpace = lambda x : x.split(" ")[0]
-parseProteinNameFunc = lambda x : " ".join(x.split(" OS=")[0].split(" ")[1:])
-parseGeneNameFunc = lambda x : x.split(" GN=")[1].split(" ")[0] if "GN=" in x else ""
-#parseId = lambda x : x.replace(" ", "") # default MaxQuant 
-#parseId = lambda x : x.split("|")[1] # extract Uniprot ID, for PrDB runs (mouse proteome, Dongxue original)
+def parseUntilFirstSpace(fastaId: str) -> str:
+    return fastaId.split(" ")[0]
 
 
-def parseUniProtId(fastaId):
+def parseProteinNameFunc(fastaId: str) -> str:
+    return" ".join(fastaId.split(" OS=")[0].split(" ")[1:])
+
+
+def parseGeneNameFunc(fastaId: str) -> str:
+    return fastaId.split(" GN=")[1].split(" ")[0] if "GN=" in fastaId else ""
+
+
+def parseUniProtId(fastaId: str) -> str:
     proteinId = parseUntilFirstSpace(fastaId)
     if "|" in proteinId:
         return proteinId.split("|")[1]
@@ -248,9 +253,9 @@ def getProteinSequences(filePaths, parseId):
     return proteinSequences
 
 
-def filterFastaFile(fastaFile, filteredFastaFile, proteins):
+def filterFastaFile(fastaFile, filteredFastaFile, proteins, **kwargs):
     with open(filteredFastaFile, 'w') as f:
-        for prot, seq in readFasta(fastaFile):
+        for prot, seq in readFasta(fastaFile, **kwargs):
             if prot in proteins:
                 f.write('>' + prot + '\n' + seq + '\n')
                 #f.write('>decoy_' + prot + '\n' + seq[::-1] + '\n')
