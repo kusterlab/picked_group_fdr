@@ -548,18 +548,8 @@ def maxquant_to_internal(
 
 
 def getTsvReader(filename, delimiter="\t"):
-    # Python 3
-    if sys.version_info[0] >= 3:
-        return csv.reader(open(filename, "r", newline="", encoding='utf-8-sig'), delimiter=delimiter)
-    # Python 2
-    else:
-        return csv.reader(open(filename, "rb"), delimiter=delimiter)
+    return csv.reader(open(filename, "r", newline="", encoding='utf-8-sig'), delimiter=delimiter)
 
 
 def getTsvWriter(filename, delimiter="\t"):
-    # Python 3
-    if sys.version_info[0] >= 3:
-        return csv.writer(open(filename, "w", newline="", encoding='utf-8-sig'), delimiter=delimiter)
-    # Python 2
-    else:
-        return csv.writer(open(filename, "wb"), delimiter=delimiter)
+    return csv.writer(open(filename, "w", newline=""), delimiter=delimiter)
