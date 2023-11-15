@@ -95,8 +95,8 @@ def filterProteinGroupsAtFDR(proteinGroupFiles, outputFile, fdrCutoff):
             sys.exit("ERROR: could not detect file extension .txt in the input file")
         
         logger.info(f"Writing filtered protein groups results to: {outputFile}")
-        writer = parsers.getTsvWriter(outputFile)
-        reader = parsers.getTsvReader(proteinGroupFile)
+        writer = parsers.get_tsv_writer(outputFile)
+        reader = parsers.get_tsv_reader(proteinGroupFile)
         header = next(reader)
         writer.writerow(header)
         
@@ -119,7 +119,7 @@ def filterAtFDR(msmsFiles, msmsOutputFile, fdrCutoff, psmLevelFDR, precursorLeve
     rawFiles = set()
     for msmsFile in msmsFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = parsers.get_tsv_reader(msmsFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -190,13 +190,13 @@ def getPeptidesBelowFdr(rawFiles, bestScans, fdrCutoff, level):
 
 def writeMsmsOutput(msmsOutputFile, headersOrig, msmsFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR):
     logger.info("Writing msms.txt output file")
-    writer = parsers.getTsvWriter(msmsOutputFile)
+    writer = parsers.get_tsv_writer(msmsOutputFile)
     writer.writerow(headersOrig)
     
     survivingPSMs = 0
     for msmsFile in msmsFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = parsers.get_tsv_reader(msmsFile)
         headersOrig = next(reader)
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -259,7 +259,7 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
     rawFiles = set()
     for msmsFile in percInputFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = parsers.get_tsv_reader(msmsFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -306,13 +306,13 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
 
 def writePercOutput(percOutputFile, headersOrig, percInputFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR):
     logger.info("Writing percolator output file")
-    writer = parsers.getTsvWriter(percOutputFile)
+    writer = parsers.get_tsv_writer(percOutputFile)
     writer.writerow(headersOrig)
     
     survivingPSMs = 0
     for msmsFile in percInputFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = parsers.get_tsv_reader(msmsFile)
         headersOrig = next(reader)
         headers = list(map(lambda x : x.lower(), headersOrig))
         

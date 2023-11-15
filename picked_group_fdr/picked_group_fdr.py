@@ -434,13 +434,13 @@ def parseEvidenceFiles(
         peptideToProteinMaps = peptideToProteinMaps * len(evidenceFiles)
 
     peptideInfoList = dict()
-    for peptide, proteins, _, score in parsers.parseEvidenceFiles(
+    for peptide, proteins, _, score in parsers.parse_evidence_file_multiple(
         evidenceFiles,
-        peptideToProteinMaps=peptideToProteinMaps,
-        scoreType=scoreType,
-        suppressMissingPeptideWarning=suppressMissingPeptideWarning,
+        peptide_to_protein_maps=peptideToProteinMaps,
+        score_type=scoreType,
+        suppress_missing_peptide_warning=suppressMissingPeptideWarning,
     ):
-        peptide = helpers.cleanPeptide(peptide)
+        peptide = helpers.clean_peptide(peptide)
         if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:
             continue
 

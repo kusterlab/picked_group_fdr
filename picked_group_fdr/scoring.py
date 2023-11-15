@@ -75,7 +75,7 @@ class MQProteinScore(ProteinScore):
         
     def get_protein_scores_from_file(self):
         proteinGroupPeptideInfos = list()
-        for proteinGroup, proteinScore in parsers.parseProteinGroupsFile(self.mq_protein_groups_file):
+        for proteinGroup, proteinScore in parsers.parse_protein_groups_file_single(self.mq_protein_groups_file):
             proteinGroupPeptideInfos.append([(proteinScore, "NA", proteinGroup)])
         return proteinGroupPeptideInfos
 
@@ -385,10 +385,10 @@ class ProteinScoringStrategy:
 def compareRazorPeptides(mqEvidenceFile, peptideToProteinMap, proteinGroups, scoreType):
     """Compares the chosen protein by MaxQuant according to the razor peptide rule with our implementation of the razor peptide rule"""
     scoreType = ProteinScoringStrategy("multPEP razor")
-    for peptideRow in parsers.parseEvidenceFile(mqEvidenceFile, scoreType = scoreType):
+    for peptideRow in parsers.parse_evidence_file_single(mqEvidenceFile, score_type = scoreType):
         peptide, tmp_proteins, _, _ = peptideRow
         
-        proteins = digest.getProteins(peptideToProteinMap, helpers.cleanPeptide(peptide))
+        proteins = digest.getProteins(peptideToProteinMap, helpers.clean_peptide(peptide))
         
         leadingProteins = proteinGroups.get_leading_proteins(proteins)
         if len(leadingProteins) > 1:

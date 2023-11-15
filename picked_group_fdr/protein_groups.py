@@ -28,7 +28,7 @@ class ProteinGroups:
     
     @classmethod
     def from_mq_protein_groups_file(cls, mqProteinGroupsFile: str):
-        protein_groups = [proteinGroup for proteinGroup, _ in parsers.parseProteinGroupsFile(mqProteinGroupsFile)]
+        protein_groups = [proteinGroup for proteinGroup, _ in parsers.parse_protein_groups_file_single(mqProteinGroupsFile)]
         return cls(protein_groups)
     
     @classmethod

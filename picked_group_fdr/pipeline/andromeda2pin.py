@@ -42,10 +42,10 @@ def main(argv):
             logger.info(f"Found output file {percInFN}, remove this file to re-run andromeda2pin.")
             return
         logger.info(f"Writing results to: {percInFN}")
-        writer = parsers.getTsvWriter(percInFN + ".tmp")
+        writer = parsers.get_tsv_writer(percInFN + ".tmp")
     else:
         logger.info("Writing results to stdout")
-        writer = parsers.getTsvWriter(sys.stdout)
+        writer = parsers.get_tsv_writer(sys.stdout)
 
     digestion_params_list = picked_group_fdr.digestion_params.get_digestion_params_list(args)
     
@@ -109,7 +109,7 @@ def isMqEvidenceHeader(header: str, delimiter: str):
 
 def getMqEvidenceFiles(mq_evidence_files: List[str]):
     andromedaTargetOutFNs = []
-    delimiter = parsers.getDelimiter(mq_evidence_files[0])
+    delimiter = parsers.get_delimiter(mq_evidence_files[0])
     with open(mq_evidence_files[0], 'r') as f:
         firstLine = True
         for line in f:
@@ -143,8 +143,8 @@ def parseMqEvidenceFile(mqEvidenceFile, razor = False):
     - Delta score
     - Experiment (optional)
     """
-    delimiter = parsers.getDelimiter(mqEvidenceFile)
-    reader = parsers.getTsvReader(mqEvidenceFile, delimiter)
+    delimiter = parsers.get_delimiter(mqEvidenceFile)
+    reader = parsers.get_tsv_reader(mqEvidenceFile, delimiter)
     headers = next(reader) # save the header
     headers = list(map(lambda x : x.lower(), headers))
     
@@ -217,9 +217,9 @@ def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideTo
             continue
 
         if len(peptideToProteinMap) > 0:
-            proteins = digest.getProteins(peptideToProteinMap, cleanPeptide[2:-2])
+            proteins = digest.get_proteins(peptideToProteinMap, cleanPeptide[2:-2])
             if len(proteins) == 0:
-                if not helpers.isContaminant(tmp_proteins):
+                if not helpers.is_contaminant(tmp_proteins):
                     logger.warning(f"Could not find peptide {peptide} ({str(tmp_proteins)}) in fasta database, skipping PSM")
                 continue
         

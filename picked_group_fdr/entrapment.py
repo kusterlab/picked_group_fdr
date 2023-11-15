@@ -26,7 +26,7 @@ def markEntrapmentProteins(peptideToProteinMap: Dict, mqProteinGroupsFile: str) 
 
 def getEntrapmentProteins(mqProteinGroupsFile: str) -> Set[str]:
     entrapmentProteins = set()
-    for proteinGroup, proteinScore in parsers.parseProteinGroupsFile(mqProteinGroupsFile):
+    for proteinGroup, proteinScore in parsers.parse_protein_groups_file_single(mqProteinGroupsFile):
         for protein in proteinGroup:
             if "_entrapment" in protein:
                 entrapmentProteins.add(protein)

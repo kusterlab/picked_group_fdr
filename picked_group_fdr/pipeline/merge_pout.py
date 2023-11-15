@@ -107,7 +107,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
     seenPeptides = dict()
     missingPeptides, matchedPeptides = 0, 0
     for poutFile in perc_results:
-        poutReader = parsers.getTsvReader(poutFile)
+        poutReader = parsers.get_tsv_reader(poutFile)
         headers = next(poutReader)
 
         (
@@ -117,7 +117,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
             qvalCol,
             postErrProbCol,
             proteinCol,
-        ) = parsers.getPercolatorColumnIdxs(headers)
+        ) = parsers.get_percolator_column_idxs(headers)
 
         sumPEP = 0.0
         matchedBefore = matchedPeptides
@@ -131,15 +131,15 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
 
             # removeFlanks=True only removes a single character (MaxQuant convention)
             # convert peptide string to upper case, since prosit converts modified amino acids to lower case
-            peptide = helpers.cleanPeptide(
+            peptide = helpers.clean_peptide(
                 row[peptCol][2:-2].upper(), removeFlanks=False
             )
 
             if len(peptideToProteinMap) > 0:
-                proteins = digest.getProteins(peptideToProteinMap, peptide)
-            elif parsers.isNativePercolatorFile(headers):
+                proteins = digest.get_proteins(peptideToProteinMap, peptide)
+            elif parsers.is_native_percolator_file(headers):
                 proteins = row[proteinCol:]
-            elif parsers.isMokapotFile(headers):
+            elif parsers.is_mokapot_file(headers):
                 proteins = row[proteinCol].split('\t')
             
             isDecoy = helpers.isDecoy(proteins)
@@ -163,7 +163,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
                     matchedPeptides += 1
                     seenPeptides[peptide] = (qValue, row, isDecoy)
                 else:
-                    if not helpers.isContaminant(proteins):
+                    if not helpers.is_contaminant(proteins):
                         logger.debug(
                             f"Could not find peptide {peptide} in fasta file, check your database and if the correct digestion parameters were specified"
                         )
@@ -197,11 +197,11 @@ def get_peptide_PEPs(psm_infos):
 
 
 def write_updated_PSMs(perc_merged, psm_infos, peps, update_qvals=False):
-    writer = parsers.getTsvWriter(perc_merged + ".tmp")
+    writer = parsers.get_tsv_writer(perc_merged + ".tmp")
 
-    headers = parsers.getPercolatorNativeHeaders()
+    headers = parsers.PERCOLATOR_NATIVE_HEADERS
     writer.writerow(headers)
-    _, _, _, qvalCol, _, _ = parsers.getPercolatorColumnIdxs(headers)
+    _, _, _, qvalCol, _, _ = parsers.get_percolator_column_idxs(headers)
 
     sumPEP = 0.0
     counts = 0

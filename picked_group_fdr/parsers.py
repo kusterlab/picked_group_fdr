@@ -1,5 +1,4 @@
 import os
-import sys
 import csv
 import re
 from typing import List, Dict, Optional
@@ -78,17 +77,26 @@ FIXED_MODS_DICTS = [
     ITRAQ8_FIXED_MODS,
 ]
 
+PERCOLATOR_NATIVE_HEADERS = [
+    "PSMId",
+    "score",
+    "q-value",
+    "posterior_error_prob",
+    "peptide",
+    "proteinIds",
+]
 
-def parseProteinGroupsFiles(
+
+def parse_protein_groups_file_multiple(
     protein_groups_files: List[str], are_decoy_file: List[bool], **kwargs
 ):
-    for mqProteinGroupsFile, is_decoy_file in zip(protein_groups_files, are_decoy_file):
-        yield from parseProteinGroupsFile(
-            mqProteinGroupsFile, is_decoy_file=is_decoy_file, **kwargs
+    for protein_groups_file, is_decoy_file in zip(protein_groups_files, are_decoy_file):
+        yield from parse_protein_groups_file_single(
+            protein_groups_file, is_decoy_file=is_decoy_file, **kwargs
         )
 
 
-def parseProteinGroupsFile(
+def parse_protein_groups_file_single(
     protein_groups_file: str,
     protein_column: str = "Protein IDs",
     score_column: str = "Score",
@@ -101,7 +109,7 @@ def parseProteinGroupsFile(
     - score_column="Score CHIMERY CHIMERYS"
 
     Args:
-        mqProteinGroupsFile (_type_): _description_
+        protein_groups_file (_type_): _description_
         protein_column (str, optional): _description_. Defaults to 'Protein IDs'.
         score_column (str, optional): _description_. Defaults to 'Score'.
         is_decoy_file (bool, optional): _description_. Defaults to False.
@@ -109,40 +117,42 @@ def parseProteinGroupsFile(
     Yields:
         _type_: _description_
     """
-    delimiter = getDelimiter(protein_groups_file)
+    delimiter = get_delimiter(protein_groups_file)
 
-    reader = getTsvReader(protein_groups_file, delimiter)
+    reader = get_tsv_reader(protein_groups_file, delimiter)
     headers = next(reader)  # save the header
 
-    scoreCol = get_column_index(headers, score_column)
-    proteinCol = get_column_index(headers, protein_column)
+    score_col = get_column_index(headers, score_column)
+    protein_col = get_column_index(headers, protein_column)
 
     logger.info(f"Parsing proteinGroups file: {protein_groups_file}")
     for row in reader:
-        proteins = list(map(str.strip, row[proteinCol].split(";")))
+        proteins = list(map(str.strip, row[protein_col].split(";")))
         if is_decoy_file:
             proteins = [f"REV__{p}" for p in proteins]
         score = -100.0
-        if len(row[scoreCol]) > 0:
-            score = float(row[scoreCol])
+        if len(row[score_col]) > 0:
+            score = float(row[score_col])
         yield proteins, score
 
 
-def parsePeptidesFiles(peptides_files: List[str], are_decoy_file: List[bool], **kwargs):
+def parse_peptides_files_multiple(
+    peptides_files: List[str], are_decoy_file: List[bool], **kwargs
+):
     for peptide_file, is_decoy_file in zip(peptides_files, are_decoy_file):
-        yield from parsePeptidesFile(
+        yield from parse_peptides_file_single(
             peptide_file, is_decoy_file=is_decoy_file, **kwargs
         )
 
 
-def parsePeptidesFile(
+def parse_peptides_file_single(
     peptides_file: str,
     peptide_column: str = "Modified sequence",
     protein_column: str = "Protein IDs",
     score_column: str = "Score",
     is_decoy_file: bool = False,
 ):
-    """Parse protein groups file from MaxQuant or ProteomeDiscoverer.
+    """Parse peptide-level file from MaxQuant (evidence/msms.txt) or ProteomeDiscoverer.
 
     For PD with Chimerys, the column names are:
     - protein_column="Accession"
@@ -158,15 +168,15 @@ def parsePeptidesFile(
     Yields:
         (str, str, str, float): Peptide, Proteins, Experiment, Score
     """
-    delimiter = getDelimiter(peptides_file)
+    delimiter = get_delimiter(peptides_file)
 
-    reader = getTsvReader(peptides_file, delimiter)
+    reader = get_tsv_reader(peptides_file, delimiter)
     headers = next(reader)  # save the header
 
-    peptideCol = get_column_index(headers, peptide_column)
-    scoreCol = get_column_index(headers, score_column)
+    peptide_col = get_column_index(headers, peptide_column)
+    score_col = get_column_index(headers, score_column)
     if not is_decoy_file:
-        proteinCol = get_column_index(headers, protein_column)
+        protein_col = get_column_index(headers, protein_column)
 
     experiment = "Experiment1"
 
@@ -175,91 +185,94 @@ def parsePeptidesFile(
         proteins = []
         if is_decoy_file:
             proteins = ["REV__protein"]
-        elif len(row[proteinCol]) > 0:
-            proteins = list(map(str.strip, row[proteinCol].split(";")))
+        elif len(row[protein_col]) > 0:
+            proteins = list(map(str.strip, row[protein_col].split(";")))
 
         score = -100.0
-        if len(row[scoreCol]) > 0:
-            score = float(row[scoreCol])
+        if len(row[score_col]) > 0:
+            score = float(row[score_col])
             if np.isnan(score):
                 continue
-        yield row[peptideCol], proteins, experiment, score
+        yield row[peptide_col], proteins, experiment, score
 
 
-def parseEvidenceFiles(
-    evidenceFiles,
-    peptideToProteinMaps,
-    scoreType,
-    forQuantification=False,
-    suppressMissingPeptideWarning=False,
+def parse_evidence_file_multiple(
+    evidence_files,
+    peptide_to_protein_maps,
+    score_type,
+    for_quantification=False,
+    suppress_missing_peptide_warning=False,
 ):
-    for evidenceFile, peptideToProteinMap in zip(evidenceFiles, peptideToProteinMaps):
-        yield from parseEvidenceFile(
-            evidenceFile,
-            peptideToProteinMap,
-            scoreType,
-            forQuantification,
-            suppressMissingPeptideWarning,
+    for evidence_file, peptide_to_protein_map in zip(
+        evidence_files, peptide_to_protein_maps
+    ):
+        yield from parse_evidence_file_single(
+            evidence_file,
+            peptide_to_protein_map,
+            score_type,
+            for_quantification,
+            suppress_missing_peptide_warning,
         )
 
 
-def parseEvidenceFile(
-    evidenceFile,
-    peptideToProteinMap,
-    scoreType,
-    forQuantification=False,
-    suppressMissingPeptideWarning=False,
+def parse_evidence_file_single(
+    evidence_file,
+    peptide_to_protein_map,
+    score_type,
+    for_quantification=False,
+    suppress_missing_peptide_warning=False,
 ):
-    delimiter = getDelimiter(evidenceFile)
-    reader = getTsvReader(evidenceFile, delimiter)
+    delimiter = get_delimiter(evidence_file)
+    reader = get_tsv_reader(evidence_file, delimiter)
     headers = next(reader)  # save the header
 
     get_proteins = get_peptide_to_protein_mapper(
-        peptideToProteinMap, scoreType, suppressMissingPeptideWarning
+        peptide_to_protein_map, score_type, suppress_missing_peptide_warning
     )
 
-    if isPercolatorFile(headers):
-        yield from parsePercolatorOutFile(reader, headers, get_proteins, scoreType)
+    if is_percolator_file(headers):
+        yield from parse_percolator_out_file(reader, headers, get_proteins, score_type)
     else:
         headers = list(
             map(str.lower, headers)
         )  # convert headers to lowercase since MQ changes the capitalization frequently
-        if evidenceFile.endswith(".csv"):
+        if evidence_file.endswith(".csv"):
             headers = [x.replace(".", " ") for x in headers]
-        yield from parseMqEvidenceFile(
-            reader, headers, get_proteins, scoreType, forQuantification
+        yield from parse_mq_evidence_file(
+            reader, headers, get_proteins, score_type, for_quantification
         )
 
 
 def get_peptide_to_protein_mapper(
-    peptideToProteinMap, scoreType, suppressMissingPeptideWarning
+    peptide_to_protein_map, score_type, suppress_missing_peptide_warning
 ):
     def get_proteins(peptide, tmp_proteins):
-        if scoreType.remaps_peptides_to_proteins():
-            proteins = digest.getProteins(peptideToProteinMap, peptide)
+        if score_type.remaps_peptides_to_proteins():
+            proteins = digest.get_proteins(peptide_to_protein_map, peptide)
             if len(proteins) == 0:
                 if (
-                    not helpers.isContaminant(tmp_proteins)
-                    and not suppressMissingPeptideWarning
+                    not helpers.is_contaminant(tmp_proteins)
+                    and not suppress_missing_peptide_warning
                 ):
                     logger.warning(f"Missing peptide: {peptide} {tmp_proteins}")
                 return None
         else:
             proteins = tmp_proteins
-        proteins = scoreType.filter_proteins(
-            proteins
-        )  # filtering for razor peptide approach
-        return helpers.removeDecoyProteinsFromTargetPeptides(proteins)
+
+        # filtering for razor peptide approach
+        proteins = score_type.filter_proteins(proteins)
+
+        return helpers.remove_decoy_proteins_from_target_peptides(proteins)
 
     return get_proteins
 
 
-def parseMqEvidenceFile(
-    reader, headers, get_proteins, scoreType, forQuantification=False
+def parse_mq_evidence_file(
+    reader, headers, get_proteins, score_type, for_quantification=False
 ):
     """
-    Reads in approximately 100,000 lines per second with forQuantification=False
-    and 50,000 lines per second with forQuantification=True
+    Reads in approximately 100,000 lines per second with for_quantification=False
+    and 50,000 lines per second with for_quantification=True
 
     Columns needed for identification:
     - Modified sequence
@@ -280,76 +293,83 @@ def parseMqEvidenceFile(
     - Intensity H (for SILAC)
     - Intensity M (optional, for SILAC)
     """
-    getHeaderCol = getHeaderColFunc(headers)
-    getHeaderColsStartingWith = getHeaderColsStartingWithFunc(headers)
+    get_header_col = get_header_col_func(headers)
+    get_header_cols_starting_with = get_header_cols_starting_with_func(headers)
 
-    peptCol = getHeaderCol("modified sequence", required=True)
+    pept_col = get_header_col("modified sequence", required=True)
 
-    proteinCol = getHeaderCol(
+    protein_col = get_header_col(
         "leading proteins", required=True
     )  # all protein groups, each represented by the first protein in the group
-    if scoreType.use_razor:
-        proteinCol = getHeaderCol(
+    if score_type.use_razor:
+        protein_col = get_header_col(
             "leading razor protein", required=True
         )  # best scoring protein group, represented by the first protein in the group
 
-    scoreCol = getHeaderCol(scoreType.get_score_column(), required=True)
+    score_col = get_header_col(score_type.get_score_column(), required=True)
 
-    experimentCol = getHeaderCol("experiment")
-    chargeCol = getHeaderCol("charge", required=forQuantification)
+    experiment_col = get_header_col("experiment")
+    charge_col = get_header_col("charge", required=for_quantification)
 
-    intensityCol = getHeaderCol("intensity", required=forQuantification)
-    tmtCols = getHeaderColsStartingWith("reporter intensity ")
-    silacCols = list()
+    intensity_col = get_header_col("intensity", required=for_quantification)
+    tmt_cols = get_header_cols_starting_with("reporter intensity ")
+    silac_cols = list()
     if "intensity l" in headers:  # SILAC
-        silacCols.append(getHeaderCol("intensity l", required=forQuantification))
+        silac_cols.append(get_header_col("intensity l", required=for_quantification))
         if "intensity m" in headers:
-            silacCols.append(getHeaderCol("intensity m", required=forQuantification))
+            silac_cols.append(
+                get_header_col("intensity m", required=for_quantification)
+            )
         if "intensity h" in headers:
-            silacCols.append(getHeaderCol("intensity h", required=forQuantification))
+            silac_cols.append(
+                get_header_col("intensity h", required=for_quantification)
+            )
 
-    rawFileCol = getHeaderCol("raw file", required=forQuantification)
-    fractionCol = getHeaderCol("fraction")
-    evidenceIdCol = getHeaderCol("id", required=forQuantification)
+    raw_file_col = get_header_col("raw file", required=for_quantification)
+    fraction_col = get_header_col("fraction")
+    evidence_id_col = get_header_col("id", required=for_quantification)
 
     logger.info("Parsing MaxQuant evidence.txt file")
-    for lineIdx, row in enumerate(reader):
-        if lineIdx % 500000 == 0:
-            logger.info(f"    Reading line {lineIdx}")
+    for line_idx, row in enumerate(reader):
+        if line_idx % 500000 == 0:
+            logger.info(f"    Reading line {line_idx}")
 
-        peptide = row[peptCol]
+        peptide = row[pept_col]
         proteins = get_proteins(
-            helpers.cleanPeptide(peptide), row[proteinCol].split(";")
+            helpers.clean_peptide(peptide), row[protein_col].split(";")
         )
         if not proteins:
             continue
 
         experiment = "Experiment1"
-        if experimentCol >= 0:
-            experiment = row[experimentCol]
+        if experiment_col >= 0:
+            experiment = row[experiment_col]
 
-        score = float(row[scoreCol]) if len(row[scoreCol]) > 0 else float("nan")
+        score = float(row[score_col]) if len(row[score_col]) > 0 else float("nan")
 
-        if forQuantification:
-            charge = int(row[chargeCol])
-            intensity = float(row[intensityCol]) if len(row[intensityCol]) > 0 else 0.0
-            if fractionCol >= 0:
-                fraction = row[fractionCol]
+        if for_quantification:
+            charge = int(row[charge_col])
+            intensity = (
+                float(row[intensity_col]) if len(row[intensity_col]) > 0 else 0.0
+            )
+            if fraction_col >= 0:
+                fraction = row[fraction_col]
             else:
                 fraction = -1
-            rawFile = row[rawFileCol]
-            tmtIntensities = [row[tmtCol] for tmtCol in tmtCols]
-            silacIntensities = [
-                row[silacCol] if len(row[silacCol]) > 0 else 0 for silacCol in silacCols
+            raw_file = row[raw_file_col]
+            tmt_intensities = [row[tmt_col] for tmt_col in tmt_cols]
+            silac_intensities = [
+                row[silac_col] if len(row[silac_col]) > 0 else 0
+                for silac_col in silac_cols
             ]
-            evidenceId = int(row[evidenceIdCol])
-            yield peptide, proteins, charge, rawFile, experiment, fraction, intensity, score, tmtIntensities, silacIntensities, evidenceId
+            evidence_id = int(row[evidence_id_col])
+            yield peptide, proteins, charge, raw_file, experiment, fraction, intensity, score, tmt_intensities, silac_intensities, evidence_id
         else:
             yield peptide, proteins, experiment, score
 
 
-def getHeaderColFunc(headers):
-    def getHeaderCol(name, required=False):
+def get_header_col_func(headers):
+    def get_header_col(name, required=False):
         if required:
             return get_column_index(headers, name)
         else:
@@ -357,68 +377,62 @@ def getHeaderColFunc(headers):
                 return get_column_index(headers, name)
             return -1
 
-    return getHeaderCol
+    return get_header_col
 
 
-def getHeaderColsStartingWithFunc(headers):
-    def getHeaderColsStartingWith(name):
+def get_header_cols_starting_with_func(headers):
+    def get_header_cols_starting_with(name):
         cols = [idx for idx, h in enumerate(headers) if h.startswith(name)]
         return cols
 
-    return getHeaderColsStartingWith
+    return get_header_cols_starting_with
 
 
-def parsePercolatorOutFile(reader, headers, get_proteins, scoreType="PEP"):
-    _, peptCol, scoreCol, _, postErrProbCol, proteinCol = getPercolatorColumnIdxs(
-        headers
-    )
+def parse_percolator_out_file(reader, headers, get_proteins, score_type="PEP"):
+    (
+        _,
+        pept_col,
+        score_col,
+        _,
+        post_err_prob_col,
+        protein_col,
+    ) = get_percolator_column_idxs(headers)
 
-    if scoreType.get_score_column() == "posterior_error_prob":
-        scoreCol = postErrProbCol
+    if score_type.get_score_column() == "posterior_error_prob":
+        score_col = post_err_prob_col
 
     logger.info("Parsing Percolator output file")
-    for lineIdx, row in enumerate(reader):
-        if lineIdx % 500000 == 0:
-            logger.info(f"    Reading line {lineIdx}")
+    for line_idx, row in enumerate(reader):
+        if line_idx % 500000 == 0:
+            logger.info(f"    Reading line {line_idx}")
 
-        peptide = row[peptCol][1:-1]
+        peptide = row[pept_col][1:-1]
         experiment = 1
-        score = float(row[scoreCol])
+        score = float(row[score_col])
 
-        if isNativePercolatorFile(headers):
-            proteins = row[proteinCol:]
-        elif isMokapotFile(headers):
-            proteins = row[proteinCol].split("\t")
+        if is_native_percolator_file(headers):
+            proteins = row[protein_col:]
+        elif is_mokapot_file(headers):
+            proteins = row[protein_col].split("\t")
 
         proteins = get_proteins(peptide, proteins)
         if proteins:
             yield peptide, proteins, experiment, score
 
 
-def getPercolatorNativeHeaders():
-    return [
-        "PSMId",
-        "score",
-        "q-value",
-        "posterior_error_prob",
-        "peptide",
-        "proteinIds",
-    ]
+def is_percolator_file(headers):
+    return is_native_percolator_file(headers) or is_mokapot_file(headers)
 
 
-def isPercolatorFile(headers):
-    return isNativePercolatorFile(headers) or isMokapotFile(headers)
-
-
-def isNativePercolatorFile(headers):
+def is_native_percolator_file(headers):
     return "psmid" in map(str.lower, headers)
 
 
-def isMokapotFile(headers):
+def is_mokapot_file(headers):
     return "specid" in map(str.lower, headers)
 
 
-def getDelimiter(filename: str):
+def get_delimiter(filename: str):
     if filename.endswith(".csv"):
         return ","
     else:
@@ -433,53 +447,58 @@ def get_column_index(headers: List[str], column_name: str):
     return headers.index(column_name)
 
 
-def getPercolatorColumnIdxs(headers):
-    if isNativePercolatorFile(headers):
-        idCol = get_column_index(headers, "PSMId")
-        peptCol = get_column_index(headers, "peptide")
-        scoreCol = get_column_index(headers, "score")
-        qvalCol = get_column_index(headers, "q-value")
-        postErrProbCol = get_column_index(headers, "posterior_error_prob")
-        proteinCol = get_column_index(headers, "proteinIds")
-    elif isMokapotFile(headers):
-        idCol = get_column_index(headers, "SpecId")
-        peptCol = get_column_index(headers, "Peptide")
-        scoreCol = get_column_index(headers, "mokapot score")
-        qvalCol = get_column_index(headers, "mokapot q-value")
-        postErrProbCol = get_column_index(headers, "mokapot PEP")
-        proteinCol = get_column_index(headers, "Proteins")
+def get_percolator_column_idxs(headers):
+    if is_native_percolator_file(headers):
+        id_col = get_column_index(headers, "PSMId")
+        pept_col = get_column_index(headers, "peptide")
+        score_col = get_column_index(headers, "score")
+        qval_col = get_column_index(headers, "q-value")
+        post_err_prob_col = get_column_index(headers, "posterior_error_prob")
+        protein_col = get_column_index(headers, "proteinIds")
+    elif is_mokapot_file(headers):
+        id_col = get_column_index(headers, "SpecId")
+        pept_col = get_column_index(headers, "Peptide")
+        score_col = get_column_index(headers, "mokapot score")
+        qval_col = get_column_index(headers, "mokapot q-value")
+        post_err_prob_col = get_column_index(headers, "mokapot PEP")
+        protein_col = get_column_index(headers, "Proteins")
     else:
         raise ValueError(
-            "Could not determine percolator input file format. The file should either contain a column named PSMId (native percolator) or SpecId (mokapot)."
+            "Could not determine percolator input file format. The file should either "
+            "contain a column named PSMId (native percolator) or SpecId (mokapot)."
         )
-    return idCol, peptCol, scoreCol, qvalCol, postErrProbCol, proteinCol
+    return id_col, pept_col, score_col, qval_col, post_err_prob_col, protein_col
 
 
-def parsePercolatorOutFileToDict(percOutFile, resultsDict, inputType=""):
-    if not os.path.isfile(percOutFile):
+def parse_percolator_out_file_to_dict(
+    perc_out_file: str, results_dict: dict, input_type: str = ""
+):
+    if not os.path.isfile(perc_out_file):
         raise FileNotFoundError(
-            f"Could not find percolator output file {percOutFile}. Please check if this file exists."
+            f"Could not find percolator output file {perc_out_file}. Please check if this file exists."
         )
 
-    delimiter = getDelimiter(percOutFile)
-    reader = getTsvReader(percOutFile, delimiter)
+    delimiter = get_delimiter(perc_out_file)
+    reader = get_tsv_reader(perc_out_file, delimiter)
     headers = next(reader)  # save the header
 
-    idCol, peptCol, scoreCol, _, postErrProbCol, _ = getPercolatorColumnIdxs(headers)
+    id_col, pept_col, score_col, _, post_err_prob_col, _ = get_percolator_column_idxs(
+        headers
+    )
 
     logger.info("Parsing Percolator output file")
     fixed_mod_idx = -1
     first = True
-    for lineIdx, row in enumerate(reader):
-        if lineIdx % 500000 == 0:
-            logger.info(f"    Reading line {lineIdx}")
+    for line_idx, row in enumerate(reader):
+        if line_idx % 500000 == 0:
+            logger.info(f"    Reading line {line_idx}")
 
-        peptide = row[peptCol][2:-2]
-        score = float(row[scoreCol])
-        postErrProb = float(row[postErrProbCol])
+        peptide = row[pept_col][2:-2]
+        score = float(row[score_col])
+        post_err_prob = float(row[post_err_prob_col])
 
-        psmId = row[idCol]
-        if inputType == "prosit":
+        psm_id = row[id_col]
+        if input_type == "prosit":
             peptide = peptide.replace("m", "M(ox)")
             if first:
                 for i, fixed_mod in enumerate(FIXED_MODS_UNIMOD):
@@ -489,16 +508,16 @@ def parsePercolatorOutFileToDict(percOutFile, resultsDict, inputType=""):
             elif fixed_mod_idx >= 0:
                 if FIXED_MODS_UNIMOD[fixed_mod_idx] not in peptide:
                     fixed_mod_idx = -1
-            rawFile = "-".join(psmId.split("-")[:-4])
-            scanNumber = int(float(psmId.split("-")[-4]))
+            raw_file = "-".join(psm_id.split("-")[:-4])
+            scan_number = int(float(psm_id.split("-")[-4]))
         else:
             peptide = peptide.replace("[42]", "(ac)").replace("M[16]", "M(ox)")
-            rawFile = "_".join(psmId.split("_")[:-3])
-            scanNumber = int(psmId.split("_")[-3])
+            raw_file = "_".join(psm_id.split("_")[:-3])
+            scan_number = int(psm_id.split("_")[-3])
 
-        resultsDict[rawFile][(scanNumber, peptide)] = (score, postErrProb)
+        results_dict[raw_file][(scan_number, peptide)] = (score, post_err_prob)
 
-    return FIXED_MODS_DICTS[fixed_mod_idx + 1], resultsDict
+    return FIXED_MODS_DICTS[fixed_mod_idx + 1], results_dict
 
 
 # copied from fundamentals/mod_string.py
@@ -547,9 +566,11 @@ def maxquant_to_internal(
     return [regex.sub(find_replacement, seq)[1:-1] for seq in sequences]
 
 
-def getTsvReader(filename, delimiter="\t"):
-    return csv.reader(open(filename, "r", newline="", encoding='utf-8-sig'), delimiter=delimiter)
+def get_tsv_reader(filename: str, delimiter: str = "\t"):
+    return csv.reader(
+        open(filename, "r", newline="", encoding="utf-8-sig"), delimiter=delimiter
+    )
 
 
-def getTsvWriter(filename, delimiter="\t"):
+def get_tsv_writer(filename: str, delimiter: str = "\t"):
     return csv.writer(open(filename, "w", newline=""), delimiter=delimiter)

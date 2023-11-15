@@ -42,7 +42,7 @@ class SequenceCoverageColumns(ProteinGroupColumns):
         uniquePeptides = [set() for _ in range(len(experimentToIdxMap))]
         for precursor in peptideIntensityList:
             if helpers.isMbr(precursor.postErrProb) or precursor.postErrProb <= postErrProbCutoff:
-                uniquePeptides[experimentToIdxMap[precursor.experiment]].add(helpers.cleanPeptide(precursor.peptide))
+                uniquePeptides[experimentToIdxMap[precursor.experiment]].add(helpers.clean_peptide(precursor.peptide))
         return uniquePeptides
 
     def calculate_sequence_coverages(self, peptidesPerExperiment, proteinIds):

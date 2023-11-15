@@ -173,7 +173,7 @@ def main(argv):
             )
             proteinGroups, proteinScores = zip(
                 *list(
-                    parsers.parseProteinGroupsFiles(
+                    parsers.parse_protein_groups_file_multiple(
                         protein_group_files,
                         are_decoy_file=is_decoy_file,
                         protein_column=args.protein_col,
@@ -204,7 +204,7 @@ def main(argv):
             )
             peptides, proteins, _, peptideScores = zip(
                 *list(
-                    parsers.parsePeptidesFiles(
+                    parsers.parse_peptides_files_multiple(
                         peptide_files,
                         are_decoy_file=is_decoy_file,
                         peptide_column=args.peptide_col,

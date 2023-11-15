@@ -8,7 +8,7 @@ def allContain(proteinGroup: List[str], prefix) -> bool:
     return len([1 for x in proteinGroup if prefix in x]) == len(proteinGroup)
 
 
-def isContaminant(proteinGroup: List[str]) -> bool:
+def is_contaminant(proteinGroup: List[str]) -> bool:
     return allContain(proteinGroup, "CON__")
 
     
@@ -28,7 +28,7 @@ def isSharedPeptide(proteinGroupIdxs: List[int]) -> bool:
     return len(proteinGroupIdxs) > 1 or proteinGroupIdxs == [-1]
 
 
-def removeDecoyProteinsFromTargetPeptides(proteins: List[str]) -> List[str]:
+def remove_decoy_proteins_from_target_peptides(proteins: List[str]) -> List[str]:
     """
     shared peptides with at least one target protein are only associated with 
     their target proteins. This prevents mixed target-decoy protein groups and 
@@ -45,7 +45,7 @@ def removeDecoyProteinsFromTargetPeptides(proteins: List[str]) -> List[str]:
     return new_proteins
 
     
-def cleanPeptide(peptide: str, removeFlanks: bool = True):
+def clean_peptide(peptide: str, removeFlanks: bool = True):
     """
     Removes modifications in [] or () as well as the _ that MaxQuant puts in front and after the sequence
     

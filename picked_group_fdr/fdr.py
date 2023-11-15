@@ -71,7 +71,7 @@ def calculatePeptideFDRs(peptideScores, scoreType):
     reportedFdr, observedFdr = 0, 0
     sumPEP = np.nextafter(0, 1)
     for score, _, proteins in peptideScores:
-        if helpers.isContaminant(proteins):
+        if helpers.is_contaminant(proteins):
             continue
 
         if helpers.isDecoy(proteins):

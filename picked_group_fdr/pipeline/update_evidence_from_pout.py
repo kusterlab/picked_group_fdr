@@ -76,7 +76,7 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
     fixed_mods, resultsDict = get_percolator_results(poutFiles, poutInputType)
     
     logger.info("Writing updated combined evidence file")
-    writer = parsers.getTsvWriter(outEvidenceFile + ".tmp")
+    writer = parsers.get_tsv_writer(outEvidenceFile + ".tmp")
     first = True
     mqPEPs, prositPEPs = list(), list()
     unexplainedMissingPSMs = 0
@@ -84,7 +84,7 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
     writtenRows = 0
     for evidenceFile in evidenceFiles:
         logger.info(f"Processing {evidenceFile}")
-        reader = parsers.getTsvReader(evidenceFile)
+        reader = parsers.get_tsv_reader(evidenceFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -190,14 +190,14 @@ def updatePeptides(peptideFiles, poutFiles, outPeptideFile, msmsFiles, poutInput
     peptideResultsDict = convertPSMDictToPeptideDict(resultsDict)
     
     logger.info("Writing updated peptides file")
-    writer = parsers.getTsvWriter(outPeptideFile + ".tmp")
+    writer = parsers.get_tsv_writer(outPeptideFile + ".tmp")
     first = True
     mqPEPs, prositPEPs = list(), list()
     unexplainedMissingPeptides = 0
     unexplainedPeptides = list()
     for peptideFile in peptideFiles:
         logger.info(f"Processing {peptideFile}")
-        reader = parsers.getTsvReader(peptideFile)
+        reader = parsers.get_tsv_reader(peptideFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -262,7 +262,7 @@ def get_percolator_results(pout_files: List[str], pout_input_type: str):
     fixed_mods = None
     for pout_file in pout_files:
         logger.info(f"Processing {pout_file}")
-        fixed_mods, results_dict = parsers.parsePercolatorOutFileToDict(pout_file, results_dict, pout_input_type)
+        fixed_mods, results_dict = parsers.parse_percolator_out_file_to_dict(pout_file, results_dict, pout_input_type)
     
     logger.info("Finished parsing percolator output files")
     logger.info("#PSMs per raw file:")
@@ -275,7 +275,7 @@ def convertPSMDictToPeptideDict(resultsDict):
     peptideResultsDict = dict()
     for _, results in resultsDict.items():
         for (_, peptide), (score, PEP) in results.items():
-            peptide = helpers.cleanPeptide(peptide, removeFlanks = False)
+            peptide = helpers.clean_peptide(peptide, removeFlanks = False)
             currScore, currPEP = peptideResultsDict.get(peptide, (-1e10, 1e10))
             peptideResultsDict[peptide] = (max(currScore, score), min(currPEP, PEP))
     return peptideResultsDict

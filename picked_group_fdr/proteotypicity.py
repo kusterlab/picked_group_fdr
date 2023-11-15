@@ -15,7 +15,7 @@ def getPeptideToProteotypicityFromFile(peptideToProteotypicityFile):
     peptideToProteotypicityMap = dict()
     proteinToMaxProteotypicityMap = collections.defaultdict(lambda : -1000)
     proteinToNumInSilicoPeptidesMap = collections.defaultdict(int)
-    reader = parsers.getTsvReader(peptideToProteotypicityFile)
+    reader = parsers.get_tsv_reader(peptideToProteotypicityFile)
     next(reader)
     for i, row in enumerate(reader):
         if (i+1) % 1000000 == 0:
@@ -58,7 +58,7 @@ def getProteotypicities(peptideToProteotypicityMap, peptideScorePairs, scoreCuto
 def calculateProteotypicityScores(proteinGroups, proteinGroupPeptideInfos, peptideToProteotypicityMap, scoreType, scoreCutoff):
     logger.info("Computing proteotypicity scores")
     
-    ptWriter = parsers.getTsvWriter("protein_percolator_input.tab")
+    ptWriter = parsers.get_tsv_writer("protein_percolator_input.tab")
     ptWriter.writerow(["PSMid", "label", "bestPEP", "proteotypicityRatio", "numObservedPeptides", "numInSilicoPeptides", "maxObservedProteotypicity", "maxProteinProteotypicity", "proteotypicityDiff", "peptide", "proteins"])
     for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupPeptideInfos):
         proteinScore = scoreType.calculate_score(proteinGroupScoreList)

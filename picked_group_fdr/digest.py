@@ -586,7 +586,7 @@ def getPeptideToProteinMapFromFile(peptideToProteinMapFile, useHashKey=False):
     return peptideToProteinMap
 
 
-def getProteins(peptideToProteinMap, peptide):
+def get_proteins(peptideToProteinMap, peptide):
     peptide = peptide  # .replace("I", "L")
     if len(peptideToProteinMap) == 2:
         hashKey = peptide[:6]

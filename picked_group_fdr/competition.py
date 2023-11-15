@@ -62,7 +62,7 @@ class ProteinCompetitionStrategy(ABC):
         
         filteredScoreGroupTuples = []
         for proteinGroup, proteinGroupScoreList, protein_score, _ in scoreGroupTuples:
-            if self._is_protein_seen(proteinGroup) or helpers.isContaminant(proteinGroup):
+            if self._is_protein_seen(proteinGroup) or helpers.is_contaminant(proteinGroup):
                 continue
             
             pickingProteins = self._select_proteins_for_picked(proteinGroup, proteinGroupScoreList)
