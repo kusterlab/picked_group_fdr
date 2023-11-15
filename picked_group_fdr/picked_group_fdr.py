@@ -10,7 +10,6 @@ import numpy as np
 from . import __version__, __copyright__
 from . import digest
 from . import helpers
-from .parsers import parsers
 from . import proteotypicity
 from . import quantification
 from . import entrapment
@@ -18,6 +17,7 @@ from . import methods
 from . import fdr
 
 from .digestion_params import add_digestion_arguments, get_digestion_params_list
+from .parsers import parsers
 from .grouping import PseudoGeneGrouping
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory

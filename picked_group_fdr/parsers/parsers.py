@@ -1,5 +1,5 @@
 import csv
-from typing import List
+from typing import Dict, List
 import logging
 
 import numpy as np
@@ -8,6 +8,9 @@ from .. import digest, helpers
 from . import tsv
 from . import maxquant
 from . import percolator
+
+# for type hints only
+from ..scoring import ProteinScoringStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -126,11 +129,11 @@ def parse_peptides_file_single(
 
 
 def parse_evidence_file_multiple(
-    evidence_files,
-    peptide_to_protein_maps,
-    score_type,
-    for_quantification=False,
-    suppress_missing_peptide_warning=False,
+    evidence_files: List[str],
+    peptide_to_protein_maps: List[Dict],
+    score_type: ProteinScoringStrategy,
+    for_quantification: bool = False,
+    suppress_missing_peptide_warning: bool = False,
 ):
     for evidence_file, peptide_to_protein_map in zip(
         evidence_files, peptide_to_protein_maps
@@ -145,11 +148,11 @@ def parse_evidence_file_multiple(
 
 
 def parse_evidence_file_single(
-    evidence_file,
-    peptide_to_protein_map,
-    score_type,
-    for_quantification=False,
-    suppress_missing_peptide_warning=False,
+    evidence_file: str,
+    peptide_to_protein_map: Dict,
+    score_type: ProteinScoringStrategy,
+    for_quantification: bool = False,
+    suppress_missing_peptide_warning: bool = False,
 ):
     delimiter = tsv.get_delimiter(evidence_file)
     reader = tsv.get_tsv_reader(evidence_file, delimiter)
@@ -160,7 +163,9 @@ def parse_evidence_file_single(
     )
 
     if percolator.is_percolator_file(headers):
-        yield from percolator.parse_percolator_out_file(reader, headers, get_proteins, score_type)
+        yield from percolator.parse_percolator_out_file(
+            reader, headers, get_proteins, score_type
+        )
     else:
         # convert headers to lowercase since MQ changes the capitalization frequently
         headers = list(map(str.lower, headers))
@@ -172,7 +177,9 @@ def parse_evidence_file_single(
 
 
 def get_peptide_to_protein_mapper(
-    peptide_to_protein_map, score_type, suppress_missing_peptide_warning
+    peptide_to_protein_map: Dict,
+    score_type: ProteinScoringStrategy,
+    suppress_missing_peptide_warning: bool,
 ):
     def get_proteins(peptide, tmp_proteins):
         if score_type.remaps_peptides_to_proteins():

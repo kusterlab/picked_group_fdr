@@ -8,6 +8,7 @@ import numpy as np
 from .parsers import parsers
 from . import helpers
 from . import fdr
+from . import digest
 from .observed_peptides import ObservedPeptides
 from .protein_groups import ProteinGroups
 from .peptide_info import ProteinGroupPeptideInfos, PeptideInfoList
