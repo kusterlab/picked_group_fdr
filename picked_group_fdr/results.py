@@ -8,7 +8,7 @@ from typing import List
 
 import numpy as np
 
-from . import parsers
+from .parsers import tsv
 from . import helpers
 
 # for type hints only
@@ -171,7 +171,7 @@ class ProteinGroupResults:
         self.headers.append(header)
     
     def write(self, output_file: str) -> None:
-        writer = parsers.get_tsv_writer(output_file)
+        writer = tsv.get_tsv_writer(output_file)
         writer.writerow(self.headers)
         for proteinRow in self.protein_group_results:
             writer.writerow(proteinRow.to_list())
@@ -182,7 +182,7 @@ class ProteinGroupResults:
         if mqProteinGroupsFile.endswith('.csv'):
             delimiter = ','            
             
-        reader = parsers.get_tsv_reader(mqProteinGroupsFile, delimiter)
+        reader = tsv.get_tsv_reader(mqProteinGroupsFile, delimiter)
         headers = next(reader)
         
         cols = { x : headers.index(x) for x in ProteinGroupHeaders if x in headers }

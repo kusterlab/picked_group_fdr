@@ -10,7 +10,7 @@ import numpy as np
 from . import __version__, __copyright__
 from . import digest
 from . import helpers
-from . import parsers
+from .parsers import parsers
 from . import proteotypicity
 from . import quantification
 from . import entrapment

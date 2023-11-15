@@ -4,14 +4,14 @@ import os
 import logging
 
 import numpy as np
-import picked_group_fdr.digestion_params
 import triqler.qvality as qvality
 
 from .. import __version__, __copyright__
 from .. import helpers
 from .. import digest
-from .. import parsers
 from ..picked_group_fdr import ArgumentParserWithLogger
+from ..parsers import tsv, percolator
+from ..digestion_params import add_digestion_arguments
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -58,7 +58,7 @@ def parseArgs(argv):
         help="""Output file with merged pout results.""",
     )
 
-    picked_group_fdr.digestion_params.add_digestion_arguments(apars)
+    add_digestion_arguments(apars)
 
     # ------------------------------------------------
     args = apars.parse_args(argv)
@@ -107,7 +107,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
     seenPeptides = dict()
     missingPeptides, matchedPeptides = 0, 0
     for poutFile in perc_results:
-        poutReader = parsers.get_tsv_reader(poutFile)
+        poutReader = tsv.get_tsv_reader(poutFile)
         headers = next(poutReader)
 
         (
@@ -117,7 +117,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
             qvalCol,
             postErrProbCol,
             proteinCol,
-        ) = parsers.get_percolator_column_idxs(headers)
+        ) = percolator.get_percolator_column_idxs(headers)
 
         sumPEP = 0.0
         matchedBefore = matchedPeptides
@@ -137,9 +137,9 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
 
             if len(peptideToProteinMap) > 0:
                 proteins = digest.get_proteins(peptideToProteinMap, peptide)
-            elif parsers.is_native_percolator_file(headers):
+            elif percolator.is_native_percolator_file(headers):
                 proteins = row[proteinCol:]
-            elif parsers.is_mokapot_file(headers):
+            elif percolator.is_mokapot_file(headers):
                 proteins = row[proteinCol].split('\t')
             
             isDecoy = helpers.isDecoy(proteins)
@@ -197,11 +197,11 @@ def get_peptide_PEPs(psm_infos):
 
 
 def write_updated_PSMs(perc_merged, psm_infos, peps, update_qvals=False):
-    writer = parsers.get_tsv_writer(perc_merged + ".tmp")
+    writer = tsv.get_tsv_writer(perc_merged + ".tmp")
 
-    headers = parsers.PERCOLATOR_NATIVE_HEADERS
+    headers = percolator.PERCOLATOR_NATIVE_HEADERS
     writer.writerow(headers)
-    _, _, _, qvalCol, _, _ = parsers.get_percolator_column_idxs(headers)
+    _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
 
     sumPEP = 0.0
     counts = 0

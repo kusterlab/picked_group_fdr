@@ -4,8 +4,6 @@ import logging
 
 import numpy as np
 
-from . import parsers
-from . import helpers
 from .protein_groups import ProteinGroups
 from .observed_peptides import ObservedPeptides
 

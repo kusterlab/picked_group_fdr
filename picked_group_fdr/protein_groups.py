@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Set, Dict
 import logging
 
-from . import parsers
+from .parsers import parsers
 from . import helpers
 from . import entrapment
 

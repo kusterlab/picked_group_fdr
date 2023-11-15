@@ -1,7 +1,7 @@
 from typing import List, Dict, Set
 import logging
 
-from . import parsers
+from .parsers import parsers
 
 
 logger = logging.getLogger(__name__)

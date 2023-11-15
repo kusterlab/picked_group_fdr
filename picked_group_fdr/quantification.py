@@ -2,15 +2,14 @@ import sys
 import os
 import logging
 import collections
-from typing import List, Dict
 
 import numpy as np
-import picked_group_fdr.digestion_params
 import triqler.parsers
 
 from . import digest
 from . import helpers
-from . import parsers
+from .parsers import parsers
+from . import digestion_params
 from .fdr import calcPostErrProbCutoff
 from .results import ProteinGroupResults
 from .protein_groups import ProteinGroups
@@ -81,7 +80,7 @@ def parseArgs(argv):
                          action='store_false')
     
     
-    picked_group_fdr.digestion_params.add_digestion_arguments(apars)
+    digestion_params.add_digestion_arguments(apars)
                                 
     # ------------------------------------------------
     args = apars.parse_args(argv)

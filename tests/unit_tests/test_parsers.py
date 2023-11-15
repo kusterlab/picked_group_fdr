@@ -1,6 +1,6 @@
 import pytest
 
-import picked_group_fdr.parsers as parsers
+import picked_group_fdr.parsers.maxquant as parsers
 
 
 class TestMaxQuantToInternal:

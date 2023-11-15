@@ -4,12 +4,11 @@ import os
 
 import numpy as np
 
-from picked_group_fdr.scoring import BestAndromedaScore
-
 from .. import __version__, __copyright__
-from .. import parsers
+from ..parsers import parsers
 from .. import helpers
 from .. import fdr
+from ..scoring import BestAndromedaScore
 from ..plotter import PlotterFactory
 from ..picked_group_fdr import ArgumentParserWithLogger
 

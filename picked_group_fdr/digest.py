@@ -9,7 +9,7 @@ import collections
 import logging
 from typing import Dict, Iterator, List, Tuple
 
-from picked_group_fdr.digestion_params import (
+from .digestion_params import (
     DigestionParams,
     add_digestion_arguments,
     get_digestion_params_list,

@@ -5,7 +5,7 @@ import hashlib
 
 import numpy as np
 
-from . import parsers
+from .parsers import parsers
 from . import helpers
 from . import fdr
 from .observed_peptides import ObservedPeptides

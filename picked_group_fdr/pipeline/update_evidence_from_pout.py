@@ -2,10 +2,11 @@ import sys
 import os
 import collections
 import logging
-from typing import List, Dict, Set
+from typing import List
+
+from ..parsers import tsv, modifications, maxquant, percolator
 
 from .. import __version__, __copyright__
-from .. import parsers
 from .. import helpers
 from ..picked_group_fdr import ArgumentParserWithLogger
 
@@ -76,7 +77,7 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
     fixed_mods, resultsDict = get_percolator_results(poutFiles, poutInputType)
     
     logger.info("Writing updated combined evidence file")
-    writer = parsers.get_tsv_writer(outEvidenceFile + ".tmp")
+    writer = tsv.get_tsv_writer(outEvidenceFile + ".tmp")
     first = True
     mqPEPs, prositPEPs = list(), list()
     unexplainedMissingPSMs = 0
@@ -84,7 +85,7 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
     writtenRows = 0
     for evidenceFile in evidenceFiles:
         logger.info(f"Processing {evidenceFile}")
-        reader = parsers.get_tsv_reader(evidenceFile)
+        reader = tsv.get_tsv_reader(evidenceFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -99,21 +100,21 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
                 logger.info('\n'.join([str(i+1) + '\t' + x + '\t' + y for i, (x, y) in enumerate(zip(firstHeaders, headers)) if x != y]))
         
         # these columns will be updated
-        scoreCol = parsers.get_column_index(headers, 'score')
-        postErrProbCol = parsers.get_column_index(headers, 'pep')
+        scoreCol = tsv.get_column_index(headers, 'score')
+        postErrProbCol = tsv.get_column_index(headers, 'pep')
         
         # these columns are needed to retrieve the PSM
-        rawFileCol = parsers.get_column_index(headers, 'raw file')
+        rawFileCol = tsv.get_column_index(headers, 'raw file')
         if 'ms/ms scan number' in headers:
-            scanNrCol = parsers.get_column_index(headers, 'ms/ms scan number') # evidence.txt
+            scanNrCol = tsv.get_column_index(headers, 'ms/ms scan number') # evidence.txt
         else:
-            scanNrCol = parsers.get_column_index(headers, 'scan number') # msms.txt
-        peptCol = parsers.get_column_index(headers, 'modified sequence')
-        idTypeCol = parsers.get_column_index(headers, 'type') # MULTI-MSMS MULTI-MATCH MSMS MULTI-SECPEP MULTI-MATCH-MSMS
-        reverseCol = parsers.get_column_index(headers, 'reverse')
+            scanNrCol = tsv.get_column_index(headers, 'scan number') # msms.txt
+        peptCol = tsv.get_column_index(headers, 'modified sequence')
+        idTypeCol = tsv.get_column_index(headers, 'type') # MULTI-MSMS MULTI-MATCH MSMS MULTI-SECPEP MULTI-MATCH-MSMS
+        reverseCol = tsv.get_column_index(headers, 'reverse')
         labelingStateCol = None
         if 'labeling state' in headers:
-            labelingStateCol = parsers.get_column_index(headers, 'labeling state')
+            labelingStateCol = tsv.get_column_index(headers, 'labeling state')
 
         missingRawFiles = set()
         for row in reader:
@@ -133,15 +134,15 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
                 if poutInputType == "prosit":
                     fixed_mods_tmp = fixed_mods
                     if is_heavy_labeled(row, labelingStateCol):
-                        fixed_mods_tmp = parsers.SILAC_HEAVY_FIXED_MODS
-                    peptide = parsers.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
+                        fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
+                    peptide = maxquant.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
 
                 percResult = resultsDict[rawFile].get((scanNr, peptide), None)
                 if poutInputType == "prosit" and not percResult and has_unknown_silac_label(row, labelingStateCol):
                     # if scanNr is not found, retry with heavy labeling for SILAC because 
                     # labelingState column is not reliable when multiple MS/MS map to the precursor
-                    fixed_mods_tmp = parsers.SILAC_HEAVY_FIXED_MODS
-                    peptide = parsers.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
+                    fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
+                    peptide = maxquant.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
                     percResult = resultsDict[rawFile].get((scanNr, peptide), None)
                     
                 if not isDecoy and rawFile in resultsDict:
@@ -190,14 +191,14 @@ def updatePeptides(peptideFiles, poutFiles, outPeptideFile, msmsFiles, poutInput
     peptideResultsDict = convertPSMDictToPeptideDict(resultsDict)
     
     logger.info("Writing updated peptides file")
-    writer = parsers.get_tsv_writer(outPeptideFile + ".tmp")
+    writer = tsv.get_tsv_writer(outPeptideFile + ".tmp")
     first = True
     mqPEPs, prositPEPs = list(), list()
     unexplainedMissingPeptides = 0
     unexplainedPeptides = list()
     for peptideFile in peptideFiles:
         logger.info(f"Processing {peptideFile}")
-        reader = parsers.get_tsv_reader(peptideFile)
+        reader = tsv.get_tsv_reader(peptideFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -211,11 +212,11 @@ def updatePeptides(peptideFiles, poutFiles, outPeptideFile, msmsFiles, poutInput
                 logger.info('Column\tFirstHeaders\tCurrentHeaders')
                 logger.info('\n'.join([str(i+1) + '\t' + x + '\t' + y for i, (x, y) in enumerate(zip(firstHeaders, headers)) if x != y]))
         
-        scoreCol = parsers.get_column_index(headers, 'score')
-        postErrProbCol = parsers.get_column_index(headers, 'pep')
+        scoreCol = tsv.get_column_index(headers, 'score')
+        postErrProbCol = tsv.get_column_index(headers, 'pep')
         
-        peptCol = parsers.get_column_index(headers, 'sequence')
-        reverseCol = parsers.get_column_index(headers, 'reverse')
+        peptCol = tsv.get_column_index(headers, 'sequence')
+        reverseCol = tsv.get_column_index(headers, 'reverse')
         
         for row in reader:
             if len(poutFiles) > 0:
@@ -262,7 +263,7 @@ def get_percolator_results(pout_files: List[str], pout_input_type: str):
     fixed_mods = None
     for pout_file in pout_files:
         logger.info(f"Processing {pout_file}")
-        fixed_mods, results_dict = parsers.parse_percolator_out_file_to_dict(pout_file, results_dict, pout_input_type)
+        fixed_mods, results_dict = percolator.parse_percolator_out_file_to_dict(pout_file, results_dict, pout_input_type)
     
     logger.info("Finished parsing percolator output files")
     logger.info("#PSMs per raw file:")

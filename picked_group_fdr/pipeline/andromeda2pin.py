@@ -10,13 +10,13 @@ import logging
 from typing import List
 
 import numpy as np
-import picked_group_fdr.digestion_params
 
+from ..parsers import tsv
 from .. import __version__, __copyright__
 from .. import digest
-from .. import parsers
 from .. import helpers
 from ..picked_group_fdr import ArgumentParserWithLogger
+from ..digestion_params import get_digestion_params_list, add_digestion_arguments
 
 
 # hacky way to get the package logger instead of just __main__ when running as a module
@@ -42,12 +42,12 @@ def main(argv):
             logger.info(f"Found output file {percInFN}, remove this file to re-run andromeda2pin.")
             return
         logger.info(f"Writing results to: {percInFN}")
-        writer = parsers.get_tsv_writer(percInFN + ".tmp")
+        writer = tsv.get_tsv_writer(percInFN + ".tmp")
     else:
         logger.info("Writing results to stdout")
-        writer = parsers.get_tsv_writer(sys.stdout)
+        writer = tsv.get_tsv_writer(sys.stdout)
 
-    digestion_params_list = picked_group_fdr.digestion_params.get_digestion_params_list(args)
+    digestion_params_list = get_digestion_params_list(args)
     
     charges = list(range(2,7))
     writeHeaders(writer, charges)
@@ -90,7 +90,7 @@ def parseArgs(argv):
                                                          against the spectra file.
                                                     ''')
     
-    picked_group_fdr.digestion_params.add_digestion_arguments(apars)
+    add_digestion_arguments(apars)
                                                     
     # ------------------------------------------------
     args = apars.parse_args(argv)
@@ -109,7 +109,7 @@ def isMqEvidenceHeader(header: str, delimiter: str):
 
 def getMqEvidenceFiles(mq_evidence_files: List[str]):
     andromedaTargetOutFNs = []
-    delimiter = parsers.get_delimiter(mq_evidence_files[0])
+    delimiter = tsv.get_delimiter(mq_evidence_files[0])
     with open(mq_evidence_files[0], 'r') as f:
         firstLine = True
         for line in f:
@@ -143,8 +143,8 @@ def parseMqEvidenceFile(mqEvidenceFile, razor = False):
     - Delta score
     - Experiment (optional)
     """
-    delimiter = parsers.get_delimiter(mqEvidenceFile)
-    reader = parsers.get_tsv_reader(mqEvidenceFile, delimiter)
+    delimiter = tsv.get_delimiter(mqEvidenceFile)
+    reader = tsv.get_tsv_reader(mqEvidenceFile, delimiter)
     headers = next(reader) # save the header
     headers = list(map(lambda x : x.lower(), headers))
     
