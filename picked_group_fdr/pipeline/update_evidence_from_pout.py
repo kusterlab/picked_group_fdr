@@ -3,7 +3,7 @@ import sys
 import os
 import collections
 import logging
-from typing import List
+from typing import Dict, List, Tuple
 
 from .. import __version__, __copyright__
 from .. import helpers
@@ -90,7 +90,7 @@ def parse_args(argv):
     return args
 
 
-def main(argv):
+def main(argv) -> None:
     logger.info(f"UpdateEvidence version {__version__}\n{__copyright__}")
     logger.info(
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
@@ -120,8 +120,12 @@ def main(argv):
 
 
 def update_evidence_file(
-    evidence_files, pout_files, out_evidence_file, msms_files, pout_input_type
-):
+    evidence_files: List[str],
+    pout_files: List[str],
+    out_evidence_file: str,
+    msms_files: List[str],
+    pout_input_type: str,
+) -> None:
     fixed_mods, results_dict = get_percolator_results(pout_files, pout_input_type)
 
     logger.info("Writing updated combined evidence file")
@@ -144,10 +148,10 @@ def update_evidence_single(
     evidence_file: str,
     writer: "_csv._writer",
     first_headers: List[str],
-    fixed_mods,
-    results_dict,
+    fixed_mods: Dict[str, str],
+    results_dict: Dict[str, Dict[Tuple[int, str], Tuple[float, float]]],
     pout_input_type: str,
-):
+) -> List[str]:
     logger.info(f"Processing {evidence_file}")
     reader = tsv.get_tsv_reader(evidence_file)
 
@@ -205,12 +209,12 @@ def update_evidence_single(
                 )
                 continue
 
-            score, post_err_prob = perc_result
+            perc_score, perc_post_err_prob = perc_result
             if not psm.is_decoy:
-                prosit_PEPs.append((post_err_prob, psm.id_type))
+                prosit_PEPs.append((perc_post_err_prob, psm.id_type))
 
-            row[score_col] = score
-            row[post_err_prob_col] = post_err_prob
+            row[score_col] = perc_score
+            row[post_err_prob_col] = perc_post_err_prob
 
         if rows_written % 500000 == 0:
             logger.info(f"    Writing line {rows_written}")
@@ -254,8 +258,11 @@ def warn_for_header_difference(first_headers, headers):
 
 
 def find_percolator_psm(
-    psm: maxquant.EvidenceRow, fixed_mods, results_dict, pout_input_type: str
-):
+    psm: maxquant.EvidenceRow,
+    fixed_mods: Dict[str, str],
+    results_dict: Dict[str, Dict[Tuple[int, str], Tuple[float, float]]],
+    pout_input_type: str,
+) -> Tuple[Tuple[float, float], str]:
     """Finds percolator PSM corresponding to a row in the evidence.txt file.
 
     Special care is needed for SILAC experiments. Prosit explicitly annotates
@@ -288,8 +295,12 @@ def find_percolator_psm(
 
 
 def update_peptides_file(
-    peptide_files, pout_files, out_peptide_file, msms_files, pout_input_type
-):
+    peptide_files: List[str],
+    pout_files: List[str],
+    out_peptide_file: str,
+    msms_files: List[str],
+    pout_input_type: str,
+) -> None:
     _, results_dict = get_percolator_results(pout_files, pout_input_type)
 
     peptide_results_dict = convert_PSM_dict_to_peptide_dict(results_dict)
@@ -371,7 +382,9 @@ def update_peptides_file(
     count_below_FDR(prosit_PEPs)
 
 
-def get_percolator_results(pout_files: List[str], pout_input_type: str):
+def get_percolator_results(
+    pout_files: List[str], pout_input_type: str
+) -> Tuple[Dict[str, str], Dict[str, Dict[Tuple[int, str], Tuple[float, float]]]]:
     results_dict = collections.defaultdict(dict)
     fixed_mods = None
     for pout_file in pout_files:
@@ -387,7 +400,9 @@ def get_percolator_results(pout_files: List[str], pout_input_type: str):
     return fixed_mods, results_dict
 
 
-def convert_PSM_dict_to_peptide_dict(results_dict):
+def convert_PSM_dict_to_peptide_dict(
+    results_dict: Dict[str, Dict[Tuple[int, str], Tuple[float, float]]],
+) -> Dict[str, Tuple[float, float]]:
     peptide_results_dict = dict()
     for _, results in results_dict.items():
         for (_, peptide), (score, PEP) in results.items():
@@ -397,8 +412,11 @@ def convert_PSM_dict_to_peptide_dict(results_dict):
     return peptide_results_dict
 
 
-def is_valid_prosit_peptide(peptide):
-    return len(peptide) <= 30 and not "(ac)" in peptide
+def is_valid_prosit_peptide(peptide: str) -> bool:
+    return (
+        len(helpers.clean_peptide(peptide, remove_flanks=False)) <= 30
+        and not "(ac)" in peptide
+    )
 
 
 def count_below_FDR(post_err_probs: List[float], fdr_threshold: float = 0.01):

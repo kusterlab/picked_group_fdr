@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Dict, Tuple
 
 from .modifications import FIXED_MODS_DICTS, FIXED_MODS_UNIMOD
 from .tsv import (
@@ -80,7 +81,7 @@ def is_percolator_file(headers):
 
 def parse_percolator_out_file_to_dict(
     perc_out_file: str, results_dict: dict, input_type: str = ""
-):
+) -> Tuple[Dict[str, str], Dict[str, Dict[Tuple[int, str], Tuple[float, float]]]]:
     if not os.path.isfile(perc_out_file):
         raise FileNotFoundError(
             f"Could not find percolator output file {perc_out_file}. Please check if this file exists."
