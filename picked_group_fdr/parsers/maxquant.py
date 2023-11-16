@@ -1,4 +1,8 @@
+from dataclasses import dataclass
+from enum import Enum
 import logging
+
+from .parsers import tsv
 
 from . import tsv
 from .. import helpers
@@ -151,3 +155,74 @@ def parse_mq_protein_groups_file_row(row, cols):
         precursorQuants=[],
         extraColumns=[],
     )
+
+
+class LabelingState(Enum):
+    NOT_SILAC = -3 # missing labeling state column
+    UNKNOWN = -2 # empty value
+    LIGHT_MAYBE = -1 # cannot figure out what this actually means, but it seems to be light as well...
+    LIGHT = 0
+    HEAVY = 1
+
+
+@dataclass
+class EvidenceRow:
+    rawFile: str
+    scanNr: int
+    peptideOriginal: str
+    score: float
+    postErrProb: float
+    isDecoy: bool
+    isContaminant: bool
+    idType: str
+    labelingState: str
+
+
+def parse_evidence_file_for_percolator_matching(reader, headers):
+    scoreCol = tsv.get_column_index(headers, 'score')
+    postErrProbCol = tsv.get_column_index(headers, 'pep')
+
+    # these columns are needed to retrieve the PSM
+    rawFileCol = tsv.get_column_index(headers, 'raw file')
+    if 'ms/ms scan number' in headers:
+        scanNrCol = tsv.get_column_index(headers, 'ms/ms scan number') # evidence.txt
+    else:
+        scanNrCol = tsv.get_column_index(headers, 'scan number') # msms.txt
+    peptCol = tsv.get_column_index(headers, 'modified sequence')
+    idTypeCol = tsv.get_column_index(headers, 'type') # MULTI-MSMS MULTI-MATCH MSMS MULTI-SECPEP MULTI-MATCH-MSMS
+    reverseCol = tsv.get_column_index(headers, 'reverse')
+    contaminantCol = tsv.get_column_index(headers, 'potential contaminant')
+    labelingStateCol = None
+    if 'labeling state' in headers:
+        labelingStateCol = tsv.get_column_index(headers, 'labeling state')
+
+    for row in reader:
+        scanNr = -1
+        if len(row[scanNrCol]) > 0:
+            scanNr = int(row[scanNrCol])
+
+        labelingState = LabelingState.NOT_SILAC
+        if labelingStateCol is not None:
+            labelingState = LabelingState.UNKNOWN
+            if len(row[labelingStateCol]) > 0:
+                labelingState = int(row[labelingStateCol])
+
+        yield row, EvidenceRow(
+            rawFile = row[rawFileCol],
+            scanNr = scanNr,
+            score = float(row[scoreCol]),
+            postErrProb = float(row[postErrProbCol]),
+            peptideOriginal = row[peptCol],
+            isDecoy = (row[reverseCol] == "+"),
+            isContaminant = (row[contaminantCol] == "+"),
+            idType = row[idTypeCol],
+            labelingState = labelingState
+        )
+
+
+def has_unknown_silac_label(labeling_state):
+    return labeling_state == LabelingState.UNKNOWN or labeling_state == LabelingState.LIGHT_MAYBE
+
+
+def is_heavy_labeled(labeling_state):
+    return labeling_state == LabelingState.HEAVY

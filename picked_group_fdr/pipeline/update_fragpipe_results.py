@@ -72,6 +72,10 @@ def main(argv):
 
     args = parseArgs(argv)
 
+    protein_group_results = maxquant.parse_mq_protein_groups_file(args.protein_groups)
+    print(len(protein_group_results))
+
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

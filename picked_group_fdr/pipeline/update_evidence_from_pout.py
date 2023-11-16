@@ -1,14 +1,17 @@
+import _csv
 import sys
 import os
 import collections
 import logging
 from typing import List
 
-from ..parsers import tsv, modifications, percolator
-
 from .. import __version__, __copyright__
 from .. import helpers
 from ..picked_group_fdr import ArgumentParserWithLogger
+from ..parsers import tsv
+from ..parsers import modifications
+from ..parsers import percolator
+from ..parsers import maxquant
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -78,111 +81,102 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
     
     logger.info("Writing updated combined evidence file")
     writer = tsv.get_tsv_writer(outEvidenceFile + ".tmp")
-    first = True
+    firstHeaders = []
+    for evidenceFile in evidenceFiles:
+        firstHeaders = update_evidence_single(evidenceFile, writer, firstHeaders, fixed_mods, resultsDict, poutInputType)
+
+    logger.info(f"Results written to {outEvidenceFile}")
+
+
+def update_evidence_single(evidenceFile: str, writer: '_csv._writer', first_headers: List[str], fixed_mods, resultsDict, poutInputType: str):
+    logger.info(f"Processing {evidenceFile}")
+    reader = tsv.get_tsv_reader(evidenceFile)
+
+    headersOrig = next(reader) # save the header
+    headers = list(map(lambda x : x.lower(), headersOrig))
+    if len(first_headers) == 0:
+        writer.writerow(headersOrig)
+    elif headers != first_headers:
+        logger.warning("Current column names are different from the first evidence file")
+        logger.info('Column\tFirstHeaders\tCurrentHeaders')
+        logger.info('\n'.join([str(i+1) + '\t' + x + '\t' + y for i, (x, y) in enumerate(zip(first_headers, headers)) if x != y]))
+
+    # these columns will be updated
+    scoreCol = tsv.get_column_index(headers, 'score')
+    postErrProbCol = tsv.get_column_index(headers, 'pep')
+
     mqPEPs, prositPEPs = list(), list()
     unexplainedMissingPSMs = 0
     unexplainedPeptides = list()
     writtenRows = 0
-    for evidenceFile in evidenceFiles:
-        logger.info(f"Processing {evidenceFile}")
-        reader = tsv.get_tsv_reader(evidenceFile)
-        headersOrig = next(reader) # save the header
-        headers = list(map(lambda x : x.lower(), headersOrig))
-        
-        if first:
-            first = False
-            writer.writerow(headersOrig)
-            firstHeaders = headers
-        else:
-            if headers != firstHeaders:
-                logger.warning("Current column names are different from the first evidence file")
-                logger.info('Column\tFirstHeaders\tCurrentHeaders')
-                logger.info('\n'.join([str(i+1) + '\t' + x + '\t' + y for i, (x, y) in enumerate(zip(firstHeaders, headers)) if x != y]))
-        
-        # these columns will be updated
-        scoreCol = tsv.get_column_index(headers, 'score')
-        postErrProbCol = tsv.get_column_index(headers, 'pep')
-        
-        # these columns are needed to retrieve the PSM
-        rawFileCol = tsv.get_column_index(headers, 'raw file')
-        if 'ms/ms scan number' in headers:
-            scanNrCol = tsv.get_column_index(headers, 'ms/ms scan number') # evidence.txt
-        else:
-            scanNrCol = tsv.get_column_index(headers, 'scan number') # msms.txt
-        peptCol = tsv.get_column_index(headers, 'modified sequence')
-        idTypeCol = tsv.get_column_index(headers, 'type') # MULTI-MSMS MULTI-MATCH MSMS MULTI-SECPEP MULTI-MATCH-MSMS
-        reverseCol = tsv.get_column_index(headers, 'reverse')
-        labelingStateCol = None
-        if 'labeling state' in headers:
-            labelingStateCol = tsv.get_column_index(headers, 'labeling state')
-
-        missingRawFiles = set()
-        for row in reader:
-            if len(poutFiles) > 0 and len(row[scanNrCol]) > 0:
-                rawFile = row[rawFileCol]
-                scanNr = int(row[scanNrCol])
-                peptideOriginal = row[peptCol]
-                isDecoy = (row[reverseCol] == "+")
-                idType = row[idTypeCol]
-
-                if len(resultsDict[rawFile]) == 0 and rawFile not in missingRawFiles:
-                    logger.warning(f"Could not find any PSMs for raw file {rawFile} in the percolator result files")
-                    missingRawFiles.add(rawFile)
-                    continue
-
-                peptide = peptideOriginal[1:-1]
-                if poutInputType == "prosit":
-                    fixed_mods_tmp = fixed_mods
-                    if is_heavy_labeled(row, labelingStateCol):
-                        fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-                    peptide = modifications.maxquant_mod_to_unimod([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
-
-                percResult = resultsDict[rawFile].get((scanNr, peptide), None)
-                if poutInputType == "prosit" and not percResult and has_unknown_silac_label(row, labelingStateCol):
-                    # if scanNr is not found, retry with heavy labeling for SILAC because 
-                    # labelingState column is not reliable when multiple MS/MS map to the precursor
-                    fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-                    peptide = modifications.maxquant_mod_to_unimod([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
-                    percResult = resultsDict[rawFile].get((scanNr, peptide), None)
-                    
-                if not isDecoy and rawFile in resultsDict:
-                    mqPEPs.append((float(row[postErrProbCol]), idType))
-                
-                if not percResult:
-                    if poutInputType != "prosit" or is_valid_prosit_peptide(peptide): # mysterious missing PSMs
-                        unexplainedMissingPSMs += 1
-                        logger.debug(f"Unexplained missing PSM in percolator output: {rawFile}, {peptide}, {scanNr}")
-                        if unexplainedMissingPSMs <= 10:
-                            unexplainedPeptides.append(row[peptCol])
-                    logger.debug(f"Missing PSM in percolator output: {rawFile}, {peptide}, {scanNr}")
-                    continue
-                
-                if not isDecoy:
-                    prositPEPs.append((percResult[1], idType))
-
-                row[scoreCol] = percResult[0]
-                row[postErrProbCol] = percResult[1]
-                
-            if writtenRows % 500000 == 0:
-                logger.info(f"    Writing line {writtenRows}")
-            writtenRows += 1
+    missingRawFiles = set()
+    for row, psm in maxquant.parse_evidence_file_for_percolator_matching(reader, headers):
+        if len(resultsDict) > 0 and psm.scanNr >= 0:
+            if len(resultsDict[psm.rawFile]) == 0 and psm.rawFile not in missingRawFiles:
+                logger.warning(f"Could not find any PSMs for raw file {psm.rawFile} in the percolator result files")
+                missingRawFiles.add(psm.rawFile)
+                continue
             
-            writer.writerow(row)
+            percResult, peptide = find_percolator_psm(psm, fixed_mods, resultsDict, poutInputType)
+            
+            if not psm.isDecoy and psm.rawFile in resultsDict:
+                mqPEPs.append((psm.postErrProb, psm.idType))
+            
+            if not percResult:
+                # check for unexplainable missing PSMs
+                if not psm.isContaminant and psm.score > 0.0 and (poutInputType != "prosit" or is_valid_prosit_peptide(peptide)):
+                    unexplainedMissingPSMs += 1
+                    logger.debug(f"Unexplained missing PSM in percolator output: {psm.rawFile}, {peptide}, {psm.scanNr}")
+                    if unexplainedMissingPSMs <= 10:
+                        unexplainedPeptides.append(psm.peptideOriginal)
+                logger.debug(f"Missing PSM in percolator output: {psm.rawFile}, {peptide}, {psm.scanNr}")
+                continue
+            
+            if not psm.isDecoy:
+                prositPEPs.append((percResult[1], psm.idType))
+
+            row[scoreCol] = percResult[0]
+            row[postErrProbCol] = percResult[1]
+            
+        if writtenRows % 500000 == 0:
+            logger.info(f"    Writing line {writtenRows}")
+        writtenRows += 1
+        
+        writer.writerow(row)
     
     unexplainedPercentage = int(unexplainedMissingPSMs/writtenRows*100)
     logger.info(f"Unexplained missing PSMs in Percolator results: {unexplainedMissingPSMs} out of {writtenRows} ({unexplainedPercentage}%)")
     if unexplainedMissingPSMs > 0:
-        logger.info("If this percentage is low (<5%), it is probably just the result of second peptide hits.")
+        logger.info("If this percentage is low (<5%), it is probably the result of second peptide hits.")
         logger.info("\tFirst 10 missing peptides:")
         for peptide in unexplainedPeptides:
             logger.info("\t" + peptide)
-    logger.info(f"Results written to {outEvidenceFile}")
     
     logger.info("#MQ identifications:")
     countBelowFDR(mqPEPs)
     
     logger.info(f"#{poutInputType} identifications:")
     countBelowFDR(prositPEPs)
+    
+    return headers
+
+
+def find_percolator_psm(psm: maxquant.EvidenceRow, fixed_mods, resultsDict, poutInputType: str):
+    peptide = psm.peptideOriginal[1:-1]
+    if poutInputType == "prosit":
+        fixed_mods_tmp = fixed_mods
+        if maxquant.is_heavy_labeled(psm.labelingState):
+            fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
+        peptide = modifications.maxquant_mod_to_unimod([psm.peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
+
+    percResult = resultsDict[psm.rawFile].get((psm.scanNr, peptide), None)
+    if poutInputType == "prosit" and not percResult and maxquant.has_unknown_silac_label(psm.labelingState):
+        # if scanNr is not found, retry with heavy labeling for SILAC because 
+        # labelingState column is not reliable when multiple MS/MS map to the precursor
+        fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
+        peptide = modifications.maxquant_mod_to_unimod([psm.peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
+        percResult = resultsDict[psm.rawFile].get((psm.scanNr, peptide), None)
+    return percResult, peptide
 
 
 def updatePeptides(peptideFiles, poutFiles, outPeptideFile, msmsFiles, poutInputType):
@@ -284,14 +278,6 @@ def convertPSMDictToPeptideDict(resultsDict):
 
 def is_valid_prosit_peptide(peptide):
     return (len(peptide) <= 30 and not "(ac)" in peptide)
-
-
-def has_unknown_silac_label(row, labeling_state_col):
-    return labeling_state_col is not None and len(row[labeling_state_col]) == 0
-
-
-def is_heavy_labeled(row, labeling_state_col):
-    return labeling_state_col is not None and len(row[labeling_state_col]) > 0 and int(row[labeling_state_col]) == 1
 
 
 def countBelowFDR(pepsWithType, fdr = 0.01):
