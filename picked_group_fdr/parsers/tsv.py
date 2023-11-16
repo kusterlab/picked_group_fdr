@@ -1,6 +1,9 @@
 import csv
 from typing import List
 
+# csv.field_size_limit(sys.maxsize)
+csv.field_size_limit(2147483647)
+
 
 def get_tsv_reader(filename: str, delimiter: str = "\t"):
     return csv.reader(

@@ -1,5 +1,5 @@
 from picked_group_fdr.results import ProteinGroupResult
-
+from picked_group_fdr.parsers.maxquant import parse_mq_protein_groups_file_row
 
 def test_extend():
     p = ProteinGroupResult()
@@ -40,7 +40,7 @@ def test_from_mq_protein_groups():
         "Reverse": 9,
         "Potential contaminant": 10,
     }
-    p = ProteinGroupResult.from_mq_protein_groups(list(row.values()), cols)
+    p = parse_mq_protein_groups_file_row(list(row.values()), cols)
     assert p.proteinIds == "123"
     assert p.majorityProteinIds == "456"
     assert p.peptideCountsUnique == "3"

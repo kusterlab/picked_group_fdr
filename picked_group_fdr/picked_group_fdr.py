@@ -17,7 +17,7 @@ from . import methods
 from . import fdr
 
 from .digestion_params import add_digestion_arguments, get_digestion_params_list
-from .parsers import parsers
+from .parsers import psm
 from .grouping import PseudoGeneGrouping
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
@@ -442,7 +442,7 @@ def parseEvidenceFiles(
         peptideToProteinMaps = peptideToProteinMaps * len(evidenceFiles)
 
     peptideInfoList = dict()
-    for peptide, proteins, _, score in parsers.parse_evidence_file_multiple(
+    for peptide, proteins, _, score in psm.parse_evidence_file_multiple(
         evidenceFiles,
         peptide_to_protein_maps=peptideToProteinMaps,
         score_type=scoreType,

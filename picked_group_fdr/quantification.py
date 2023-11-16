@@ -2,19 +2,21 @@ import sys
 import os
 import logging
 import collections
+from typing import List
 
 import numpy as np
 import triqler.parsers
 
 from . import digest
-from . import helpers
-from .parsers import parsers
 from . import digestion_params
-from .fdr import calcPostErrProbCutoff
-from .results import ProteinGroupResults
+from . import helpers
+from . import fdr
+from .parsers import maxquant
+from .parsers import psm
+
 from .protein_groups import ProteinGroups
 from .scoring import ProteinScoringStrategy
-
+from .quant.base import ProteinGroupColumns
 from .quant.precursor_quant import PrecursorQuant
 from .quant.lfq import LFQIntensityColumns
 from .quant.sum_and_ibaq import SummedIntensityAndIbaqColumns
@@ -101,7 +103,7 @@ def main(argv):
     
     peptideToProteinMap, numIbaqPeptidesPerProtein = getPeptideToProteinMaps(args, parseId)
     proteinSequences = digest.getProteinSequences(args.fasta, parseId)
-    proteinGroupResults = ProteinGroupResults.from_mq_protein_groups_file(args.mq_protein_groups)
+    proteinGroupResults = maxquant.parse_mq_protein_groups_file(args.mq_protein_groups)
     
     scoreType = ProteinScoringStrategy("bestPEP")
     doQuantification(args.mq_evidence, proteinGroupResults, proteinSequences,
@@ -188,7 +190,7 @@ def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
     # (1) technically this is a precursor-level FDR and not a PSM-level FDR
     # (2) in contrast to MaxQuant, we set a global precursor-level FDR 
     #         instead of a per raw file PSM-level FDR
-    postErrProbCutoff = calcPostErrProbCutoff([x[0] for x in postErrProbs if not helpers.isMbr(x[0])], psmQvalCutoff)
+    postErrProbCutoff = fdr.calcPostErrProbCutoff([x[0] for x in postErrProbs if not helpers.isMbr(x[0])], psmQvalCutoff)
     logger.info(f"PEP-cutoff corresponding to {psmQvalCutoff*100:g}% PSM-level FDR: {postErrProbCutoff}")
     
     printNumPeptidesAtFDR(postErrProbs, postErrProbCutoff)
@@ -200,11 +202,13 @@ def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
     for pgr in proteinGroupResults:
         pgr.precursorQuants = retainOnlyIdentifiedPrecursors(pgr.precursorQuants, postErrProbCutoff)
     
-    columns = [UniquePeptideCountColumns(), 
-               IdentificationTypeColumns(),
-               SummedIntensityAndIbaqColumns(silacChannels, numIbaqPeptidesPerProtein),
-               SequenceCoverageColumns(proteinSequences),
-               EvidenceIdsColumns()]
+    columns: List[ProteinGroupColumns] = [
+        UniquePeptideCountColumns(), 
+        IdentificationTypeColumns(),
+        SummedIntensityAndIbaqColumns(silacChannels, numIbaqPeptidesPerProtein),
+        SequenceCoverageColumns(proteinSequences),
+        EvidenceIdsColumns()
+    ]
     
     if numTmtChannels > 0:
         columns.append(TMTIntensityColumns(numTmtChannels))
@@ -230,7 +234,7 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
     parsedExperiments = set()
     missingPeptidesInProteinGroups = 0
     
-    for peptide, proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in parsers.parse_evidence_file_multiple(mqEvidenceFiles, peptide_to_protein_maps = peptideToProteinMaps, score_type = ProteinScoringStrategy("bestPEP"), for_quantification = True):
+    for peptide, proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in psm.parse_evidence_file_multiple(mqEvidenceFiles, peptide_to_protein_maps = peptideToProteinMaps, score_type = ProteinScoringStrategy("bestPEP"), for_quantification = True):
         if numTmtChannels == -1:
             # There are 3 columns per TMT channel: 
             #     Reporter intensity corrected, 

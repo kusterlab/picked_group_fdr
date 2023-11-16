@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import collections
-import copy
 import logging
 from dataclasses import dataclass, field
 from typing import List
 
 import numpy as np
 
-from .parsers import tsv
 from . import helpers
+from .parsers import tsv
 
 # for type hints only
 from .peptide_info import ProteinGroupPeptideInfos
@@ -17,6 +16,22 @@ from .protein_groups import ProteinGroups
 
 
 logger = logging.getLogger(__name__)
+
+
+PROTEIN_GROUP_HEADERS = [
+    "Protein IDs",
+    "Majority protein IDs",
+    "Peptide counts (unique)",
+    "Protein names",
+    "Gene names",
+    "Fasta headers",
+    "Best peptide",
+    "Number of proteins",
+    "Q-value",
+    "Score",
+    "Reverse",
+    "Potential contaminant",
+]
 
 
 @dataclass
@@ -41,26 +56,6 @@ class ProteinGroupResult:
     
     def append(self, a):
         self.extraColumns.append(a)
-    
-    @classmethod
-    def from_mq_protein_groups(cls, row, cols):
-        _get_field = lambda x : row[cols[x]] if x in cols else ""
-        
-        proteinIds = _get_field('Protein IDs')
-        majorityProteinIds = _get_field('Majority protein IDs')
-        peptideCountsUnique = _get_field("Peptide counts (unique)")
-        proteinNames = _get_field('Protein names')
-        geneNames = _get_field('Gene names')
-        fastaHeaders = _get_field('Fasta headers')
-        bestPeptide = ""
-        numberOfProteins = int(_get_field("Number of proteins"))
-        qValue = float(_get_field('Q-value'))
-        score = float(_get_field('Score'))
-        reverse = _get_field('Reverse')
-        potentialContaminant = _get_field('Potential contaminant')
-        return cls(proteinIds, majorityProteinIds, peptideCountsUnique, 
-                             proteinNames, geneNames, fastaHeaders, bestPeptide, 
-                             numberOfProteins, qValue, score, reverse, potentialContaminant, [], [])
         
     @classmethod
     def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations, keep_all_proteins):
@@ -129,31 +124,18 @@ class ProteinGroupResult:
                 self.potentialContaminant] + ["%.0f" % (x) if not type(x) == str else x for x in self.extraColumns]
 
 
-ProteinGroupHeaders = [
-            "Protein IDs", 
-            "Majority protein IDs", 
-            "Peptide counts (unique)", 
-            "Protein names", 
-            "Gene names", 
-            "Fasta headers", 
-            "Best peptide", 
-            "Number of proteins", 
-            "Q-value", 
-            "Score", 
-            "Reverse", 
-            "Potential contaminant"]
-
-
 class ProteinGroupResults:
     headers = List[str]
     protein_group_results: List[ProteinGroupResult] = field(default_factory=list)
     
     def __init__(self, protein_group_results: ProteinGroupResults=None):
-        if protein_group_results is None: # cannot use empty list as default argument: https://docs.python-guide.org/writing/gotchas/
-            self.protein_group_results = []
-        else:    
+        """
+        NOTE: cannot use empty list as default argument: https://docs.python-guide.org/writing/gotchas/
+        """
+        self.protein_group_results = []
+        if protein_group_results is not None: 
             self.protein_group_results = protein_group_results
-        self.headers = copy.deepcopy(ProteinGroupHeaders)
+        self.headers = PROTEIN_GROUP_HEADERS
         
     def __iter__(self):
         return iter(self.protein_group_results)
@@ -177,23 +159,6 @@ class ProteinGroupResults:
             writer.writerow(proteinRow.to_list())
 
     @classmethod
-    def from_mq_protein_groups_file(cls, mqProteinGroupsFile: str) -> ProteinGroupResults:
-        delimiter = '\t'
-        if mqProteinGroupsFile.endswith('.csv'):
-            delimiter = ','            
-            
-        reader = tsv.get_tsv_reader(mqProteinGroupsFile, delimiter)
-        headers = next(reader)
-        
-        cols = { x : headers.index(x) for x in ProteinGroupHeaders if x in headers }
-        
-        logger.info("Parsing MaxQuant proteinGroups.txt file")
-        protein_group_results = list()
-        for row in reader:
-            protein_group_results.append(ProteinGroupResult.from_mq_protein_groups(row, cols))
-        return cls(protein_group_results)
-    
-    @classmethod
     def from_protein_groups(cls, 
             proteinGroups: ProteinGroups, 
             proteinGroupPeptideInfos: ProteinGroupPeptideInfos, 
@@ -211,4 +176,3 @@ class ProteinGroupResults:
                 protein_group_results.append(pgr)
         
         return cls(protein_group_results)
-

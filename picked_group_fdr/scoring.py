@@ -1,14 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple
+from typing import Dict, List
 import logging
 import hashlib
 
 import numpy as np
 
-from .parsers import parsers
 from . import helpers
 from . import fdr
 from . import digest
+from .parsers import parsers
+from .parsers import psm
 from .observed_peptides import ObservedPeptides
 from .protein_groups import ProteinGroups
 from .peptide_info import ProteinGroupPeptideInfos, PeptideInfoList
@@ -405,7 +406,7 @@ class ProteinScoringStrategy:
 def compareRazorPeptides(mqEvidenceFile, peptideToProteinMap, proteinGroups, scoreType):
     """Compares the chosen protein by MaxQuant according to the razor peptide rule with our implementation of the razor peptide rule"""
     scoreType = ProteinScoringStrategy("multPEP razor")
-    for peptideRow in parsers.parse_evidence_file_single(mqEvidenceFile, score_type = scoreType):
+    for peptideRow in psm.parse_evidence_file_single(mqEvidenceFile, score_type = scoreType):
         peptide, tmp_proteins, _, _ = peptideRow
         
         proteins = digest.getProteins(peptideToProteinMap, helpers.clean_peptide(peptide))

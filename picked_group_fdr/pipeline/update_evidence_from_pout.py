@@ -4,7 +4,7 @@ import collections
 import logging
 from typing import List
 
-from ..parsers import tsv, modifications, maxquant, percolator
+from ..parsers import tsv, modifications, percolator
 
 from .. import __version__, __copyright__
 from .. import helpers
@@ -135,14 +135,14 @@ def updateEvidence(evidenceFiles, poutFiles, outEvidenceFile, msmsFiles, poutInp
                     fixed_mods_tmp = fixed_mods
                     if is_heavy_labeled(row, labelingStateCol):
                         fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-                    peptide = maxquant.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
+                    peptide = modifications.maxquant_mod_to_unimod([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
 
                 percResult = resultsDict[rawFile].get((scanNr, peptide), None)
                 if poutInputType == "prosit" and not percResult and has_unknown_silac_label(row, labelingStateCol):
                     # if scanNr is not found, retry with heavy labeling for SILAC because 
                     # labelingState column is not reliable when multiple MS/MS map to the precursor
                     fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-                    peptide = maxquant.maxquant_to_internal([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
+                    peptide = modifications.maxquant_mod_to_unimod([peptideOriginal], fixed_mods=fixed_mods_tmp)[0]
                     percResult = resultsDict[rawFile].get((scanNr, peptide), None)
                     
                 if not isDecoy and rawFile in resultsDict:
