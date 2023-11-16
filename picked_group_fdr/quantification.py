@@ -224,15 +224,15 @@ def doQuantification(mqEvidenceFiles, proteinGroupResults, proteinSequences,
 
 
 def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMaps, 
-                                            fileMapping, scoreType, discardSharedPeptides):    
-    proteinGroups = ProteinGroups.from_protein_group_results(proteinGroupResults)
-    proteinGroups.create_index()
+                                            fileMapping, scoreType, discard_shared_peptides):    
+    protein_groups = ProteinGroups.from_protein_group_results(proteinGroupResults)
+    protein_groups.create_index()
     
     postErrProbs = list()
-    sharedPeptidePrecursors, uniquePeptidePrecursors = 0, 0
+    shared_peptide_precursors, unique_peptide_precursors = 0, 0
     numTmtChannels, numSilacChannels = -1, -1
     parsedExperiments = set()
-    missingPeptidesInProteinGroups = 0
+    missing_peptides_in_protein_groups = 0
     
     for peptide, proteins, charge, rawFile, experiment, fraction, intensity, postErrProb, tmtCols, silacCols, evidenceId in psm.parse_evidence_file_multiple(mqEvidenceFiles, peptide_to_protein_maps = peptideToProteinMaps, score_type = ProteinScoringStrategy("bestPEP"), for_quantification = True):
         if numTmtChannels == -1:
@@ -250,19 +250,19 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
         elif experiment not in parsedExperiments:
             parsedExperiments.add(experiment)        
         
-        proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)
+        protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
         
         # removes peptides not present in the proteinGroups.txt file
-        if len(proteinGroupIdxs) == 0:
+        if len(protein_group_idxs) == 0:
             logger.debug(f'Could not find any of the proteins {proteins} in proteinGroups.txt')
-            missingPeptidesInProteinGroups += 1
+            missing_peptides_in_protein_groups += 1
             continue
         
-        if discardSharedPeptides and helpers.isSharedPeptide(proteinGroupIdxs):
-            sharedPeptidePrecursors += 1
+        if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
+            shared_peptide_precursors += 1
             continue
         
-        uniquePeptidePrecursors += 1
+        unique_peptide_precursors += 1
     
         if not helpers.isDecoy(proteins):
             postErrProbs.append((postErrProb, rawFile, experiment, peptide))
@@ -277,7 +277,7 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
         else:
             silacCols = None
 
-        for proteinGroupIdx in proteinGroupIdxs:
+        for proteinGroupIdx in protein_group_idxs:
             precursorQuant = PrecursorQuant(peptide, 
                                             charge, 
                                             experiment, 
@@ -292,10 +292,10 @@ def parseEvidenceFiles(proteinGroupResults, mqEvidenceFiles, peptideToProteinMap
     # if missingPeptidesInFasta > 0:
     #     logger.warning(f"Skipped {missingPeptidesInFasta} precursors not present in the fasta file")
     
-    if missingPeptidesInProteinGroups > 0:
-        logger.debug(f"Skipped {missingPeptidesInProteinGroups} precursors from proteins not present in proteinGroups.txt file")
+    if missing_peptides_in_protein_groups > 0:
+        logger.debug(f"Skipped {missing_peptides_in_protein_groups} precursors from proteins not present in proteinGroups.txt file")
     
-    logger.info(f"Found {uniquePeptidePrecursors} precursors from unique and {sharedPeptidePrecursors} precursors from shared peptides")
+    logger.info(f"Found {unique_peptide_precursors} precursors from unique and {shared_peptide_precursors} precursors from shared peptides")
     
     return proteinGroupResults, postErrProbs, numTmtChannels, numSilacChannels, parsedExperiments
 

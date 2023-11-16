@@ -32,7 +32,7 @@ class ObservedPeptides:
         for peptide, (score, proteins) in peptideInfoList.items():
             if proteinGroups:
                 proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)            
-                if helpers.isSharedPeptide(proteinGroupIdxs):
+                if helpers.is_shared_peptide(proteinGroupIdxs):
                     continue
 
             self.peptide_to_proteins_dict[peptide] = proteins
@@ -149,6 +149,6 @@ class ObservedPeptides:
         identifiedProteinGroupIdxs = set()
         for _, proteins in self.peptide_to_proteins_dict.items():
             proteinGroupIdxsForPeptide = proteinGroups.get_protein_group_idxs(proteins)
-            if not helpers.isSharedPeptide(proteinGroupIdxsForPeptide):
+            if not helpers.is_shared_peptide(proteinGroupIdxsForPeptide):
                 identifiedProteinGroupIdxs.add(list(proteinGroupIdxsForPeptide)[0])
         return identifiedProteinGroupIdxs

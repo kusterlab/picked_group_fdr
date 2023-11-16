@@ -24,7 +24,7 @@ def isMbr(postErrProb: float) -> bool:
     return np.isnan(postErrProb) # match-between-runs have NaNs in the PEP column
 
 
-def isSharedPeptide(proteinGroupIdxs: List[int]) -> bool:
+def is_shared_peptide(proteinGroupIdxs: List[int]) -> bool:
     return len(proteinGroupIdxs) > 1 or proteinGroupIdxs == [-1]
 
 

@@ -21,11 +21,11 @@ def test_is_decoy_false():
 
 
 def test_is_shared_peptide_true():
-  assert helpers.isSharedPeptide([1,2,3]) == True
+  assert helpers.is_shared_peptide([1,2,3]) == True
 
 
 def test_is_shared_peptide_false():
-  assert helpers.isSharedPeptide([3]) == False
+  assert helpers.is_shared_peptide([3]) == False
   
 
 def test_remove_decoy_proteins_from_target_peptides():

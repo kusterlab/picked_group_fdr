@@ -197,6 +197,7 @@ def parse_evidence_file_for_percolator_matching(reader, headers):
         labelingStateCol = tsv.get_column_index(headers, 'labeling state')
 
     for row in reader:
+        # if scanNr is empty, it is an MBR evidence row which we encode with scanNr = -1
         scanNr = -1
         if len(row[scanNrCol]) > 0:
             scanNr = int(row[scanNrCol])

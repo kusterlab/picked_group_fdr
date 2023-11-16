@@ -102,6 +102,10 @@ class ProteinGroups:
                 proteinGroupIdxs.add(-1)
         return proteinGroupIdxs
     
+    def get_protein_groups(self, proteins: List[str], check_idx_valid: bool = True) -> Set[int]:
+        proteinGroupIdxs = self.get_protein_group_idxs(proteins, check_idx_valid)
+        return [self.protein_groups[idx] for idx in proteinGroupIdxs]
+    
     def merge_groups(self, superSetProtein: str, protein: str):
         """Merge two protein groups"""
         superSetGroupIdx = self._get_protein_group_idx(superSetProtein, check_idx_valid = False)

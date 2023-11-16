@@ -174,52 +174,47 @@ def update_evidence_single(
     for row, psm in maxquant.parse_evidence_file_for_percolator_matching(
         reader, headers
     ):
-        if len(results_dict) > 0 and psm.scannr >= 0:
-            if len(results_dict[psm.raw_file]) == 0:
-                if psm.raw_file not in missing_raw_files:
-                    logger.warning(
-                        f"Could not find any PSMs for raw file {psm.raw_file} in the percolator result files"
-                    )
-                    missing_raw_files.add(psm.raw_file)
-                continue
-
-            if not psm.is_decoy:
-                mq_PEPs.append((psm.post_err_prob, psm.id_type))
-
-            perc_result, peptide = find_percolator_psm(
-                psm, fixed_mods, results_dict, pout_input_type
-            )
-
-            if not perc_result:
-                # check for unexplainable missing PSMs
-                if (
-                    not psm.is_contaminant
-                    and psm.score > 0.0
-                    and not (
-                        pout_input_type == "prosit"
-                        and not is_valid_prosit_peptide(peptide)
-                    )
-                ):
-                    unexplained_missing_PSMs += 1
-                    logger.debug("Unexplained missing PSM:")
-                    if unexplained_missing_PSMs <= 10:
-                        unexplained_peptides.append(psm.peptide)
-                logger.debug(
-                    f"Missing PSM in percolator output: {psm.raw_file}, {peptide}, {psm.scannr}"
-                )
-                continue
-
-            perc_score, perc_post_err_prob = perc_result
-            if not psm.is_decoy:
-                prosit_PEPs.append((perc_post_err_prob, psm.id_type))
-
-            row[score_col] = perc_score
-            row[post_err_prob_col] = perc_post_err_prob
-
         if rows_written % 500000 == 0:
             logger.info(f"    Writing line {rows_written}")
-        rows_written += 1
 
+        if len(results_dict) == 0 or is_mbr_evidence_row(psm):
+            rows_written += 1
+            writer.writerow(row)
+            continue
+
+        if len(results_dict[psm.raw_file]) == 0:
+            if psm.raw_file not in missing_raw_files:
+                logger.warning(
+                    f"Found no PSMs for {psm.raw_file} in percolator result files"
+                )
+                missing_raw_files.add(psm.raw_file)
+            continue
+
+        if not psm.is_decoy:
+            mq_PEPs.append((psm.post_err_prob, psm.id_type))
+
+        perc_result, peptide = find_percolator_psm(
+            psm, fixed_mods, results_dict, pout_input_type
+        )
+        if not perc_result:
+            if is_unexplainable_missing_psm(psm, peptide, pout_input_type):
+                unexplained_missing_PSMs += 1
+                logger.debug("Unexplained missing PSM:")
+                if unexplained_missing_PSMs <= 10:
+                    unexplained_peptides.append(psm.peptide)
+            logger.debug(
+                f"Missing PSM in percolator output: {psm.raw_file}, {peptide}, {psm.scannr}"
+            )
+            continue
+
+        perc_score, perc_post_err_prob = perc_result
+        if not psm.is_decoy:
+            prosit_PEPs.append((perc_post_err_prob, psm.id_type))
+
+        row[score_col] = perc_score
+        row[post_err_prob_col] = perc_post_err_prob
+
+        rows_written += 1
         writer.writerow(row)
 
     unexplained_percentage = int(unexplained_missing_PSMs / rows_written * 100)
@@ -254,6 +249,14 @@ def warn_for_header_difference(first_headers, headers):
                 if x != y
             ]
         )
+    )
+
+
+def is_unexplainable_missing_psm(psm, peptide, pout_input_type):
+    return (
+        not psm.is_contaminant
+        and psm.score > 0.0
+        and not (pout_input_type == "prosit" and not is_valid_prosit_peptide(peptide))
     )
 
 
@@ -410,6 +413,10 @@ def convert_PSM_dict_to_peptide_dict(
             curr_score, curr_PEP = peptide_results_dict.get(peptide, (-1e10, 1e10))
             peptide_results_dict[peptide] = (max(curr_score, score), min(curr_PEP, PEP))
     return peptide_results_dict
+
+
+def is_mbr_evidence_row(psm: maxquant.EvidenceRow) -> bool:
+    return psm.scannr == -1
 
 
 def is_valid_prosit_peptide(peptide: str) -> bool:
