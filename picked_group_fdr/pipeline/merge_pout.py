@@ -132,7 +132,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
             # removeFlanks=True only removes a single character (MaxQuant convention)
             # convert peptide string to upper case, since prosit converts modified amino acids to lower case
             peptide = helpers.clean_peptide(
-                row[peptCol][2:-2].upper(), removeFlanks=False
+                row[peptCol][2:-2].upper(), remove_flanks=False
             )
 
             if len(peptideToProteinMap) > 0:

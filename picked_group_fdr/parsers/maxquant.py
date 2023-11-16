@@ -167,15 +167,15 @@ class LabelingState(Enum):
 
 @dataclass
 class EvidenceRow:
-    rawFile: str
-    scanNr: int
-    peptideOriginal: str
+    raw_file: str
+    scannr: int
+    peptide: str
     score: float
-    postErrProb: float
-    isDecoy: bool
-    isContaminant: bool
-    idType: str
-    labelingState: str
+    post_err_prob: float
+    is_decoy: bool
+    is_contaminant: bool
+    id_type: str
+    labeling_state: str
 
 
 def parse_evidence_file_for_percolator_matching(reader, headers):
@@ -208,15 +208,15 @@ def parse_evidence_file_for_percolator_matching(reader, headers):
                 labelingState = int(row[labelingStateCol])
 
         yield row, EvidenceRow(
-            rawFile = row[rawFileCol],
-            scanNr = scanNr,
+            raw_file = row[rawFileCol],
+            scannr = scanNr,
             score = float(row[scoreCol]),
-            postErrProb = float(row[postErrProbCol]),
-            peptideOriginal = row[peptCol],
-            isDecoy = (row[reverseCol] == "+"),
-            isContaminant = (row[contaminantCol] == "+"),
-            idType = row[idTypeCol],
-            labelingState = labelingState
+            post_err_prob = float(row[postErrProbCol]),
+            peptide = row[peptCol],
+            is_decoy = (row[reverseCol] == "+"),
+            is_contaminant = (row[contaminantCol] == "+"),
+            id_type = row[idTypeCol],
+            labeling_state = labelingState
         )
 
 

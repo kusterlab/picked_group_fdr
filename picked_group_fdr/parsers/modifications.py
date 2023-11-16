@@ -104,3 +104,6 @@ def maxquant_mod_to_unimod(
         return replacements[key]
 
     return [regex.sub(find_replacement, seq)[1:-1] for seq in sequences]
+
+def maxquant_mod_to_unimod_single(sequence: str, fixed_mods):
+    return maxquant_mod_to_unimod([sequence], fixed_mods)[0]
