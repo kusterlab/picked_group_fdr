@@ -242,6 +242,23 @@ class MaxQuantInput(ScoreOrigin):
         return 'MaxQuant'
 
 
+class FragPipeInput(ScoreOrigin):
+    def get_evidence_file(self, args):
+        return args.fragpipe_psm
+    
+    def remaps_peptides_to_proteins(self):
+        return False
+    
+    def can_do_quantification(self):
+        return True
+    
+    def short_description(self):
+        return 'f'
+    
+    def long_description(self):
+        return 'FragPipe'
+
+
 class ProteinScoringStrategy:
     use_proteotypicity: bool
     use_razor: bool
@@ -275,6 +292,8 @@ class ProteinScoringStrategy:
                 self.score_origin = PercolatorInputRemapped()
             else:
                 self.score_origin = PercolatorInput()
+        elif "FragPipe" in score_description:
+            self.score_origin = FragPipeInput()
         else:
             self.score_origin = MaxQuantInput()
         

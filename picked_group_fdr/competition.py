@@ -160,4 +160,4 @@ class ClassicStrategy(ProteinCompetitionStrategy):
 
 
 def _clean_protein_id(protein_id):
-    return protein_id.replace("REV__", "").replace("OBSOLETE__", "")
+    return protein_id.replace("REV__", "").replace("OBSOLETE__", "").replace("rev_", "")

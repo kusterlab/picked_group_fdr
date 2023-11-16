@@ -54,6 +54,24 @@ def parseArgs(argv):
     )
 
     apars.add_argument(
+        "--perc_evidence",
+        default=None,
+        metavar="POUT",
+        nargs="+",
+        help="""Percolator output file(s) with PSMs or peptides; alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
+        "--fragpipe_psm",
+        default=None,
+        metavar="PSM",
+        nargs="+",
+        help="""Fragpipe psm.tsv output file(s); alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
         "--protein_groups_out",
         default=None,
         metavar="PG",
@@ -76,16 +94,6 @@ def parseArgs(argv):
         metavar="PG",
         help="""MaxQuant protein groups file; only specify if we want to keep 
                 MaxQuant's original grouping instead of Picked Grouping.""",
-    )
-
-    apars.add_argument(
-        "--perc_evidence",
-        default=None,
-        metavar="POUT",
-        nargs="+",
-        help="""Percolator output file(s) with PSMs or peptides; alternative for 
-                --mq_evidence if we want to use Percolator PEPs instead of 
-                MaxQuant's PEPs.""",
     )
 
     apars.add_argument(

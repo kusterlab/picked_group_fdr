@@ -53,11 +53,15 @@ def calculateProteinFDRs(proteinGroups, proteinScores):
         logger.info(
             f"#Target protein groups at 1% entrapment FDR: {countBelowThreshold(observedFdrs, 0.01, skipForCounting)}"
         )
+        num_decoys_at_entrapment_fdr = countBelowThreshold(observedFdrs, 0.01)
+        reported_qvals_index = min(len(reportedQvals)-1, num_decoys_at_entrapment_fdr)
         logger.info(
-            f"Decoy FDR at 1% entrapment FDR: {'%.2g' % (reportedQvals[countBelowThreshold(observedFdrs, 0.01)])}"
+            f"Decoy FDR at 1% entrapment FDR: {'%.2g' % (reportedQvals[reported_qvals_index])}"
         )
+        num_entrapments_at_decoy_fdr = countBelowThreshold(reportedQvals, 0.01)
+        observed_fdrs_index = min(len(observedFdrs)-1, num_entrapments_at_decoy_fdr)
         logger.info(
-            f"Entrapment FDR at 1% decoy FDR: {'%.2g' % (observedFdrs[countBelowThreshold(reportedQvals, 0.01)])}"
+            f"Entrapment FDR at 1% decoy FDR: {'%.2g' % (observedFdrs[observed_fdrs_index])}"
         )
 
         # printReportedAndEntrapmentFDRs(reportedQvals, observedQvals)
@@ -112,11 +116,15 @@ def calculatePeptideFDRs(peptideScores, scoreType):
         logger.info(
             f"#Target peptides at 1% entrapment FDR: {countBelowThreshold(observedFdrs, 0.01)}"
         )
+        num_decoys_at_entrapment_fdr = countBelowThreshold(observedFdrs, 0.01)
+        reported_qvals_index = min(len(reportedQvals)-1, num_decoys_at_entrapment_fdr)
         logger.info(
-            f"Decoy FDR at 1% entrapment FDR: {'%.2g' % (reportedQvals[countBelowThreshold(observedFdrs, 0.01)])}"
+            f"Decoy FDR at 1% entrapment FDR: {'%.2g' % (reportedQvals[reported_qvals_index])}"
         )
+        num_entrapments_at_decoy_fdr = countBelowThreshold(reportedQvals, 0.01)
+        observed_fdrs_index = min(len(observedFdrs)-1, num_entrapments_at_decoy_fdr)
         logger.info(
-            f"Entrapment FDR at 1% decoy FDR: {'%.2g' % (observedFdrs[countBelowThreshold(reportedQvals, 0.01)])}"
+            f"Entrapment FDR at 1% decoy FDR: {'%.2g' % (observedFdrs[observed_fdrs_index])}"
         )
 
     return reportedQvals, observedQvals

@@ -13,7 +13,7 @@ def is_contaminant(proteinGroup: List[str]) -> bool:
 
     
 def isDecoy(proteinGroup: List[str]) -> bool:
-    return allContain(proteinGroup, "REV__")
+    return allContain(proteinGroup, "REV__") or allContain(proteinGroup, "rev_")
 
 
 def isObsolete(proteinGroup: List[str]) -> bool:
@@ -38,7 +38,7 @@ def remove_decoy_proteins_from_target_peptides(proteins: List[str]) -> List[str]
     isTargetPeptide = not isDecoy(proteins)
     new_proteins = list()
     for protein in proteins:
-        if isTargetPeptide and protein.startswith("REV__"): 
+        if isTargetPeptide and (protein.startswith("REV__") or protein.startswith("rev_")):
             continue
         else:
             new_proteins.append(protein)

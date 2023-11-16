@@ -5,9 +5,7 @@ import logging
 import numpy as np
 
 from .. import digest, helpers
-from . import tsv
-from . import maxquant
-from . import percolator
+from . import tsv, maxquant, percolator, fragpipe
 
 # for type hints only
 from ..scoring import ProteinScoringStrategy
@@ -164,6 +162,10 @@ def parse_evidence_file_single(
 
     if percolator.is_percolator_file(headers):
         yield from percolator.parse_percolator_out_file(
+            reader, headers, get_proteins, score_type
+        )
+    elif fragpipe.is_fragpipe_psm_file(headers):
+        yield from fragpipe.parse_fragpipe_psm_file(
             reader, headers, get_proteins, score_type
         )
     else:
