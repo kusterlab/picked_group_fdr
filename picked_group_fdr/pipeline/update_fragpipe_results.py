@@ -78,8 +78,11 @@ def main(argv):
     protein_groups.create_index()
 
     for fragpipe_psm_file in args.fragpipe_psm:
-        update_fragpipe_psm_file_single(
+        fragpipe_psm_file_out = update_fragpipe_psm_file_single(
             fragpipe_psm_file, protein_groups, args.output_folder
+        )
+        generate_fragpipe_protein_file(
+            fragpipe_psm_file_out, protein_groups, args.fasta, args.output_folder
         )
 
 
@@ -88,7 +91,7 @@ def update_fragpipe_psm_file_single(
     protein_groups: ProteinGroups,
     output_folder: Union[str, None] = None,
     discard_shared_peptides: bool = True,
-) -> None:
+) -> str:
     missing_peptides_in_protein_groups = 0
     peptides_not_mapping_to_leading_protein = 0
     shared_peptide_precursors, unique_peptide_precursors = 0, 0
@@ -158,7 +161,53 @@ def update_fragpipe_psm_file_single(
         os.rename(fragpipe_psm_file, fragpipe_psm_file.replace(".tsv", ".original.tsv"))
         os.rename(fragpipe_psm_file_out, fragpipe_psm_file)
     else:
-        os.rename(fragpipe_psm_file_out, fragpipe_psm_file_out.replace(".tmp", ""))
+        os.rename(fragpipe_psm_file_out.replace(".tmp", ""), fragpipe_psm_file_out)
+
+    return fragpipe_psm_file_out
+
+
+def generate_fragpipe_protein_file(fragpipe_psm_file: str, fasta_file: str):
+    """Generate experiment specific protein.tsv file from psm.tsv and fasta file.
+
+    https://fragpipe.nesvilab.org/docs/tutorial_fragpipe_outputs.html
+
+    Output columns (LFQ):
+    - Protein (sp|P00167|CYB5_HUMAN) - from fasta
+    - Protein ID (P00167) - from fasta
+    - Entry Name (CYB5_HUMAN) - from fasta
+    - Gene (CYB5A) - from fasta
+    - Length - from fasta
+    - Organism (Homo sapiens OX=9606) - from fasta
+    - Protein Description (Cytochrome b5) - from fasta
+    - Protein Existence (1:Experimental evidence at protein level) - from fasta, but PE field only contains integer*
+    - Coverage
+    - Protein Probability (1.000) - update this with 1 - protein-level PEP
+    - Top Peptide Probability (0.990)
+    - Total Peptides
+    - Unique Peptides
+    - Razor Peptides
+    - Total Spectral Count
+    - Unique Spectral Count
+    - Razor Spectral Count
+    - Total Intensity (0)
+    - Unique Intensity (0)
+    - Razor Intensity (0)
+    - Razor Assigned Modifications (19M(15.9949),22C(57.0215)) - recurring peptide+charge pairs are not included
+    - Razor Observed Modifications - seems to always be empty
+    - Indistinguishable Proteins (sp|P0CE48|EFTU2_ECOLI)
+
+    * Here are the corresponding strings for the evidence levels:
+    1. Experimental evidence at protein level
+    2. Experimental evidence at transcript level
+    3. Protein inferred from homology
+    4. Protein predicted
+    5. Protein uncertain
+
+    Args:
+        fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
+        fasta_file (str): fasta file with all protein sequences
+    """
+    pass
 
 
 if __name__ == "__main__":
