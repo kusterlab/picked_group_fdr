@@ -1,5 +1,7 @@
+from picked_group_fdr.protein_annotation import ProteinAnnotation
 from picked_group_fdr.results import ProteinGroupResult
 from picked_group_fdr.parsers.maxquant import parse_mq_protein_groups_file_row
+
 
 def test_extend():
     p = ProteinGroupResult()
@@ -90,8 +92,12 @@ def test_from_protein_group_keep_all_proteins():
     proteinScore = 10
     scoreCutoff = 0.01
     proteinAnnotations = {
-        "protein1": ("protein1", "gene1", "header1"),
-        "protein2": ("protein2", "gene2", "header2"),
+        "protein1": ProteinAnnotation(
+            id="protein1", gene_name="gene1", fasta_header="header1"
+        ),
+        "protein2": ProteinAnnotation(
+            id="protein2", gene_name="gene2", fasta_header="header2"
+        ),
     }
     keep_all_proteins = True
     p = ProteinGroupResult.from_protein_group(

@@ -79,7 +79,7 @@ def main(argv):
 
     for fragpipe_psm_file in args.fragpipe_psm:
         fragpipe_psm_file_out = update_fragpipe_psm_file_single(
-            fragpipe_psm_file, protein_groups, args.output_folder
+            fragpipe_psm_file, protein_groups, args.fasta, args.output_folder
         )
         generate_fragpipe_protein_file(
             fragpipe_psm_file_out, protein_groups, args.fasta, args.output_folder
@@ -89,9 +89,30 @@ def main(argv):
 def update_fragpipe_psm_file_single(
     fragpipe_psm_file: str,
     protein_groups: ProteinGroups,
+    fasta_file: str,
     output_folder: Union[str, None] = None,
     discard_shared_peptides: bool = True,
 ) -> str:
+    """Update protein mappings for each peptide using the PickedGroupFDR protein groups.
+
+    These columns are updated:
+    - Protein
+    - Protein ID (P00167) - from fasta
+    - Entry Name (CYB5_HUMAN) - from fasta
+    - Gene (CYB5A) - from fasta
+    - Protein Description (Cytochrome b5) - from fasta
+    - Mapped Genes
+    - Mapped Proteins
+
+    Args:
+        fragpipe_psm_file (str): _description_
+        protein_groups (ProteinGroups): _description_
+        output_folder (Union[str, None], optional): _description_. Defaults to None.
+        discard_shared_peptides (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        str: path to updated psm.tsv file
+    """
     missing_peptides_in_protein_groups = 0
     peptides_not_mapping_to_leading_protein = 0
     shared_peptide_precursors, unique_peptide_precursors = 0, 0

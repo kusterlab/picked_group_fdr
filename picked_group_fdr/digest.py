@@ -1,5 +1,4 @@
 from __future__ import print_function, annotations
-import os
 from pathlib import Path
 
 import sys
@@ -7,7 +6,7 @@ import csv
 import itertools
 import collections
 import logging
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List
 
 from .digestion_params import (
     DigestionParams,
@@ -172,88 +171,6 @@ def writeProteinToGeneMap(fastaFile, outputFile):
 
 def parseUntilFirstSpace(fastaId: str) -> str:
     return fastaId.split(" ")[0]
-
-
-def parseProteinNameFunc(fastaId: str) -> str:
-    return " ".join(fastaId.split(" OS=")[0].split(" ")[1:])
-
-
-def parseGeneNameFunc(fastaId: str) -> str:
-    return fastaId.split(" GN=")[1].split(" ")[0] if "GN=" in fastaId else ""
-
-
-def parseUniProtId(fastaId: str) -> str:
-    proteinId = parseUntilFirstSpace(fastaId)
-    if "|" in proteinId:
-        return proteinId.split("|")[1]
-    else:
-        return proteinId
-
-
-def readFastaProteins(
-    filePath: str,
-    db="concat",
-    parseId=parseUntilFirstSpace,
-    parseProteinName=parseProteinNameFunc,
-    parseGeneName=parseGeneNameFunc,
-):
-    if not os.path.isfile(filePath):
-        raise FileNotFoundError(
-            f"Could not find fasta file {filePath}. Please make sure you provided a valid fasta file."
-        )
-
-    with open(filePath, "r") as fp:
-        for line in itertools.chain(fp, [">"]):
-            line = line.rstrip()
-            if line.startswith(">"):
-                if db in ["target", "concat"]:
-                    yield (
-                        parseId(line[1:]),
-                        parseProteinName(line[1:]),
-                        parseGeneName(line[1:]),
-                        line[1:],
-                    )
-
-                if db in ["decoy", "concat"]:
-                    geneName = parseGeneName(line[1:])
-                    if len(geneName) > 0:
-                        geneName = "REV__" + geneName
-                    yield ("REV__" + parseId(line[1:]), "", geneName, "")
-
-
-def getProteinAnnotations(fastaFile: str, parseId):
-    proteinAnnotations = dict()
-
-    if not fastaFile:
-        return proteinAnnotations
-
-    for protein, proteinName, geneName, fastaHeader in readFastaProteins(
-        fastaFile, parseId=parseId
-    ):
-        if protein not in proteinAnnotations:
-            proteinAnnotations[protein] = (proteinName, geneName, fastaHeader)
-
-    return proteinAnnotations
-
-
-def get_protein_annotations_multiple(
-    fastaFiles: Iterator[str], parseId
-) -> Dict[str, Tuple[str, str, str]]:
-    proteinAnnotations = dict()
-    for fastaFile in fastaFiles:
-        proteinAnnotations = {
-            **proteinAnnotations,
-            **getProteinAnnotations(fastaFile, parseId),
-        }
-
-    return proteinAnnotations
-
-
-def hasGeneNames(proteinAnnotations, minRatioWithGenes):
-    counts = sum(
-        1 for _, geneName, _ in proteinAnnotations.values() if len(geneName) > 0
-    )
-    return counts / len(proteinAnnotations) > minRatioWithGenes
 
 
 def readFastaTide(filePath, db="target", parseId=parseUntilFirstSpace):

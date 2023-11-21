@@ -7,6 +7,8 @@ from typing import List, Dict, Union
 
 import numpy as np
 
+import picked_group_fdr.protein_annotation
+
 from . import __version__, __copyright__
 from . import digest
 from . import helpers
@@ -216,13 +218,13 @@ def main(argv):
     parseId = digest.parseUntilFirstSpace
     proteinAnnotations = dict()
     if args.fasta:
-        proteinAnnotations = digest.get_protein_annotations_multiple(
+        proteinAnnotations = picked_group_fdr.protein_annotation.get_protein_annotations_multiple(
             args.fasta, parseId
         )
         if args.gene_level:
-            if digest.hasGeneNames(proteinAnnotations, minRatioWithGenes=0.5):
-                parseId = digest.parseGeneNameFunc
-                proteinAnnotations = digest.get_protein_annotations_multiple(
+            if picked_group_fdr.protein_annotation.has_gene_names(proteinAnnotations, min_ratio_with_genes=0.5):
+                parseId = picked_group_fdr.protein_annotation.parse_gene_name_func
+                proteinAnnotations = picked_group_fdr.protein_annotation.get_protein_annotations_multiple(
                     args.fasta, parseId
                 )
             else:

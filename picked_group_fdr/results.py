@@ -3,9 +3,11 @@ from __future__ import annotations
 import collections
 import logging
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List
 
 import numpy as np
+
+from picked_group_fdr.protein_annotation import ProteinAnnotation
 
 from . import helpers
 from .parsers import tsv
@@ -58,7 +60,7 @@ class ProteinGroupResult:
         self.extraColumns.append(a)
         
     @classmethod
-    def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations, keep_all_proteins):
+    def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations: Dict[str, ProteinAnnotation], keep_all_proteins):
         numUniquePeptidesPerProtein = cls._get_peptide_counts(peptideScores, scoreCutoff)
         peptideCountsUnique = [numUniquePeptidesPerProtein[p] for p in proteinGroup]
         if sum(peptideCountsUnique) == 0 and not keep_all_proteins:
@@ -75,14 +77,16 @@ class ProteinGroupResult:
                 
         proteinNames, geneNames, fastaHeaders = list(), list(), list()
         for p in proteinGroup:
-            if p in proteinAnnotations:
-                proteinName, geneName, fastaHeader = proteinAnnotations[p]
-                if proteinName not in proteinNames:
-                    proteinNames.append(proteinName)
-                if geneName not in geneNames:
-                    geneNames.append(geneName)
-                if fastaHeader not in fastaHeaders:
-                    fastaHeaders.append(fastaHeader)
+            if p not in proteinAnnotations:
+                continue
+
+            protein_annotation = proteinAnnotations[p]
+            if protein_annotation.id not in proteinNames:
+                proteinNames.append(protein_annotation.id)
+            if protein_annotation.gene_name is not None and protein_annotation.gene_name not in geneNames:
+                geneNames.append(protein_annotation.gene_name)
+            if protein_annotation.fasta_header not in fastaHeaders:
+                fastaHeaders.append(protein_annotation.fasta_header)
         
         proteinNames = ";".join(proteinNames)
         geneNames = ";".join(geneNames)
@@ -165,7 +169,7 @@ class ProteinGroupResults:
             proteinScores: List[float], 
             reportedQvals: List[float], 
             scoreCutoff: float, 
-            proteinAnnotations,
+            proteinAnnotations: Dict[str, ProteinAnnotation],
             keep_all_proteins: bool) -> ProteinGroupResults:
         protein_group_results = list()
         for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(proteinGroups, proteinGroupPeptideInfos, proteinScores, reportedQvals):

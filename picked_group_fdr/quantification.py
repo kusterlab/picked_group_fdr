@@ -9,6 +9,7 @@ import triqler.parsers
 
 from . import digest
 from . import digestion_params
+from . import protein_annotation
 from . import helpers
 from . import fdr
 from .parsers import maxquant
@@ -97,9 +98,9 @@ def main(argv):
     
     parseId = digest.parseUntilFirstSpace
     if args.gene_level:
-        parseId = digest.parseGeneNameFunc
+        parseId = protein_annotation.parse_gene_name_func
     elif args.fasta_use_uniprot_id:
-        parseId = digest.parseUniProtId
+        parseId = protein_annotation.parse_uniprot_id
     
     peptideToProteinMap, numIbaqPeptidesPerProtein = getPeptideToProteinMaps(args, parseId)
     proteinSequences = digest.getProteinSequences(args.fasta, parseId)
