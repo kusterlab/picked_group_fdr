@@ -2,15 +2,25 @@ from pathlib import Path
 import sys
 import os
 import logging
-from typing import Union
+from typing import Dict, List, Optional
 
-from picked_group_fdr.protein_groups import ProteinGroups
-
-from ..parsers import tsv, fragpipe
+import numpy as np
 
 from .. import __version__, __copyright__
 from .. import helpers
 from ..picked_group_fdr import ArgumentParserWithLogger
+from .. import digest
+from .. import protein_annotation
+from ..parsers import maxquant, tsv, fragpipe
+from ..protein_annotation import ProteinAnnotation
+from ..protein_groups import ProteinGroups
+from ..quant.precursor_quant import PrecursorQuant
+from ..quant.base import ProteinGroupColumns
+from ..quant.fragpipe_protein_annotations import (
+    FragpipeProteinAnnotationsColumns,
+)
+from ..results import ProteinGroupResults
+
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -77,20 +87,33 @@ def main(argv):
     protein_groups = ProteinGroups.from_mq_protein_groups_file(args.protein_groups)
     protein_groups.create_index()
 
+    protein_annotations = protein_annotation.get_protein_annotations_multiple(
+        args.fasta, parseId=digest.parseUntilFirstSpace
+    )
+
     for fragpipe_psm_file in args.fragpipe_psm:
         fragpipe_psm_file_out = update_fragpipe_psm_file_single(
-            fragpipe_psm_file, protein_groups, args.fasta, args.output_folder
+            fragpipe_psm_file, protein_groups, protein_annotations, args.output_folder
+        )
+
+        # create a fresh ProteinGroupResults object for each psm.tsv
+        protein_group_results = maxquant.parse_mq_protein_groups_file(
+            args.protein_groups
         )
         generate_fragpipe_protein_file(
-            fragpipe_psm_file_out, protein_groups, args.fasta, args.output_folder
+            fragpipe_psm_file_out,
+            protein_groups,
+            protein_group_results,
+            protein_annotations,
+            args.output_folder,
         )
 
 
 def update_fragpipe_psm_file_single(
     fragpipe_psm_file: str,
     protein_groups: ProteinGroups,
-    fasta_file: str,
-    output_folder: Union[str, None] = None,
+    protein_annotations: Dict[str, ProteinAnnotation],
+    output_folder: Optional[str] = None,
     discard_shared_peptides: bool = True,
 ) -> str:
     """Update protein mappings for each peptide using the PickedGroupFDR protein groups.
@@ -113,10 +136,6 @@ def update_fragpipe_psm_file_single(
     Returns:
         str: path to updated psm.tsv file
     """
-    missing_peptides_in_protein_groups = 0
-    peptides_not_mapping_to_leading_protein = 0
-    shared_peptide_precursors, unique_peptide_precursors = 0, 0
-
     delimiter = tsv.get_delimiter(fragpipe_psm_file)
     reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
     headers = next(reader)
@@ -130,6 +149,10 @@ def update_fragpipe_psm_file_single(
         output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
         Path(output_folder).mkdir(parents=True, exist_ok=True)
         fragpipe_psm_file_out = f"{output_folder}/{Path(fragpipe_psm_file).name}.tmp"
+
+    missing_peptides_in_protein_groups = 0
+    peptides_not_mapping_to_leading_protein = 0
+    shared_peptide_precursors, unique_peptide_precursors = 0, 0
 
     writer = tsv.get_tsv_writer(fragpipe_psm_file_out)
     writer.writerow(headers)
@@ -182,12 +205,19 @@ def update_fragpipe_psm_file_single(
         os.rename(fragpipe_psm_file, fragpipe_psm_file.replace(".tsv", ".original.tsv"))
         os.rename(fragpipe_psm_file_out, fragpipe_psm_file)
     else:
-        os.rename(fragpipe_psm_file_out.replace(".tmp", ""), fragpipe_psm_file_out)
+        os.rename(fragpipe_psm_file_out, fragpipe_psm_file_out.replace(".tmp", ""))
 
-    return fragpipe_psm_file_out
+    return fragpipe_psm_file_out.replace(".tmp", "")
 
 
-def generate_fragpipe_protein_file(fragpipe_psm_file: str, fasta_file: str):
+def generate_fragpipe_protein_file(
+    fragpipe_psm_file: str,
+    protein_groups: ProteinGroups,
+    protein_group_results: ProteinGroupResults,
+    protein_annotations: Dict[str, ProteinAnnotation],
+    output_folder: Optional[str] = None,
+    discard_shared_peptides: bool = True,
+):
     """Generate experiment specific protein.tsv file from psm.tsv and fasta file.
 
     https://fragpipe.nesvilab.org/docs/tutorial_fragpipe_outputs.html
@@ -221,7 +251,76 @@ def generate_fragpipe_protein_file(fragpipe_psm_file: str, fasta_file: str):
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    pass
+    delimiter = tsv.get_delimiter(fragpipe_psm_file)
+    reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
+    headers = next(reader)
+
+    experiment = 1
+    fraction = -1
+    intensity = np.nan
+    tmt_cols = None  # TODO: add TMT support
+    silac_cols = None  # TODO: add SILAC support
+    evidence_id = ""
+
+    for (
+        peptide,
+        charge,
+        post_err_prob,
+        proteins,
+    ) in fragpipe.parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
+        protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
+
+        if len(protein_group_idxs) == 0:
+            logger.debug(
+                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+            )
+            continue
+
+        if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
+            continue
+
+        for proteinGroupIdx in protein_group_idxs:
+            precursorQuant = PrecursorQuant(
+                peptide,
+                charge,
+                experiment,
+                fraction,
+                intensity,
+                post_err_prob,
+                tmt_cols,
+                silac_cols,
+                evidence_id,
+            )
+            protein_group_results[proteinGroupIdx].precursorQuants.append(
+                precursorQuant
+            )
+
+    for header in maxquant.MQ_PROTEIN_ANNOTATION_HEADERS:
+        protein_group_results.remove_column(header)
+
+    columns: List[ProteinGroupColumns] = [
+        FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations)
+    ]
+
+    for c in columns:
+        c.append_headers(protein_group_results, None)
+        c.append_columns(protein_group_results, None, None)
+
+    fragpipe_protein_file_out = fragpipe_psm_file.replace("psm.tsv", "protein.tsv")
+    if output_folder is not None:
+        output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
+        fragpipe_protein_file_out = Path(fragpipe_psm_file).name.replace(
+            "psm.tsv", "protein.tsv"
+        )
+        fragpipe_protein_file_out = f"{output_folder}/{fragpipe_protein_file_out}"
+    else:
+        os.rename(
+            fragpipe_protein_file_out,
+            fragpipe_protein_file_out.replace(".tsv", ".original.tsv"),
+        )
+
+    protein_group_results.write(fragpipe_protein_file_out)
 
 
 if __name__ == "__main__":

@@ -44,37 +44,69 @@ class ProteinGroupResult:
     potentialContaminant: str = ""
     precursorQuants: List[float] = field(default_factory=list)
     extraColumns: List[float] = field(default_factory=list)
-    
+
     def extend(self, e):
         self.extraColumns.extend(e)
-    
+
     def append(self, a):
         self.extraColumns.append(a)
-        
+
     @classmethod
-    def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, keep_all_proteins):
-        numUniquePeptidesPerProtein = cls._get_peptide_counts(peptideScores, scoreCutoff)
+    def from_protein_group(
+        cls,
+        proteinGroup,
+        peptideScores,
+        reportedFdr,
+        proteinScore,
+        scoreCutoff,
+        keep_all_proteins,
+    ):
+        numUniquePeptidesPerProtein = cls._get_peptide_counts(
+            peptideScores, scoreCutoff
+        )
         peptideCountsUnique = [numUniquePeptidesPerProtein[p] for p in proteinGroup]
         if sum(peptideCountsUnique) == 0 and not keep_all_proteins:
             return None
 
-        proteinGroup, peptideCountsUnique = zip(*[(p, num_peptides) for p, num_peptides in zip(proteinGroup, peptideCountsUnique) if num_peptides > 0 or keep_all_proteins])
-        
+        proteinGroup, peptideCountsUnique = zip(
+            *[
+                (p, num_peptides)
+                for p, num_peptides in zip(proteinGroup, peptideCountsUnique)
+                if num_peptides > 0 or keep_all_proteins
+            ]
+        )
+
         bestPeptide = sorted([(p[0], p[1]) for p in peptideScores])[0][1]
-        majorityProteinIds = ";".join([p for p, num_peptides in zip(proteinGroup, peptideCountsUnique) if num_peptides >= max(peptideCountsUnique) / 2])
+        majorityProteinIds = ";".join(
+            [
+                p
+                for p, num_peptides in zip(proteinGroup, peptideCountsUnique)
+                if num_peptides >= max(peptideCountsUnique) / 2
+            ]
+        )
         numberOfProteins = len(proteinGroup)
 
         peptideCountsUnique = ";".join(map(str, peptideCountsUnique))
         proteinIds = ";".join(proteinGroup)
-        
+
         qValue = reportedFdr
         score = proteinScore
-        reverse = '+' if helpers.isDecoy(proteinGroup) else ''
-        potentialContaminant = '+' if helpers.is_contaminant(proteinGroup) else ''
-        return cls(proteinIds, majorityProteinIds, peptideCountsUnique, 
-                             bestPeptide, 
-                             numberOfProteins, qValue, score, reverse, potentialContaminant, [], [])
-    
+        reverse = "+" if helpers.isDecoy(proteinGroup) else ""
+        potentialContaminant = "+" if helpers.is_contaminant(proteinGroup) else ""
+        return cls(
+            proteinIds,
+            majorityProteinIds,
+            peptideCountsUnique,
+            bestPeptide,
+            numberOfProteins,
+            qValue,
+            score,
+            reverse,
+            potentialContaminant,
+            [],
+            [],
+        )
+
     @staticmethod
     def _get_peptide_counts(scorePeptidePairs, scoreCutoff):
         proteinPeptideCount = collections.defaultdict(int)
@@ -87,49 +119,66 @@ class ProteinGroupResult:
                 for protein in proteins:
                     proteinPeptideCount[protein] += 1
         return proteinPeptideCount
-        
+
     def to_list(self):
-        return [self.proteinIds, 
-                self.majorityProteinIds, 
-                self.peptideCountsUnique,
-                self.bestPeptide,
-                self.numberOfProteins,
-                self.qValue,
-                self.score,
-                self.reverse,
-                self.potentialContaminant] + ["%.0f" % (x) if not type(x) == str else x for x in self.extraColumns]
+        return [
+            self.proteinIds,
+            self.majorityProteinIds,
+            self.peptideCountsUnique,
+            self.bestPeptide,
+            self.numberOfProteins,
+            self.qValue,
+            self.score,
+            self.reverse,
+            self.potentialContaminant,
+        ] + ["%.0f" % (x) if not type(x) == str else x for x in self.extraColumns]
 
 
 class ProteinGroupResults:
     headers = List[str]
     protein_group_results: List[ProteinGroupResult] = field(default_factory=list)
-    
-    def __init__(self, protein_group_results: List[ProteinGroupResult]=None):
+
+    def __init__(self, protein_group_results: List[ProteinGroupResult] = None):
         """
         NOTE: cannot use empty list as default argument: https://docs.python-guide.org/writing/gotchas/
         """
         self.protein_group_results = []
-        if protein_group_results is not None: 
+        if protein_group_results is not None:
             self.protein_group_results = protein_group_results
-        self.headers = PROTEIN_GROUP_HEADERS
-        
+        self.headers = PROTEIN_GROUP_HEADERS.copy()
+
     def __iter__(self):
         return iter(self.protein_group_results)
-    
+
     def __next__(self):
         return next(self.protein_group_results)
-    
+
     def __len__(self):
         return len(self.protein_group_results)
-    
+
     def __getitem__(self, indices):
         return self.protein_group_results[indices]
-    
+
     def append_header(self, header: str) -> None:
+        if header in self.headers:
+            raise ValueError(f"Trying to add duplicate column name: {header}")
         self.headers.append(header)
-    
+
     def append_headers(self, headers: List[str]) -> None:
-        self.headers.extend(headers)
+        for header in headers:
+            self.append_header(header)
+    
+    def remove_column(self, header: str) -> None:
+        if header not in self.headers:
+            logger.warning(f"Attempted to remove non-existing column {header}")
+            return
+        
+        column_idx = self.headers.index(header)
+        del self.headers[column_idx]
+
+        column_idx -= len(PROTEIN_GROUP_HEADERS)
+        for pgr in self.protein_group_results:
+            del pgr.extraColumns[column_idx]
 
     def write(self, output_file: str) -> None:
         writer = tsv.get_tsv_writer(output_file)
@@ -138,19 +187,32 @@ class ProteinGroupResults:
             writer.writerow(proteinRow.to_list())
 
     @classmethod
-    def from_protein_groups(cls, 
-            proteinGroups: ProteinGroups, 
-            proteinGroupPeptideInfos: ProteinGroupPeptideInfos, 
-            proteinScores: List[float], 
-            reportedQvals: List[float], 
-            scoreCutoff: float,
-            keep_all_proteins: bool) -> ProteinGroupResults:
+    def from_protein_groups(
+        cls,
+        proteinGroups: ProteinGroups,
+        proteinGroupPeptideInfos: ProteinGroupPeptideInfos,
+        proteinScores: List[float],
+        reportedQvals: List[float],
+        scoreCutoff: float,
+        keep_all_proteins: bool,
+    ) -> ProteinGroupResults:
         protein_group_results = list()
-        for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(proteinGroups, proteinGroupPeptideInfos, proteinScores, reportedQvals):
+        for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(
+            proteinGroups, proteinGroupPeptideInfos, proteinScores, reportedQvals
+        ):
             if helpers.isObsolete(proteinGroup):
                 continue
-            pgr = ProteinGroupResult.from_protein_group(proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, keep_all_proteins)
-            if pgr is not None: # protein groups can get filtered out when they do not have any PSMs below the PSM FDR cutoff
+            pgr = ProteinGroupResult.from_protein_group(
+                proteinGroup,
+                peptideScores,
+                reportedFdr,
+                proteinScore,
+                scoreCutoff,
+                keep_all_proteins,
+            )
+            if (
+                pgr is not None
+            ):  # protein groups can get filtered out when they do not have any PSMs below the PSM FDR cutoff
                 protein_group_results.append(pgr)
-        
+
         return cls(protein_group_results)

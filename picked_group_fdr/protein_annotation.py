@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import itertools
 import os
 
 from typing import Dict, Iterator, Optional, Tuple

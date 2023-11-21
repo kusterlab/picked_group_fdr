@@ -1,10 +1,9 @@
-from typing import List, Dict
+from typing import Dict
 import logging
-from picked_group_fdr.protein_annotation import ProteinAnnotation
 
-from picked_group_fdr.results import ProteinGroupResults
-
-from .. import helpers
+from ..parsers.maxquant import MQ_PROTEIN_ANNOTATION_HEADERS
+from ..protein_annotation import ProteinAnnotation
+from ..results import ProteinGroupResults
 from .base import ProteinGroupColumns
 
 
@@ -19,7 +18,7 @@ class ProteinAnnotationsColumns(ProteinGroupColumns):
 
     def append_headers(self, protein_group_results: ProteinGroupResults, experiments):
         protein_group_results.append_headers(
-            ["Protein names", "Gene names", "Fasta headers"]
+            MQ_PROTEIN_ANNOTATION_HEADERS
         )
 
     def append_columns(
@@ -51,14 +50,3 @@ class ProteinAnnotationsColumns(ProteinGroupColumns):
             fastaHeaders = ";".join(fastaHeaders)
 
             pgr.extend([proteinNames, geneNames, fastaHeaders])
-
-    @staticmethod
-    def collect_evidence_ids(peptideIntensityList, postErrProbCutoff):
-        evidenceIds = list()
-        for precursor in peptideIntensityList:
-            if (
-                helpers.isMbr(precursor.postErrProb)
-                or precursor.postErrProb <= postErrProbCutoff
-            ):
-                evidenceIds.append(precursor.evidenceId)
-        return sorted(evidenceIds)

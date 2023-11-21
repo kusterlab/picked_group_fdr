@@ -11,6 +11,7 @@ from .. import results
 
 logger = logging.getLogger(__name__)
 
+MQ_PROTEIN_ANNOTATION_HEADERS = ["Protein names", "Gene names", "Fasta headers"]
 
 def parse_mq_evidence_file(
     reader, headers, get_proteins, score_type, for_quantification=False
@@ -129,7 +130,7 @@ def parse_mq_protein_groups_file(mqProteinGroupsFile: str):
     cols = {
         x: headers.index(x)
         for x in results.PROTEIN_GROUP_HEADERS
-        + ["Protein names", "Gene names", "Fasta headers"]
+        + MQ_PROTEIN_ANNOTATION_HEADERS
         if x in headers
     }
 
@@ -138,7 +139,10 @@ def parse_mq_protein_groups_file(mqProteinGroupsFile: str):
     for row in reader:
         protein_group_results.append(parse_mq_protein_groups_file_row(row, cols))
 
-    return results.ProteinGroupResults(protein_group_results)
+    protein_group_results = results.ProteinGroupResults(protein_group_results)
+    protein_group_results.append_headers(MQ_PROTEIN_ANNOTATION_HEADERS)
+
+    return protein_group_results
 
 
 def parse_mq_protein_groups_file_row(row, cols):
