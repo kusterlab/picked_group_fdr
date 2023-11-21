@@ -1,5 +1,8 @@
+from typing import List
 from picked_group_fdr.protein_annotation import ProteinAnnotation
-from picked_group_fdr.results import ProteinGroupResult
+from picked_group_fdr.quant.base import ProteinGroupColumns
+from picked_group_fdr.quant.protein_annotations import ProteinAnnotationsColumns
+from picked_group_fdr.results import ProteinGroupResult, ProteinGroupResults
 from picked_group_fdr.parsers.maxquant import parse_mq_protein_groups_file_row
 
 
@@ -46,14 +49,12 @@ def test_from_mq_protein_groups():
     assert p.proteinIds == "123"
     assert p.majorityProteinIds == "456"
     assert p.peptideCountsUnique == "3"
-    assert p.proteinNames == "protein1"
-    assert p.geneNames == "gene1"
-    assert p.fastaHeaders == "header1"
     assert p.numberOfProteins == 1
     assert p.qValue == 0.05
     assert p.score == 10
     assert p.reverse == "+"
     assert p.potentialContaminant == ""
+    assert p.extraColumns == ["protein1", "gene1", "header1"]
 
 
 def test_from_protein_group():
@@ -65,10 +66,6 @@ def test_from_protein_group():
     reportedFdr = 0.05
     proteinScore = 10
     scoreCutoff = 0.01
-    proteinAnnotations = {
-        "protein1": ("protein1", "gene1", "header1"),
-        "protein2": ("protein2", "gene2", "header2"),
-    }
     keep_all_proteins = False
     p = ProteinGroupResult.from_protein_group(
         proteinGroup,
@@ -76,7 +73,6 @@ def test_from_protein_group():
         reportedFdr,
         proteinScore,
         scoreCutoff,
-        proteinAnnotations,
         keep_all_proteins,
     )
     assert p is None
@@ -106,20 +102,27 @@ def test_from_protein_group_keep_all_proteins():
         reportedFdr,
         proteinScore,
         scoreCutoff,
-        proteinAnnotations,
         keep_all_proteins,
     )
+
+    columns: List[ProteinGroupColumns] = [
+        ProteinAnnotationsColumns(proteinAnnotations)
+    ]
+
+    proteinGroupResults = ProteinGroupResults([p])            
+    for c in columns:
+        c.append_headers(proteinGroupResults, None)
+        c.append_columns(proteinGroupResults, None, None)
+
     assert p.proteinIds == "protein1;protein2"
     assert p.majorityProteinIds == "protein1;protein2"
     assert p.peptideCountsUnique == "0;0"
-    assert p.proteinNames == "protein1;protein2"
-    assert p.geneNames == "gene1;gene2"
-    assert p.fastaHeaders == "header1;header2"
     assert p.numberOfProteins == 2
     assert p.qValue == 0.05
     assert p.score == 10
     assert p.reverse == ""
     assert p.potentialContaminant == ""
+    assert p.extraColumns == ["protein1;protein2", "gene1;gene2", "header1;header2"]
 
 
 def test_get_peptide_counts():

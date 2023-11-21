@@ -200,7 +200,7 @@ def generate_fragpipe_protein_file(fragpipe_psm_file: str, fasta_file: str):
     - Length - from fasta
     - Organism (Homo sapiens OX=9606) - from fasta
     - Protein Description (Cytochrome b5) - from fasta
-    - Protein Existence (1:Experimental evidence at protein level) - from fasta, but PE field only contains integer*
+    - Protein Existence (1:Experimental evidence at protein level) - from fasta, but PE field only contains integer
     - Coverage
     - Protein Probability (1.000) - update this with 1 - protein-level PEP
     - Top Peptide Probability (0.990)
@@ -213,16 +213,9 @@ def generate_fragpipe_protein_file(fragpipe_psm_file: str, fasta_file: str):
     - Total Intensity (0)
     - Unique Intensity (0)
     - Razor Intensity (0)
-    - Razor Assigned Modifications (19M(15.9949),22C(57.0215)) - recurring peptide+charge pairs are not included
+    - Razor Assigned Modifications (19M(15.9949),19M(15.9949),22C(57.0215)) - recurring mod_peptide+charge pairs are not included
     - Razor Observed Modifications - seems to always be empty
     - Indistinguishable Proteins (sp|P0CE48|EFTU2_ECOLI)
-
-    * Here are the corresponding strings for the evidence levels:
-    1. Experimental evidence at protein level
-    2. Experimental evidence at transcript level
-    3. Protein inferred from homology
-    4. Protein predicted
-    5. Protein uncertain
 
     Args:
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format

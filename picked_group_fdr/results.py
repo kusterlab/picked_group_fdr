@@ -3,11 +3,9 @@ from __future__ import annotations
 import collections
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import List
 
 import numpy as np
-
-from picked_group_fdr.protein_annotation import ProteinAnnotation
 
 from . import helpers
 from .parsers import tsv
@@ -24,9 +22,6 @@ PROTEIN_GROUP_HEADERS = [
     "Protein IDs",
     "Majority protein IDs",
     "Peptide counts (unique)",
-    "Protein names",
-    "Gene names",
-    "Fasta headers",
     "Best peptide",
     "Number of proteins",
     "Q-value",
@@ -41,9 +36,6 @@ class ProteinGroupResult:
     proteinIds: str = ""
     majorityProteinIds: str = ""
     peptideCountsUnique: str = ""
-    proteinNames: str = ""
-    geneNames: str = ""
-    fastaHeaders: str = ""
     bestPeptide: str = ""
     numberOfProteins: int = 0
     qValue: float = np.nan
@@ -60,7 +52,7 @@ class ProteinGroupResult:
         self.extraColumns.append(a)
         
     @classmethod
-    def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations: Dict[str, ProteinAnnotation], keep_all_proteins):
+    def from_protein_group(cls, proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, keep_all_proteins):
         numUniquePeptidesPerProtein = cls._get_peptide_counts(peptideScores, scoreCutoff)
         peptideCountsUnique = [numUniquePeptidesPerProtein[p] for p in proteinGroup]
         if sum(peptideCountsUnique) == 0 and not keep_all_proteins:
@@ -74,30 +66,13 @@ class ProteinGroupResult:
 
         peptideCountsUnique = ";".join(map(str, peptideCountsUnique))
         proteinIds = ";".join(proteinGroup)
-                
-        proteinNames, geneNames, fastaHeaders = list(), list(), list()
-        for p in proteinGroup:
-            if p not in proteinAnnotations:
-                continue
-
-            protein_annotation = proteinAnnotations[p]
-            if protein_annotation.id not in proteinNames:
-                proteinNames.append(protein_annotation.id)
-            if protein_annotation.gene_name is not None and protein_annotation.gene_name not in geneNames:
-                geneNames.append(protein_annotation.gene_name)
-            if protein_annotation.fasta_header not in fastaHeaders:
-                fastaHeaders.append(protein_annotation.fasta_header)
-        
-        proteinNames = ";".join(proteinNames)
-        geneNames = ";".join(geneNames)
-        fastaHeaders = ";".join(fastaHeaders)
         
         qValue = reportedFdr
         score = proteinScore
         reverse = '+' if helpers.isDecoy(proteinGroup) else ''
         potentialContaminant = '+' if helpers.is_contaminant(proteinGroup) else ''
         return cls(proteinIds, majorityProteinIds, peptideCountsUnique, 
-                             proteinNames, geneNames, fastaHeaders, bestPeptide, 
+                             bestPeptide, 
                              numberOfProteins, qValue, score, reverse, potentialContaminant, [], [])
     
     @staticmethod
@@ -117,9 +92,6 @@ class ProteinGroupResult:
         return [self.proteinIds, 
                 self.majorityProteinIds, 
                 self.peptideCountsUnique,
-                self.proteinNames,
-                self.geneNames,
-                self.fastaHeaders,
                 self.bestPeptide,
                 self.numberOfProteins,
                 self.qValue,
@@ -132,7 +104,7 @@ class ProteinGroupResults:
     headers = List[str]
     protein_group_results: List[ProteinGroupResult] = field(default_factory=list)
     
-    def __init__(self, protein_group_results: ProteinGroupResults=None):
+    def __init__(self, protein_group_results: List[ProteinGroupResult]=None):
         """
         NOTE: cannot use empty list as default argument: https://docs.python-guide.org/writing/gotchas/
         """
@@ -156,6 +128,9 @@ class ProteinGroupResults:
     def append_header(self, header: str) -> None:
         self.headers.append(header)
     
+    def append_headers(self, headers: List[str]) -> None:
+        self.headers.extend(headers)
+
     def write(self, output_file: str) -> None:
         writer = tsv.get_tsv_writer(output_file)
         writer.writerow(self.headers)
@@ -168,14 +143,13 @@ class ProteinGroupResults:
             proteinGroupPeptideInfos: ProteinGroupPeptideInfos, 
             proteinScores: List[float], 
             reportedQvals: List[float], 
-            scoreCutoff: float, 
-            proteinAnnotations: Dict[str, ProteinAnnotation],
+            scoreCutoff: float,
             keep_all_proteins: bool) -> ProteinGroupResults:
         protein_group_results = list()
         for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(proteinGroups, proteinGroupPeptideInfos, proteinScores, reportedQvals):
             if helpers.isObsolete(proteinGroup):
                 continue
-            pgr = ProteinGroupResult.from_protein_group(proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, proteinAnnotations, keep_all_proteins)
+            pgr = ProteinGroupResult.from_protein_group(proteinGroup, peptideScores, reportedFdr, proteinScore, scoreCutoff, keep_all_proteins)
             if pgr is not None: # protein groups can get filtered out when they do not have any PSMs below the PSM FDR cutoff
                 protein_group_results.append(pgr)
         

@@ -7,10 +7,9 @@ from typing import List, Dict, Union
 
 import numpy as np
 
-import picked_group_fdr.protein_annotation
-
 from . import __version__, __copyright__
 from . import digest
+from . import protein_annotation
 from . import helpers
 from . import proteotypicity
 from . import quantification
@@ -30,6 +29,8 @@ from .scoring import ProteinScoringStrategy
 from .grouping import ProteinGroupingStrategy
 from .competition import ProteinCompetitionStrategy
 from .plotter import Plotter, NoPlotter
+from .quant.base import ProteinGroupColumns
+from .quant.protein_annotations import ProteinAnnotationsColumns
 
 logger = logging.getLogger(__name__)
 
@@ -218,13 +219,13 @@ def main(argv):
     parseId = digest.parseUntilFirstSpace
     proteinAnnotations = dict()
     if args.fasta:
-        proteinAnnotations = picked_group_fdr.protein_annotation.get_protein_annotations_multiple(
+        proteinAnnotations = protein_annotation.get_protein_annotations_multiple(
             args.fasta, parseId
         )
         if args.gene_level:
-            if picked_group_fdr.protein_annotation.has_gene_names(proteinAnnotations, min_ratio_with_genes=0.5):
-                parseId = picked_group_fdr.protein_annotation.parse_gene_name_func
-                proteinAnnotations = picked_group_fdr.protein_annotation.get_protein_annotations_multiple(
+            if protein_annotation.has_gene_names(proteinAnnotations, min_ratio_with_genes=0.5):
+                parseId = protein_annotation.parse_gene_name_func
+                proteinAnnotations = protein_annotation.get_protein_annotations_multiple(
                     args.fasta, parseId
                 )
             else:
@@ -407,9 +408,16 @@ def getProteinGroupResults(
             proteinScores,
             reportedQvals,
             peptide_score_cutoff,
-            proteinAnnotations,
             keep_all_proteins,
         )
+
+        columns: List[ProteinGroupColumns] = [
+            ProteinAnnotationsColumns(proteinAnnotations)
+        ]
+                
+        for c in columns:
+            c.append_headers(proteinGroupResults, None)
+            c.append_columns(proteinGroupResults, None, None)
 
     if scoreType.use_proteotypicity:
         proteotypicity.calculateProteotypicityScores(
