@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import logging
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 
@@ -103,8 +103,6 @@ class ProteinGroupResult:
             score,
             reverse,
             potentialContaminant,
-            [],
-            [],
         )
 
     @staticmethod
@@ -131,7 +129,15 @@ class ProteinGroupResult:
             self.score,
             self.reverse,
             self.potentialContaminant,
-        ] + ["%.0f" % (x) if not type(x) == str else x for x in self.extraColumns]
+        ] + [_format_extra_columns(x) for x in self.extraColumns]
+
+
+def _format_extra_columns(x: Union[str, float]) -> str:
+    if type(x) == str:
+        return x
+    if np.isnan(x):
+        return ""
+    return "%.0f" % (x)
 
 
 class ProteinGroupResults:
@@ -150,13 +156,13 @@ class ProteinGroupResults:
     def __iter__(self):
         return iter(self.protein_group_results)
 
-    def __next__(self):
+    def __next__(self) -> ProteinGroupResult:
         return next(self.protein_group_results)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.protein_group_results)
 
-    def __getitem__(self, indices):
+    def __getitem__(self, indices) -> ProteinGroupResult:
         return self.protein_group_results[indices]
 
     def append_header(self, header: str) -> None:
@@ -167,12 +173,12 @@ class ProteinGroupResults:
     def append_headers(self, headers: List[str]) -> None:
         for header in headers:
             self.append_header(header)
-    
+
     def remove_column(self, header: str) -> None:
         if header not in self.headers:
             logger.warning(f"Attempted to remove non-existing column {header}")
             return
-        
+
         column_idx = self.headers.index(header)
         del self.headers[column_idx]
 
@@ -180,11 +186,27 @@ class ProteinGroupResults:
         for pgr in self.protein_group_results:
             del pgr.extraColumns[column_idx]
 
-    def write(self, output_file: str) -> None:
+    def write(self, output_file: str, header_dict: Optional[Dict[str, str]] = None) -> None:
         writer = tsv.get_tsv_writer(output_file)
-        writer.writerow(self.headers)
+        if header_dict is None:
+            writer.writerow(self.headers)
+        else:
+            writer.writerow(header_dict.keys())
+        
         for protein_row in self.protein_group_results:
-            writer.writerow(protein_row.to_list())
+            out_row = protein_row.to_list()
+            if header_dict is not None:
+                out_row = [out_row[self.headers.index(original_col_name)] for original_col_name in header_dict.values()]
+            writer.writerow(out_row)
+    
+    def remove_protein_groups_without_precursors(self) -> None:
+        filtered_protein_group_results = list()
+        for pgr in self.protein_group_results:
+            if len(pgr.precursorQuants) > 0:
+                filtered_protein_group_results.append(pgr)
+        
+        self.protein_group_results = filtered_protein_group_results
+
 
     @classmethod
     def from_protein_groups(

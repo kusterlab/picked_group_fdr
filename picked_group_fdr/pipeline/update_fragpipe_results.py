@@ -22,8 +22,12 @@ from ..quant.fragpipe_protein_annotations import (
 )
 from ..quant.peptide_count import UniquePeptideCountColumns
 from ..quant.sequence_coverage import SequenceCoverageColumns
+from ..quant.protein_probability import ProteinProbabilityColumns
+from ..quant.top_peptide import TopPeptideProbabilityColumns
 from ..quant.spectral_count import SpectralCountColumns
 from ..quant.sum_and_ibaq import SummedIntensityAndIbaqColumns
+from ..quant.modifications import ModificationsColumns
+from ..quant.indistinguishable_proteins import IndistinguishableProteinsColumns
 from ..results import ProteinGroupResults
 
 
@@ -129,11 +133,11 @@ def update_fragpipe_psm_file_single(
 
     These columns are updated:
     - Protein
-    - Protein ID (P00167) - from fasta
-    - Entry Name (CYB5_HUMAN) - from fasta
-    - Gene (CYB5A) - from fasta
-    - Protein Description (Cytochrome b5) - from fasta
-    - Mapped Genes
+    - Protein ID (P00167) - from fasta (TODO)
+    - Entry Name (CYB5_HUMAN) - from fasta (TODO)
+    - Gene (CYB5A) - from fasta (TODO)
+    - Protein Description (Cytochrome b5) - from fasta (TODO)
+    - Mapped Genes (TODO)
     - Mapped Proteins
 
     Args:
@@ -301,6 +305,8 @@ def generate_fragpipe_protein_file(
             protein_group_results[proteinGroupIdx].precursorQuants.append(
                 precursorQuant
             )
+    
+    protein_group_results.remove_protein_groups_without_precursors()
 
     for header in maxquant.MQ_PROTEIN_ANNOTATION_HEADERS:
         protein_group_results.remove_column(header)
@@ -311,9 +317,13 @@ def generate_fragpipe_protein_file(
     columns: List[ProteinGroupColumns] = [
         FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
         SequenceCoverageColumns(protein_sequences),
+        ProteinProbabilityColumns(),
+        TopPeptideProbabilityColumns(),
         UniquePeptideCountColumns(),
         SpectralCountColumns(),
         SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        ModificationsColumns(),
+        IndistinguishableProteinsColumns(),
     ]
 
     experiments = ["1"]
@@ -339,7 +349,32 @@ def generate_fragpipe_protein_file(
             fragpipe_protein_file_out.replace(".tsv", ".original.tsv"),
         )
 
-    protein_group_results.write(fragpipe_protein_file_out)
+    header_dict = {
+        "Protein": "Protein",
+        "Protein ID": "Protein ID",
+        "Entry Name": "Entry Name",
+        "Gene": "Gene",
+        "Length": "Length",
+        "Organism": "Organism",
+        "Protein Description": "Protein Description",
+        "Protein Existence": "Protein Existence",
+        "Coverage": "Sequence coverage [%]",
+        "Protein Probability": "Protein Probability",
+        "Top Peptide Probability": "Top Peptide Probability",
+        "Total Peptides": "Unique peptides 1",
+        "Unique Peptides": "Unique peptides 1",
+        "Razor Peptides": "Unique peptides 1",
+        "Total Spectral Count": "Spectral count 1",
+        "Unique Spectral Count": "Spectral count 1",
+        "Razor Spectral Count": "Spectral count 1",
+        "Total Intensity": "Intensity 1",
+        "Unique Intensity": "Intensity 1",
+        "Razor Intensity": "Intensity 1",
+        "Razor Assigned Modifications": "Razor Assigned Modifications",
+        "Razor Observed Modifications": "Razor Observed Modifications",
+        "Indistinguishable Proteins": "Indistinguishable Proteins"
+    }
+    protein_group_results.write(fragpipe_protein_file_out, header_dict=header_dict)
 
 
 if __name__ == "__main__":
