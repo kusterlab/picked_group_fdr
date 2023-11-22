@@ -155,6 +155,11 @@ def update_fragpipe_psm_file_single(
 
     # these columns will be overwritten
     protein_col = tsv.get_column_index(headers, "Protein")
+    protein_id_col = tsv.get_column_index(headers, "Protein ID")
+    entry_name_col = tsv.get_column_index(headers, "Entry Name")
+    gene_col = tsv.get_column_index(headers, "Gene")
+    description_col = tsv.get_column_index(headers, "Protein Description")
+    mapped_genes_col = tsv.get_column_index(headers, "Mapped Genes")
     other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
 
     fragpipe_psm_file_out = fragpipe_psm_file + ".tmp"
@@ -193,6 +198,25 @@ def update_fragpipe_psm_file_single(
             continue
 
         row[protein_col] = leading_protein
+        protein_annotation = protein_annotations.get(
+            leading_protein,
+            ProteinAnnotation(id=leading_protein, fasta_header=leading_protein),
+        )
+        row[protein_id_col] = protein_annotation.uniprot_id
+        row[entry_name_col] = protein_annotation.entry_name
+        row[gene_col] = protein_annotation.gene_name
+        row[description_col] = protein_annotation.description
+
+        other_genes = [
+            protein_annotations.get(
+                p,
+                ProteinAnnotation(id=leading_protein, fasta_header=leading_protein),
+            ).gene_name
+            for p in proteins
+            if p != leading_protein
+        ]
+        other_genes = [g for g in other_genes if g is not None and len(g) > 0]
+        row[mapped_genes_col] = ", ".join(other_genes)
         row[other_proteins_col] = ", ".join(
             [p for p in proteins if p != leading_protein]
         )
@@ -305,7 +329,7 @@ def generate_fragpipe_protein_file(
             protein_group_results[proteinGroupIdx].precursorQuants.append(
                 precursorQuant
             )
-    
+
     protein_group_results.remove_protein_groups_without_precursors()
 
     for header in maxquant.MQ_PROTEIN_ANNOTATION_HEADERS:
@@ -372,7 +396,7 @@ def generate_fragpipe_protein_file(
         "Razor Intensity": "Intensity 1",
         "Razor Assigned Modifications": "Razor Assigned Modifications",
         "Razor Observed Modifications": "Razor Observed Modifications",
-        "Indistinguishable Proteins": "Indistinguishable Proteins"
+        "Indistinguishable Proteins": "Indistinguishable Proteins",
     }
     protein_group_results.write(fragpipe_protein_file_out, header_dict=header_dict)
 

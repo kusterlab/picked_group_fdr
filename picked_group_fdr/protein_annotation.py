@@ -37,7 +37,7 @@ class ProteinAnnotation:
     uniprot_id: Optional[str] = None
     entry_name: Optional[str] = None
     gene_name: Optional[str] = None
-    length: Optional[int] = None
+    length: int = 0
     organism: Optional[str] = None
     description: Optional[str] = None
     existence: Optional[int] = None
