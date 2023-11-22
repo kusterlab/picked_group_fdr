@@ -1,3 +1,4 @@
+import collections
 from pathlib import Path
 import sys
 import os
@@ -19,6 +20,10 @@ from ..quant.base import ProteinGroupColumns
 from ..quant.fragpipe_protein_annotations import (
     FragpipeProteinAnnotationsColumns,
 )
+from ..quant.peptide_count import UniquePeptideCountColumns
+from ..quant.sequence_coverage import SequenceCoverageColumns
+from ..quant.spectral_count import SpectralCountColumns
+from ..quant.sum_and_ibaq import SummedIntensityAndIbaqColumns
 from ..results import ProteinGroupResults
 
 
@@ -90,6 +95,9 @@ def main(argv):
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
         args.fasta, parseId=digest.parseUntilFirstSpace
     )
+    protein_sequences = digest.getProteinSequences(
+        args.fasta, parseId=digest.parseUntilFirstSpace
+    )
 
     for fragpipe_psm_file in args.fragpipe_psm:
         fragpipe_psm_file_out = update_fragpipe_psm_file_single(
@@ -105,6 +113,7 @@ def main(argv):
             protein_groups,
             protein_group_results,
             protein_annotations,
+            protein_sequences,
             args.output_folder,
         )
 
@@ -215,6 +224,7 @@ def generate_fragpipe_protein_file(
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, ProteinAnnotation],
+    protein_sequences: Dict[str, str],
     output_folder: Optional[str] = None,
     discard_shared_peptides: bool = True,
 ):
@@ -255,17 +265,12 @@ def generate_fragpipe_protein_file(
     reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
     headers = next(reader)
 
-    experiment = 1
-    fraction = -1
-    intensity = np.nan
-    tmt_cols = None  # TODO: add TMT support
-    silac_cols = None  # TODO: add SILAC support
-    evidence_id = ""
-
     for (
         peptide,
         charge,
         post_err_prob,
+        assigned_mods,
+        observed_mods,
         proteins,
     ) in fragpipe.parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
@@ -281,15 +286,17 @@ def generate_fragpipe_protein_file(
 
         for proteinGroupIdx in protein_group_idxs:
             precursorQuant = PrecursorQuant(
-                peptide,
-                charge,
-                experiment,
-                fraction,
-                intensity,
-                post_err_prob,
-                tmt_cols,
-                silac_cols,
-                evidence_id,
+                peptide=peptide,
+                charge=charge,
+                experiment="1",
+                fraction=-1,
+                intensity=np.nan,
+                post_err_prob=post_err_prob,
+                tmt_intensities=None,  # TODO: add TMT support
+                silac_intensities=None,  # TODO: add SILAC support
+                evidence_id=-1,
+                assigned_mods=assigned_mods,
+                observed_mods=observed_mods,
             )
             protein_group_results[proteinGroupIdx].precursorQuants.append(
                 precursorQuant
@@ -298,13 +305,25 @@ def generate_fragpipe_protein_file(
     for header in maxquant.MQ_PROTEIN_ANNOTATION_HEADERS:
         protein_group_results.remove_column(header)
 
+    silac_channels = []
+    num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
+
     columns: List[ProteinGroupColumns] = [
-        FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations)
+        FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
+        SequenceCoverageColumns(protein_sequences),
+        UniquePeptideCountColumns(),
+        SpectralCountColumns(),
+        SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
     ]
 
+    experiments = ["1"]
+    experiment_to_idx_map = {"1": 0}
+    post_err_prob_cutoff = 1.01
     for c in columns:
-        c.append_headers(protein_group_results, None)
-        c.append_columns(protein_group_results, None, None)
+        c.append_headers(protein_group_results, experiments)
+        c.append_columns(
+            protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
+        )
 
     fragpipe_protein_file_out = fragpipe_psm_file.replace("psm.tsv", "protein.tsv")
     if output_folder is not None:

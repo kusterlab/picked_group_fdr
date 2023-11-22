@@ -33,7 +33,7 @@ def test_performanceLFQ():
     
     for c in columns:
         #c.append_headers(proteinGroupResults, experiments)
-        c.append_columns(proteinGroupResults, experimentToIdxMap, postErrProbCutoff=1.0)
+        c.append_columns(proteinGroupResults, experimentToIdxMap, post_err_prob_cutoff=1.0)
     
     end = timer()
     print(f"execution took {'%.1f' % (end - start)} seconds wall clock time")

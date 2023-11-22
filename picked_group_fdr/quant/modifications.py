@@ -11,14 +11,15 @@ from ..results import ProteinGroupResults
 logger = logging.getLogger(__name__)
 
 
-class UniquePeptideCountColumns(ProteinGroupColumns):
+class ModificationsColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: ProteinGroupResults,
         experiments: List[str],
     ) -> None:
-        for experiment in experiments:
-            protein_group_results.append_header("Unique peptides " + experiment)
+        protein_group_results.append_headers(
+            ["Razor Assigned Modifications", "Razor Observed Modifications"]
+        )
 
     def append_columns(
         self,
@@ -26,26 +27,29 @@ class UniquePeptideCountColumns(ProteinGroupColumns):
         experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:
-        logger.info("Doing quantification: Count unique peptides")
+        logger.info("Doing quantification: Assigned and observed modifications")
         for pgr in protein_group_results:
-            pepCounts = _unique_peptide_counts_per_experiment(
-                pgr.precursorQuants, experiment_to_idx_map, post_err_prob_cutoff
+            pepCounts = _collect_modifications(
+                pgr.precursorQuants, post_err_prob_cutoff
             )
             pgr.extend(pepCounts)
 
 
-def _unique_peptide_counts_per_experiment(
+def _collect_modifications(
     precursor_list: List[PrecursorQuant],
-    experiment_to_idx_map: Dict[str, int],
     post_err_prob_cutoff: float,
 ):
-    uniquePeptides = [set() for _ in range(len(experiment_to_idx_map))]
+    assigned_mods = dict()
+    observed_mods = dict()
     for precursor in precursor_list:
         if (
             helpers.isMbr(precursor.post_err_prob)
             or precursor.post_err_prob <= post_err_prob_cutoff
         ):
-            uniquePeptides[experiment_to_idx_map[precursor.experiment]].add(
-                precursor.peptide
-            )
-    return list(map(len, uniquePeptides))
+            if len(precursor.assigned_mods) > 0:
+                assigned_mods[(precursor.peptide, precursor.charge)] = precursor.assigned_mods
+            if len(precursor.observed_mods) > 0:
+                observed_mods[(precursor.peptide, precursor.charge)] = precursor.observed_mods
+    assigned_modifications = ", ".join(assigned_mods.values())
+    observed_modifications = ", ".join(observed_mods.values())
+    return [assigned_modifications, observed_modifications]

@@ -370,10 +370,10 @@ def parseFileList(fileListFile, params):
     return experiments, fileMapping, params
 
 
-def retainOnlyIdentifiedPrecursors(peptideIntensityList, postErrProbCutoff):
+def retainOnlyIdentifiedPrecursors(peptideIntensityList: List[PrecursorQuant], postErrProbCutoff):
     identifiedPrecursors = set()
     for precursor in peptideIntensityList:
-        if precursor.postErrProb <= postErrProbCutoff:
+        if precursor.post_err_prob <= postErrProbCutoff:
             identifiedPrecursors.add((precursor.peptide, precursor.charge))
     return [precursorRow for precursorRow in peptideIntensityList if (precursorRow.peptide, precursorRow.charge) in identifiedPrecursors]
 

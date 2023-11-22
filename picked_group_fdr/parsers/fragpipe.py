@@ -105,6 +105,8 @@ def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
     post_err_prob_col = tsv.get_column_index(headers, "PeptideProphet Probability")
     protein_col = tsv.get_column_index(headers, "Protein")
     other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
+    assigned_mods_col = tsv.get_column_index(headers, "Assigned Modifications")
+    observed_mods_col = tsv.get_column_index(headers, "Observed Modifications")
 
     logger.info("Parsing FragPipe psm.tsv file")
     for line_idx, row in enumerate(reader):
@@ -114,9 +116,11 @@ def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
         peptide = row[pept_col]
         charge = int(row[charge_col])
         post_err_prob = 1 - float(row[post_err_prob_col]) + 1e-16
+        assigned_mods = row[assigned_mods_col]
+        observed_mods = row[observed_mods_col]
 
         proteins = [row[protein_col]]
         if len(row[other_proteins_col]) > 0:
             proteins += row[other_proteins_col].split(", ")
 
-        yield peptide, charge, post_err_prob, proteins
+        yield peptide, charge, post_err_prob, assigned_mods, observed_mods, proteins

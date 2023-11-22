@@ -183,8 +183,8 @@ class ProteinGroupResults:
     def write(self, output_file: str) -> None:
         writer = tsv.get_tsv_writer(output_file)
         writer.writerow(self.headers)
-        for proteinRow in self.protein_group_results:
-            writer.writerow(proteinRow.to_list())
+        for protein_row in self.protein_group_results:
+            writer.writerow(protein_row.to_list())
 
     @classmethod
     def from_protein_groups(

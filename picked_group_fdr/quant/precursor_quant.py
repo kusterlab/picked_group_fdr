@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
@@ -11,7 +11,9 @@ class PrecursorQuant:
     experiment: str
     fraction: int
     intensity: float
-    postErrProb: float
-    tmtIntensities: np.array
-    silacIntensities: np.array
-    evidenceId: int
+    post_err_prob: float
+    tmt_intensities: Optional[np.array]
+    silac_intensities: Optional[np.array]
+    evidence_id: int
+    assigned_mods: Optional[str] = None
+    observed_mods: Optional[str] = None

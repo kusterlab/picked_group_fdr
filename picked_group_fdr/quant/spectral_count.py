@@ -11,14 +11,14 @@ from ..results import ProteinGroupResults
 logger = logging.getLogger(__name__)
 
 
-class UniquePeptideCountColumns(ProteinGroupColumns):
+class SpectralCountColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: ProteinGroupResults,
         experiments: List[str],
     ) -> None:
         for experiment in experiments:
-            protein_group_results.append_header("Unique peptides " + experiment)
+            protein_group_results.append_header("Spectral count " + experiment)
 
     def append_columns(
         self,
@@ -26,26 +26,24 @@ class UniquePeptideCountColumns(ProteinGroupColumns):
         experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:
-        logger.info("Doing quantification: Count unique peptides")
+        logger.info("Doing quantification: Spectral count")
         for pgr in protein_group_results:
-            pepCounts = _unique_peptide_counts_per_experiment(
+            pepCounts = _spectral_counts_per_experiment(
                 pgr.precursorQuants, experiment_to_idx_map, post_err_prob_cutoff
             )
             pgr.extend(pepCounts)
 
 
-def _unique_peptide_counts_per_experiment(
+def _spectral_counts_per_experiment(
     precursor_list: List[PrecursorQuant],
     experiment_to_idx_map: Dict[str, int],
     post_err_prob_cutoff: float,
 ):
-    uniquePeptides = [set() for _ in range(len(experiment_to_idx_map))]
+    spectral_counts = [0] * len(experiment_to_idx_map)
     for precursor in precursor_list:
         if (
-            helpers.isMbr(precursor.post_err_prob)
-            or precursor.post_err_prob <= post_err_prob_cutoff
+            not helpers.isMbr(precursor.post_err_prob)
+            and precursor.post_err_prob <= post_err_prob_cutoff
         ):
-            uniquePeptides[experiment_to_idx_map[precursor.experiment]].add(
-                precursor.peptide
-            )
-    return list(map(len, uniquePeptides))
+            spectral_counts[experiment_to_idx_map[precursor.experiment]] += 1
+    return spectral_counts

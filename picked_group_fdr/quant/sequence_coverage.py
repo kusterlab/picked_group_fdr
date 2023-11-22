@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Set
 import logging
 
 import numpy as np
@@ -6,75 +6,118 @@ import numpy as np
 from .. import helpers
 from .base import ProteinGroupColumns
 
+# for type hints only
+from .precursor_quant import PrecursorQuant
+from ..results import ProteinGroupResults
 
 logger = logging.getLogger(__name__)
 
 
 class SequenceCoverageColumns(ProteinGroupColumns):
-    proteinSequences: Dict[str, str]
-    
-    def __init__(self, proteinSequences):
-        self.proteinSequences = proteinSequences
-    
-    def append_headers(self, proteinGroupResults, experiments):
-        proteinGroupResults.append_header('Sequence coverage [%]')
-        proteinGroupResults.append_header('Unique + razor sequence coverage [%]')
-        proteinGroupResults.append_header('Unique sequence coverage [%]')
+    protein_sequences: Dict[str, str]
+
+    def __init__(self, protein_sequences):
+        self.protein_sequences = protein_sequences
+
+    def append_headers(
+        self,
+        protein_group_results: ProteinGroupResults,
+        experiments: List[str],
+    ) -> None:
+        # TODO: properly implement this, right now it is the same as Unique sequence coverage [%]
+        protein_group_results.append_header("Sequence coverage [%]")
+        # TODO: properly implement this, right now it is the same as Unique sequence coverage [%]
+        protein_group_results.append_header("Unique + razor sequence coverage [%]")
+        protein_group_results.append_header("Unique sequence coverage [%]")
         # TODO: add these columns
         # Mol. weight [kDa]
         # Sequence length
         # Sequence lengths
-        
+
         for experiment in experiments:
-            proteinGroupResults.append_header('Sequence coverage [%] ' + experiment)
-    
-    def append_columns(self, proteinGroupResults, experimentToIdxMap, postErrProbCutoff):
+            protein_group_results.append_header("Sequence coverage [%] " + experiment)
+
+    def append_columns(
+        self,
+        protein_group_results: ProteinGroupResults,
+        experiment_to_idx_map: Dict[str, int],
+        post_err_prob_cutoff: float,
+    ) -> None:
         logger.info("Doing quantification: sequence coverage")
-        for pgr in proteinGroupResults:
-            sequenceCoverages = self.get_sequence_coverages(pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff, pgr.proteinIds)
-            pgr.extend(sequenceCoverages)
-    
-    def get_sequence_coverages(self, peptideIntensityList, experimentToIdxMap, postErrProbCutoff, proteinIds):
-        peptidesPerExperiment = self.unique_peptides_per_experiment(peptideIntensityList, experimentToIdxMap, postErrProbCutoff)
-        return self.calculate_sequence_coverages(peptidesPerExperiment, proteinIds)
-            
-    def unique_peptides_per_experiment(self, peptideIntensityList, experimentToIdxMap, postErrProbCutoff):
-        uniquePeptides = [set() for _ in range(len(experimentToIdxMap))]
-        for precursor in peptideIntensityList:
-            if helpers.isMbr(precursor.postErrProb) or precursor.postErrProb <= postErrProbCutoff:
-                uniquePeptides[experimentToIdxMap[precursor.experiment]].add(helpers.clean_peptide(precursor.peptide))
+        for pgr in protein_group_results:
+            sequence_coverages = self.get_sequence_coverages(
+                pgr.precursorQuants,
+                experiment_to_idx_map,
+                post_err_prob_cutoff,
+                pgr.proteinIds,
+            )
+            pgr.extend(sequence_coverages)
+
+    def get_sequence_coverages(
+        self,
+        precursor_list: List[PrecursorQuant],
+        experiment_to_idx_map: Dict[str, int],
+        post_err_prob_cutoff: float,
+        protein_ids: str,
+    ) -> List[str]:
+        peptide_set_per_experiment = self.unique_peptides_per_experiment(
+            precursor_list, experiment_to_idx_map, post_err_prob_cutoff
+        )
+        return self.calculate_sequence_coverages(peptide_set_per_experiment, protein_ids)
+
+    def unique_peptides_per_experiment(
+        self,
+        precursor_list: List[PrecursorQuant],
+        experiment_to_idx_map: Dict[str, int],
+        post_err_prob_cutoff: float,
+    ) -> List[Set[str]]:
+        uniquePeptides = [set() for _ in range(len(experiment_to_idx_map))]
+        for precursor in precursor_list:
+            if (
+                helpers.isMbr(precursor.post_err_prob)
+                or precursor.post_err_prob <= post_err_prob_cutoff
+            ):
+                uniquePeptides[experiment_to_idx_map[precursor.experiment]].add(
+                    helpers.clean_peptide(precursor.peptide)
+                )
         return uniquePeptides
 
-    def calculate_sequence_coverages(self, peptidesPerExperiment, proteinIds):
-        proteinId = proteinIds.split(";")[0]
-        proteinSequence = self.proteinSequences.get(proteinId, "")
-        coverageTotal = np.zeros(len(proteinSequence))
-        coverageExperimentRatios = list()
-        for peptides in peptidesPerExperiment:
+    def calculate_sequence_coverages(
+        self, peptide_set_per_experiment: List[Set[str]], proteinIds: str
+    ) -> List[float]:
+        leading_protein = proteinIds.split(";")[0]
+        protein_sequence = self.protein_sequences.get(leading_protein, "")
+        coverage_total = np.zeros(len(protein_sequence))
+        coverage_experiment_ratios = list()
+        for peptides in peptide_set_per_experiment:
             if len(peptides) == 0:
-                coverageExperimentRatios.append(0.0)
+                coverage_experiment_ratios.append(0.0)
                 continue
-            
-            coverageExperiment = np.zeros(len(proteinSequence))
-            for cleanPeptide in peptides:
-                pos = proteinSequence.find(cleanPeptide)
-                coverageTotal[pos:pos+len(cleanPeptide)] = 1
-                coverageExperiment[pos:pos+len(cleanPeptide)] = 1
-            
-            coverageExperimentRatios.append(self.calculate_coverage_ratio(coverageExperiment))
-            
-        coverageTotalRatio = self.calculate_coverage_ratio(coverageTotal)
-        allCoverageRatios = [coverageTotalRatio, 
-                                                 coverageTotalRatio, 
-                                                 coverageTotalRatio] + coverageExperimentRatios
+
+            coverage_experiment = np.zeros(len(protein_sequence))
+            for clean_peptide in peptides:
+                pos = protein_sequence.find(clean_peptide)
+                coverage_total[pos : pos + len(clean_peptide)] = 1
+                coverage_experiment[pos : pos + len(clean_peptide)] = 1
+
+            coverage_experiment_ratios.append(
+                self.calculate_coverage_ratio(coverage_experiment)
+            )
+
+        coverageTotalRatio = self.calculate_coverage_ratio(coverage_total)
+        allCoverageRatios = [
+            coverageTotalRatio,
+            coverageTotalRatio,
+            coverageTotalRatio,
+        ] + coverage_experiment_ratios
         return self.format_as_percentage(allCoverageRatios)
-    
+
     @staticmethod
-    def format_as_percentage(l):
-        return ['%.1f' % (x*100) for x in l]
-    
+    def format_as_percentage(l: List[float]) -> List[str]:
+        return ["%.1f" % (x * 100) for x in l]
+
     @staticmethod
-    def calculate_coverage_ratio(coverage):
+    def calculate_coverage_ratio(coverage: List[int]) -> float:
         if len(coverage) > 0:
             return coverage.sum() / len(coverage)
         else:
