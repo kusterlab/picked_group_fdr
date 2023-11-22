@@ -1,0 +1,33 @@
+FRAGPIPE_DIR=$1
+
+java -Xmx6G -Dlibs.bruker.dir=${FRAGPIPE_DIR}/fragpipe/tools/MSFragger-3.8/ext/bruker \
+    -Dlibs.thermo.dir=${FRAGPIPE_DIR}/fragpipe/tools/MSFragger-3.8/ext/thermo \
+    -cp ${FRAGPIPE_DIR}/fragpipe/tools/jfreechart-1.5.3.jar:${FRAGPIPE_DIR}/fragpipe/tools/batmass-io-1.28.9.jar:${FRAGPIPE_DIR}/fragpipe/tools/IonQuant-1.9.8.jar ionquant.IonQuant \
+    --threads 2 \
+    --ionmobility 0 \
+    --minexps 1 \
+    --mbr 1 \
+    --maxlfq 1 \
+    --requantify 1 \
+    --mztol 10 \
+    --imtol 0.05 \
+    --rttol 0.4 \
+    --mbrmincorr 0 \
+    --mbrrttol 1 \
+    --mbrimtol 0.05 \
+    --mbrtoprun 10 \
+    --ionfdr 0.01 \
+    --proteinfdr 1 \
+    --peptidefdr 1 \
+    --normalization 1 \
+    --minisotopes 2 \
+    --minscans 3 \
+    --writeindex 0 \
+    --tp 0 \
+    --minfreq 0 \
+    --minions 2 \
+    --locprob 0.75 \
+    --uniqueness 0 \
+    --multidir ./results/ \
+    --filelist filelist_ionquant.txt \
+    --modlist modmasses_ionquant.txt
