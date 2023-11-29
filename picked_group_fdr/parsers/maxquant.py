@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import logging
+from typing import List
 
 from .parsers import tsv
 
@@ -12,6 +13,7 @@ from .. import results
 logger = logging.getLogger(__name__)
 
 MQ_PROTEIN_ANNOTATION_HEADERS = ["Protein names", "Gene names", "Fasta headers"]
+
 
 def parse_mq_evidence_file(
     reader, headers, get_proteins, score_type, for_quantification=False
@@ -119,7 +121,12 @@ def get_silac_cols(headers, get_header_col, for_quantification):
     return silac_cols
 
 
-def parse_mq_protein_groups_file(mqProteinGroupsFile: str):
+def parse_mq_protein_groups_file(
+    mqProteinGroupsFile: str, additional_headers: List[str] = None
+):
+    if additional_headers is None:
+        additional_headers = []
+
     delimiter = "\t"
     if mqProteinGroupsFile.endswith(".csv"):
         delimiter = ","
@@ -129,23 +136,24 @@ def parse_mq_protein_groups_file(mqProteinGroupsFile: str):
 
     cols = {
         x: headers.index(x)
-        for x in results.PROTEIN_GROUP_HEADERS
-        + MQ_PROTEIN_ANNOTATION_HEADERS
+        for x in results.PROTEIN_GROUP_HEADERS + additional_headers
         if x in headers
     }
 
     logger.info("Parsing MaxQuant proteinGroups.txt file")
     protein_group_results = []
     for row in reader:
-        protein_group_results.append(parse_mq_protein_groups_file_row(row, cols))
+        protein_group_results.append(
+            parse_mq_protein_groups_file_row(row, cols, additional_headers)
+        )
 
     protein_group_results = results.ProteinGroupResults(protein_group_results)
-    protein_group_results.append_headers(MQ_PROTEIN_ANNOTATION_HEADERS)
+    protein_group_results.append_headers(additional_headers)
 
     return protein_group_results
 
 
-def parse_mq_protein_groups_file_row(row, cols):
+def parse_mq_protein_groups_file_row(row, cols, additional_headers):
     _get_field = lambda x: row[cols[x]] if x in cols else ""
 
     return results.ProteinGroupResult(
@@ -159,7 +167,7 @@ def parse_mq_protein_groups_file_row(row, cols):
         reverse=_get_field("Reverse"),
         potentialContaminant=_get_field("Potential contaminant"),
         precursorQuants=[],
-        extraColumns=[_get_field("Protein names"), _get_field("Gene names"), _get_field("Fasta headers")],
+        extraColumns=[_get_field(x) for x in additional_headers],
     )
 
 

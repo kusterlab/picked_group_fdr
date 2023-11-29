@@ -17,6 +17,7 @@ class SpectralCountColumns(ProteinGroupColumns):
         protein_group_results: ProteinGroupResults,
         experiments: List[str],
     ) -> None:
+        protein_group_results.append_header("Combined Spectral Count")
         for experiment in experiments:
             protein_group_results.append_header("Spectral count " + experiment)
 
@@ -31,6 +32,7 @@ class SpectralCountColumns(ProteinGroupColumns):
             pepCounts = _spectral_counts_per_experiment(
                 pgr.precursorQuants, experiment_to_idx_map, post_err_prob_cutoff
             )
+            pgr.append(sum(pepCounts))
             pgr.extend(pepCounts)
 
 

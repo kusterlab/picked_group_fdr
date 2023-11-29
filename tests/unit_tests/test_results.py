@@ -1,4 +1,5 @@
 from typing import List
+from picked_group_fdr.parsers import maxquant
 from picked_group_fdr.protein_annotation import ProteinAnnotation
 from picked_group_fdr.quant.base import ProteinGroupColumns
 from picked_group_fdr.quant.protein_annotations import ProteinAnnotationsColumns
@@ -45,7 +46,11 @@ def test_from_mq_protein_groups():
         "Reverse": 9,
         "Potential contaminant": 10,
     }
-    p = parse_mq_protein_groups_file_row(list(row.values()), cols)
+    p = parse_mq_protein_groups_file_row(
+        list(row.values()),
+        cols,
+        additional_headers=maxquant.MQ_PROTEIN_ANNOTATION_HEADERS,
+    )
     assert p.proteinIds == "123"
     assert p.majorityProteinIds == "456"
     assert p.peptideCountsUnique == "3"
@@ -105,11 +110,9 @@ def test_from_protein_group_keep_all_proteins():
         keep_all_proteins,
     )
 
-    columns: List[ProteinGroupColumns] = [
-        ProteinAnnotationsColumns(proteinAnnotations)
-    ]
+    columns: List[ProteinGroupColumns] = [ProteinAnnotationsColumns(proteinAnnotations)]
 
-    proteinGroupResults = ProteinGroupResults([p])            
+    proteinGroupResults = ProteinGroupResults([p])
     for c in columns:
         c.append_headers(proteinGroupResults, None)
         c.append_columns(proteinGroupResults, None, None)

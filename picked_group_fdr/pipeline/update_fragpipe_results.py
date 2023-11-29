@@ -7,6 +7,8 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
+from picked_group_fdr.quant.lfq import LFQIntensityColumns
+
 from .. import __version__, __copyright__
 from .. import helpers
 from ..picked_group_fdr import ArgumentParserWithLogger
@@ -33,6 +35,47 @@ from ..results import ProteinGroupResults
 
 # hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
 logger = logging.getLogger(__package__ + "." + __file__)
+
+FRAGPIPE_PROTEIN_OUTPUT_DICT = {
+    "Protein": "Protein",
+    "Protein ID": "Protein ID",
+    "Entry Name": "Entry Name",
+    "Gene": "Gene",
+    "Length": "Length",
+    "Organism": "Organism",
+    "Protein Description": "Protein Description",
+    "Protein Existence": "Protein Existence",
+    "Coverage": "Sequence coverage [%]",
+    "Protein Probability": "Protein Probability",
+    "Top Peptide Probability": "Top Peptide Probability",
+    "Total Peptides": "Unique peptides 1",
+    "Unique Peptides": "Unique peptides 1",
+    "Razor Peptides": "Unique peptides 1",
+    "Total Spectral Count": "Spectral count 1",
+    "Unique Spectral Count": "Spectral count 1",
+    "Razor Spectral Count": "Spectral count 1",
+    "Total Intensity": "Intensity 1",
+    "Unique Intensity": "Intensity 1",
+    "Razor Intensity": "Intensity 1",
+    "Razor Assigned Modifications": "Razor Assigned Modifications",
+    "Razor Observed Modifications": "Razor Observed Modifications",
+    "Indistinguishable Proteins": "Indistinguishable Proteins",
+}
+
+FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT = {
+    "Protein": "Protein",
+    "Protein ID": "Protein ID",
+    "Entry Name": "Entry Name",
+    "Gene": "Gene",
+    "Protein Length": "Length",
+    "Organism": "Organism",
+    "Protein Existence": "Protein Existence",
+    "Description": "Protein Description",
+    "Combined Total Peptides": "Combined Total Peptides",
+    "Combined Spectral Count": "Combined Spectral Count",
+    "Combined Unique Spectral Count": "Combined Spectral Count",
+    "Combined Total Spectral Count": "Combined Spectral Count",
+}
 
 
 def parseArgs(argv):
@@ -120,6 +163,18 @@ def main(argv):
             protein_sequences,
             args.output_folder,
         )
+    
+    # create a fresh ProteinGroupResults object for combined_protein.tsv
+    protein_group_results = maxquant.parse_mq_protein_groups_file(
+        args.protein_groups
+    )
+    generate_fragpipe_combined_protein_file(
+        args.fragpipe_psm,
+        protein_groups,
+        protein_group_results,
+        protein_annotations,
+        args.output_folder,
+    )
 
 
 def update_fragpipe_psm_file_single(
@@ -133,11 +188,11 @@ def update_fragpipe_psm_file_single(
 
     These columns are updated:
     - Protein
-    - Protein ID (P00167) - from fasta (TODO)
-    - Entry Name (CYB5_HUMAN) - from fasta (TODO)
-    - Gene (CYB5A) - from fasta (TODO)
-    - Protein Description (Cytochrome b5) - from fasta (TODO)
-    - Mapped Genes (TODO)
+    - Protein ID (P00167) - from fasta
+    - Entry Name (CYB5_HUMAN) - from fasta
+    - Gene (CYB5A) - from fasta
+    - Protein Description (Cytochrome b5) - from fasta
+    - Mapped Genes
     - Mapped Proteins
 
     Args:
@@ -239,7 +294,8 @@ def update_fragpipe_psm_file_single(
     )
 
     if output_folder is None:
-        os.rename(fragpipe_psm_file, fragpipe_psm_file.replace(".tsv", ".original.tsv"))
+        if os.path.isfile(fragpipe_psm_file):
+            os.rename(fragpipe_psm_file, fragpipe_psm_file.replace(".tsv", ".original.tsv"))
         os.rename(fragpipe_psm_file_out, fragpipe_psm_file)
     else:
         os.rename(fragpipe_psm_file_out, fragpipe_psm_file_out.replace(".tmp", ""))
@@ -289,6 +345,68 @@ def generate_fragpipe_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
+    experiment = "1"
+    protein_group_results = add_precursor_quants(
+        fragpipe_psm_file,
+        protein_group_results,
+        protein_groups,
+        experiment,
+        discard_shared_peptides,
+    )
+
+    protein_group_results.remove_protein_groups_without_precursors()
+
+    silac_channels = []
+    num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
+
+    columns: List[ProteinGroupColumns] = [
+        FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
+        SequenceCoverageColumns(protein_sequences),
+        ProteinProbabilityColumns(),
+        TopPeptideProbabilityColumns(),
+        UniquePeptideCountColumns(),
+        SpectralCountColumns(),
+        SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        ModificationsColumns(),
+        IndistinguishableProteinsColumns(),
+    ]
+
+    experiments = [experiment]
+    experiment_to_idx_map = {experiment: 0}
+    post_err_prob_cutoff = 1.01
+    for c in columns:
+        c.append_headers(protein_group_results, experiments)
+        c.append_columns(
+            protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
+        )
+
+    fragpipe_protein_file_out = fragpipe_psm_file.replace("psm.tsv", "protein.tsv")
+    if output_folder is not None:
+        output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
+        fragpipe_protein_file_out = Path(fragpipe_psm_file).name.replace(
+            "psm.tsv", "protein.tsv"
+        )
+        fragpipe_protein_file_out = f"{output_folder}/{fragpipe_protein_file_out}"
+    else:
+        if os.path.isfile(fragpipe_protein_file_out):
+            os.rename(
+                fragpipe_protein_file_out,
+                fragpipe_protein_file_out.replace(".tsv", ".original.tsv"),
+            )
+
+    protein_group_results.write(
+        fragpipe_protein_file_out, header_dict=FRAGPIPE_PROTEIN_OUTPUT_DICT
+    )
+
+
+def add_precursor_quants(
+    fragpipe_psm_file: str,
+    protein_group_results: ProteinGroupResults,
+    protein_groups: ProteinGroups,
+    experiment: str,
+    discard_shared_peptides: bool,
+):
     delimiter = tsv.get_delimiter(fragpipe_psm_file)
     reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
     headers = next(reader)
@@ -316,7 +434,7 @@ def generate_fragpipe_protein_file(
             precursorQuant = PrecursorQuant(
                 peptide=peptide,
                 charge=charge,
-                experiment="1",
+                experiment=experiment,
                 fraction=-1,
                 intensity=np.nan,
                 post_err_prob=post_err_prob,
@@ -329,29 +447,89 @@ def generate_fragpipe_protein_file(
             protein_group_results[proteinGroupIdx].precursorQuants.append(
                 precursorQuant
             )
+    return protein_group_results
+
+
+def generate_fragpipe_combined_protein_file(
+    fragpipe_psm_files: List[str],
+    protein_groups: ProteinGroups,
+    protein_group_results: ProteinGroupResults,
+    protein_annotations: Dict[str, ProteinAnnotation],
+    output_folder: Optional[str] = None,
+    discard_shared_peptides: bool = True,
+):
+    """Generate experiment specific protein.tsv file from psm.tsv and fasta file.
+
+    https://fragpipe.nesvilab.org/docs/tutorial_fragpipe_outputs.html
+
+    Output columns (LFQ):
+    - Protein (sp|P00167|CYB5_HUMAN) - from fasta
+    - Protein ID (P00167) - from fasta
+    - Entry Name (CYB5_HUMAN) - from fasta
+    - Gene (CYB5A) - from fasta
+    - Protein Length - from fasta
+    - Organism (Homo sapiens OX=9606) - from fasta
+    - Protein Existence (1:Experimental evidence at protein level) - from fasta, but PE field only contains integer
+    - Description (Cytochrome b5) - from fasta
+    - Protein Probability (1.000) - update this with 1 - protein-level PEP
+    - Top Peptide Probability (0.990)
+    - Combined Total Peptides
+    - Combined Spectral Count
+    - Combined Unique Spectral Count
+    - Combined Total Spectral Count
+    - <Experiment> Spectral Count
+    - <Experiment> Unique Spectral Count
+    - <Experiment> Total Spectral Count
+    - <Experiment> Intensity
+    - <Experiment> MaxLFQ Intensity
+    - Indistinguishable Proteins (sp|P0CE48|EFTU2_ECOLI)
+
+    Args:
+        fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
+        fasta_file (str): fasta file with all protein sequences
+    """
+    experiments = []
+    for fragpipe_psm_file in fragpipe_psm_files:
+        experiment = Path(fragpipe_psm_file).parent.name
+        experiments.append(experiment)
+        protein_group_results = add_precursor_quants(
+            fragpipe_psm_file,
+            protein_group_results,
+            protein_groups,
+            experiment,
+            discard_shared_peptides,
+        )
 
     protein_group_results.remove_protein_groups_without_precursors()
-
-    for header in maxquant.MQ_PROTEIN_ANNOTATION_HEADERS:
-        protein_group_results.remove_column(header)
 
     silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
 
     columns: List[ProteinGroupColumns] = [
         FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
-        SequenceCoverageColumns(protein_sequences),
         ProteinProbabilityColumns(),
         TopPeptideProbabilityColumns(),
         UniquePeptideCountColumns(),
         SpectralCountColumns(),
         SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
-        ModificationsColumns(),
         IndistinguishableProteinsColumns(),
     ]
 
-    experiments = ["1"]
-    experiment_to_idx_map = {"1": 0}
+    min_peptide_ratios_lfq = 1
+    stabilize_large_ratios_lfq = True
+    num_threads = 1
+    columns.append(
+        LFQIntensityColumns(
+            silac_channels,
+            min_peptide_ratios_lfq,
+            stabilize_large_ratios_lfq,
+            num_threads,
+        )
+    )
+
+    experiment_to_idx_map = {
+        experiment: idx for idx, experiment in enumerate(experiments)
+    }
     post_err_prob_cutoff = 1.01
     for c in columns:
         c.append_headers(protein_group_results, experiments)
@@ -359,46 +537,52 @@ def generate_fragpipe_protein_file(
             protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
         )
 
-    fragpipe_protein_file_out = fragpipe_psm_file.replace("psm.tsv", "protein.tsv")
     if output_folder is not None:
-        output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
-        Path(output_folder).mkdir(parents=True, exist_ok=True)
-        fragpipe_protein_file_out = Path(fragpipe_psm_file).name.replace(
-            "psm.tsv", "protein.tsv"
-        )
-        fragpipe_protein_file_out = f"{output_folder}/{fragpipe_protein_file_out}"
+        fragpipe_combined_protein_file_out = f"{output_folder}/combined_protein.tsv"
     else:
-        os.rename(
-            fragpipe_protein_file_out,
-            fragpipe_protein_file_out.replace(".tsv", ".original.tsv"),
-        )
+        fragpipe_combined_protein_file_out = f"{Path(fragpipe_psm_files[0]).parents[1]}/combined_protein.tsv"
+        if os.path.isfile(fragpipe_combined_protein_file_out):
+            os.rename(
+                fragpipe_combined_protein_file_out,
+                fragpipe_combined_protein_file_out.replace(".tsv", ".original.tsv"),
+            )
 
-    header_dict = {
-        "Protein": "Protein",
-        "Protein ID": "Protein ID",
-        "Entry Name": "Entry Name",
-        "Gene": "Gene",
-        "Length": "Length",
-        "Organism": "Organism",
-        "Protein Description": "Protein Description",
-        "Protein Existence": "Protein Existence",
-        "Coverage": "Sequence coverage [%]",
-        "Protein Probability": "Protein Probability",
-        "Top Peptide Probability": "Top Peptide Probability",
-        "Total Peptides": "Unique peptides 1",
-        "Unique Peptides": "Unique peptides 1",
-        "Razor Peptides": "Unique peptides 1",
-        "Total Spectral Count": "Spectral count 1",
-        "Unique Spectral Count": "Spectral count 1",
-        "Razor Spectral Count": "Spectral count 1",
-        "Total Intensity": "Intensity 1",
-        "Unique Intensity": "Intensity 1",
-        "Razor Intensity": "Intensity 1",
-        "Razor Assigned Modifications": "Razor Assigned Modifications",
-        "Razor Observed Modifications": "Razor Observed Modifications",
-        "Indistinguishable Proteins": "Indistinguishable Proteins",
-    }
-    protein_group_results.write(fragpipe_protein_file_out, header_dict=header_dict)
+    protein_group_results.write(
+        fragpipe_combined_protein_file_out,
+        header_dict=get_fragpipe_combined_protein_headers(experiments),
+    )
+
+
+def get_fragpipe_combined_protein_headers(experiments: List[str]):
+    """Adds experiment specific headers.
+
+    - <Experiment> Spectral Count
+    - <Experiment> Unique Spectral Count
+    - <Experiment> Total Spectral Count
+    - <Experiment> Intensity
+    - <Experiment> MaxLFQ Intensity
+    """
+    header_dict = FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT.copy()
+    for experiment in experiments:
+        header_dict[f"{experiment} Spectra Count"] = f"Spectral count {experiment}"
+
+    for experiment in experiments:
+        header_dict[
+            f"{experiment} Unique Spectra Count"
+        ] = f"Spectral count {experiment}"
+
+    for experiment in experiments:
+        header_dict[f"{experiment} Total Spectra Count"] = f"Spectral count {experiment}"
+
+    for experiment in experiments:
+        header_dict[f"{experiment} Intensity"] = f"Intensity {experiment}"
+
+    for experiment in experiments:
+        header_dict[f"{experiment} MaxLFQ Intensity"] = f"LFQ Intensity {experiment}"
+
+    header_dict["Indistinguishable Proteins"] = "Indistinguishable Proteins"
+
+    return header_dict
 
 
 if __name__ == "__main__":
