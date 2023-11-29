@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -13,7 +13,7 @@ from .parsers import tsv
 # for type hints only
 from .peptide_info import ProteinGroupPeptideInfos
 from .protein_groups import ProteinGroups
-
+from .quant.precursor_quant import PrecursorQuant
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,14 @@ PROTEIN_GROUP_HEADERS = [
 ]
 
 
+def _format_extra_columns(x: Union[str, float]) -> str:
+    if type(x) == str:
+        return x
+    if np.isnan(x):
+        return ""
+    return "%.0f" % (x)
+
+
 @dataclass
 class ProteinGroupResult:
     proteinIds: str = ""
@@ -42,7 +50,7 @@ class ProteinGroupResult:
     score: float = np.nan
     reverse: str = ""
     potentialContaminant: str = ""
-    precursorQuants: List[float] = field(default_factory=list)
+    precursorQuants: List[PrecursorQuant] = field(default_factory=list)
     extraColumns: List[float] = field(default_factory=list)
 
     def extend(self, e):
@@ -118,7 +126,9 @@ class ProteinGroupResult:
                     proteinPeptideCount[protein] += 1
         return proteinPeptideCount
 
-    def to_list(self):
+    def to_list(self, format_extra_columns=None):
+        if format_extra_columns is None:
+            format_extra_columns = _format_extra_columns
         return [
             self.proteinIds,
             self.majorityProteinIds,
@@ -129,15 +139,7 @@ class ProteinGroupResult:
             self.score,
             self.reverse,
             self.potentialContaminant,
-        ] + [_format_extra_columns(x) for x in self.extraColumns]
-
-
-def _format_extra_columns(x: Union[str, float]) -> str:
-    if type(x) == str:
-        return x
-    if np.isnan(x):
-        return ""
-    return "%.0f" % (x)
+        ] + [format_extra_columns(x) for x in self.extraColumns]
 
 
 class ProteinGroupResults:
@@ -167,7 +169,9 @@ class ProteinGroupResults:
 
     def append_header(self, header: str) -> None:
         if header in self.headers:
-            raise ValueError(f"Trying to add duplicate column name: {header}")
+            raise ValueError(
+                f"Trying to addprecursorQuants duplicate column name: {header}"
+            )
         self.headers.append(header)
 
     def append_headers(self, headers: List[str]) -> None:
@@ -186,27 +190,34 @@ class ProteinGroupResults:
         for pgr in self.protein_group_results:
             del pgr.extraColumns[column_idx]
 
-    def write(self, output_file: str, header_dict: Optional[Dict[str, str]] = None) -> None:
+    def write(
+        self,
+        output_file: str,
+        header_dict: Optional[Dict[str, str]] = None,
+        format_extra_columns: Callable = None,
+    ) -> None:
         writer = tsv.get_tsv_writer(output_file)
         if header_dict is None:
             writer.writerow(self.headers)
         else:
             writer.writerow(header_dict.keys())
-        
+
         for protein_row in self.protein_group_results:
-            out_row = protein_row.to_list()
+            out_row = protein_row.to_list(format_extra_columns)
             if header_dict is not None:
-                out_row = [out_row[self.headers.index(original_col_name)] for original_col_name in header_dict.values()]
+                out_row = [
+                    out_row[self.headers.index(original_col_name)]
+                    for original_col_name in header_dict.values()
+                ]
             writer.writerow(out_row)
-    
+
     def remove_protein_groups_without_precursors(self) -> None:
         filtered_protein_group_results = list()
         for pgr in self.protein_group_results:
             if len(pgr.precursorQuants) > 0:
                 filtered_protein_group_results.append(pgr)
-        
-        self.protein_group_results = filtered_protein_group_results
 
+        self.protein_group_results = filtered_protein_group_results
 
     @classmethod
     def from_protein_groups(

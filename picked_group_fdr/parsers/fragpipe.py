@@ -124,3 +124,29 @@ def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
             proteins += row[other_proteins_col].split(", ")
 
         yield peptide, charge, post_err_prob, assigned_mods, observed_mods, proteins
+
+
+def parse_fragpipe_combined_ion_file(reader, headers):
+    pept_col = tsv.get_column_index(headers, "Peptide Sequence")
+    charge_col = tsv.get_column_index(headers, "Charge")
+    protein_col = tsv.get_column_index(headers, "Protein")
+    other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
+    assigned_mods_col = tsv.get_column_index(headers, "Assigned Modifications")
+    intensity_cols = [(idx, h.replace(" Intensity", "")) for idx, h in enumerate(headers) if h.endswith(" Intensity")]
+
+    logger.info("Parsing FragPipe combined_ion.tsv file")
+    for line_idx, row in enumerate(reader):
+        if line_idx % 100000 == 0:
+            logger.info(f"    Reading line {line_idx}")
+        
+        peptide = row[pept_col]
+        charge = int(row[charge_col])
+        assigned_mods = row[assigned_mods_col]
+
+        proteins = [row[protein_col]]
+        if len(row[other_proteins_col]) > 0:
+            proteins += row[other_proteins_col].split(", ")
+        
+        intensities = [(experiment, float(row[col_idx])) for col_idx, experiment in intensity_cols]
+
+        yield peptide, charge, assigned_mods, proteins, intensities
