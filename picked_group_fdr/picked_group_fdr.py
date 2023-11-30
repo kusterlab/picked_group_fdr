@@ -287,7 +287,7 @@ def main(argv):
                 logger.info("Loading peptide to protein map")
                 for peptide_protein_map in args.peptide_protein_map:
                     peptideToProteinMaps.append(
-                        digest.getPeptideToProteinMapFromFile(
+                        digest.get_peptide_to_protein_map_from_file(
                             peptide_protein_map, useHashKey=False
                         )
                     )
@@ -498,7 +498,7 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
             "- calculating iBAQ values using all peptides in peptide_protein_map."
         )
         logger.warning("- cannot compute sequence coverage.")
-        numIbaqPeptidesPerProtein = digest.getNumPeptidesPerProtein(
+        numIbaqPeptidesPerProtein = digest.get_num_peptides_per_protein(
             digest.merge_peptide_to_protein_maps(peptideToProteinMaps)
         )
     else:
@@ -506,7 +506,7 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
             "No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags"
         )
 
-    quantification.doQuantification(
+    quantification.do_quantification(
         args.mq_evidence,
         proteinGroupResults,
         proteinSequences,
@@ -514,8 +514,8 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
         numIbaqPeptidesPerProtein,
         args.file_list_file,
         config["scoreType"],
-        minPeptideRatiosLFQ=args.lfq_min_peptide_ratios,
-        numThreads=args.num_threads,
+        min_peptide_ratios_lfq=args.lfq_min_peptide_ratios,
+        num_threads=args.num_threads,
     )
 
 

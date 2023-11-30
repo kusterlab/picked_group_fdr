@@ -381,8 +381,8 @@ def getPeptideToProteinMapWithEnzyme(
     if len(fastaFile) == 0:
         return dict()
 
-    pre, not_post, post = getCleavageSites(enzyme)
-    return getPeptideToProteinMap(
+    pre, not_post, post = get_cleavage_sites(enzyme)
+    return get_peptide_to_protein_map(
         fastaFile,
         db,
         digestion="full",
@@ -392,8 +392,8 @@ def getPeptideToProteinMapWithEnzyme(
         not_post=not_post,
         post=post,
         miscleavages=miscleavages,
-        methionineCleavage=True,
-        specialAAs=specialAAs,
+        methionine_cleavage=True,
+        special_aas=specialAAs,
     )
 
 
@@ -403,8 +403,8 @@ def get_peptide_to_protein_map_from_params(
     peptideToProteinMap = collections.defaultdict(list)
     for fasta_file in fasta_files:
         for params in digestion_params_list:
-            pre, not_post, post = getCleavageSites(params.enzyme)
-            for peptide, proteins in getPeptideToProteinMap(
+            pre, not_post, post = get_cleavage_sites(params.enzyme)
+            for peptide, proteins in get_peptide_to_protein_map(
                 fasta_file,
                 params.db,
                 digestion=params.digestion,
@@ -414,8 +414,8 @@ def get_peptide_to_protein_map_from_params(
                 not_post=not_post,
                 post=post,
                 miscleavages=params.cleavages,
-                methionineCleavage=params.methionine_cleavage,
-                specialAAs=params.special_aas,
+                methionine_cleavage=params.methionine_cleavage,
+                special_aas=params.special_aas,
             ).items():
                 peptideToProteinMap[peptide].extend(proteins)
     return peptideToProteinMap
@@ -429,7 +429,7 @@ def merge_peptide_to_protein_maps(peptide_protein_maps: Iterator[Dict[str, List[
     return peptideToProteinMap
 
 
-def getPeptideToProteinMap(
+def get_peptide_to_protein_map(
     fastaFile,
     db="concat",
     min_len=6,
@@ -439,17 +439,17 @@ def getPeptideToProteinMap(
     post=[],
     digestion="full",
     miscleavages=2,
-    methionineCleavage=True,
-    useHashKey=False,
-    specialAAs=["K", "R"],
-    parseId=parse_until_first_space,
+    methionine_cleavage=True,
+    use_hash_key=False,
+    special_aas=["K", "R"],
+    parse_od=parse_until_first_space,
 ):
     peptideToProteinMap = collections.defaultdict(list)
     proteinToSeqMap = dict()
 
     logger.info(f"Parsing fasta file: {Path(fastaFile).name}")
     for proteinIdx, (protein, seq) in enumerate(
-        readFasta(fastaFile, db, parseId, specialAAs=specialAAs)
+        readFasta(fastaFile, db, parse_od, specialAAs=special_aas)
     ):
         if proteinIdx % 10000 == 0:
             logger.info(f"Digesting protein {proteinIdx}")
@@ -465,10 +465,10 @@ def getPeptideToProteinMap(
             post,
             digestion,
             miscleavages,
-            methionineCleavage,
+            methionine_cleavage,
         ):
             peptide = peptide
-            if useHashKey:
+            if use_hash_key:
                 hashKey = peptide[:6]
             else:
                 hashKey = peptide
@@ -476,13 +476,13 @@ def getPeptideToProteinMap(
                 seenPeptides.add(hashKey)
                 peptideToProteinMap[hashKey].append(protein)
 
-    if useHashKey:
+    if use_hash_key:
         return (peptideToProteinMap, proteinToSeqMap)
     else:
         return peptideToProteinMap
 
 
-def getPeptideToProteinMapFromFile(peptideToProteinMapFile, useHashKey=False):
+def get_peptide_to_protein_map_from_file(peptideToProteinMapFile, useHashKey=False):
     if useHashKey:
         logger.info("Hash key not supported yet, continuing without hash key...")
         useHashKey = False
@@ -557,10 +557,10 @@ def getNumIbaqPeptidesPerProtein(
     peptideToProteinMapIbaq = getIbaqPeptideToProteinMap(
         fasta_files, digestion_params_list
     )
-    return getNumPeptidesPerProtein(peptideToProteinMapIbaq)
+    return get_num_peptides_per_protein(peptideToProteinMapIbaq)
 
 
-def getNumPeptidesPerProtein(peptideToProteinMap) -> Dict[str, int]:
+def get_num_peptides_per_protein(peptideToProteinMap) -> Dict[str, int]:
     numPeptidesPerProtein = collections.defaultdict(int)
     for peptide, proteins in peptideToProteinMap.items():
         for protein in proteins:
@@ -569,7 +569,7 @@ def getNumPeptidesPerProtein(peptideToProteinMap) -> Dict[str, int]:
     return numPeptidesPerProtein
 
 
-def getCleavageSites(enzyme):
+def get_cleavage_sites(enzyme):
     if enzyme not in ENZYME_CLEAVAGE_RULES:
         logger.error("Enzyme", enzyme, "not implemented yet")
 
@@ -594,7 +594,7 @@ def is_enzymatic(aa1, aa2, pre, not_post, post):
     return (aa1 in pre and aa2 not in not_post) or (aa2 in post)
 
 
-def hasMiscleavage(seq, pre=["K", "R"], not_post=["P"], post=[]):
+def has_miscleavage(seq, pre=["K", "R"], not_post=["P"], post=[]):
     for i in range(len(seq) - 1):
         if is_enzymatic_advanced(seq[i], seq[i + 1], pre, not_post, post):
             return True

@@ -9,12 +9,12 @@ def test_swapSpecialAAs():
 
 def test_hasMiscleavage_true():
     seq = "ABCDEFKR"
-    assert digest.hasMiscleavage(seq) == True
+    assert digest.has_miscleavage(seq) == True
 
 
 def test_hasMiscleavage_false():
     seq = "ABCDEFKPR"
-    assert digest.hasMiscleavage(seq) == False
+    assert digest.has_miscleavage(seq) == False
 
 
 class TestNonSpecificDigest:

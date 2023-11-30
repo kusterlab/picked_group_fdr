@@ -2,7 +2,7 @@ import sys
 import os
 import logging
 import collections
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 import triqler.parsers
@@ -11,14 +11,12 @@ from . import digest
 from . import digestion_params
 from . import protein_annotation
 from . import helpers
+from . import quant
 from . import fdr
 from .parsers import maxquant
 from .parsers import psm
-
 from .protein_groups import ProteinGroups
 from .scoring import ProteinScoringStrategy
-
-from . import quant
 
 # for type hints only
 from .results import ProteinGroupResults
@@ -26,7 +24,7 @@ from .results import ProteinGroupResults
 logger = logging.getLogger(__name__)
 
 
-def parseArgs(argv):
+def parse_args(argv):
     import argparse
 
     apars = argparse.ArgumentParser(
@@ -136,57 +134,55 @@ def main(argv):
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
     )
 
-    args = parseArgs(argv)
+    args = parse_args(argv)
 
-    parseId = digest.parse_until_first_space
+    parse_id = digest.parse_until_first_space
     if args.gene_level:
-        parseId = protein_annotation.parse_gene_name_func
+        parse_id = protein_annotation.parse_gene_name_func
     elif args.fasta_use_uniprot_id:
-        parseId = protein_annotation.parse_uniprot_id
+        parse_id = protein_annotation.parse_uniprot_id
 
-    peptideToProteinMap, numIbaqPeptidesPerProtein = getPeptideToProteinMaps(
-        args, parseId
+    peptide_to_protein_map, num_ibaq_peptides_per_protein = get_peptide_to_protein_maps(
+        args, parse_id
     )
-    proteinSequences = digest.get_protein_sequences(args.fasta, parseId)
-    proteinGroupResults = maxquant.parse_mq_protein_groups_file(
+    protein_sequences = digest.get_protein_sequences(args.fasta, parse_id)
+    protein_group_results = maxquant.parse_mq_protein_groups_file(
         args.mq_protein_groups,
         additional_headers=maxquant.MQ_PROTEIN_ANNOTATION_HEADERS,
     )
 
-    scoreType = ProteinScoringStrategy("bestPEP")
-    doQuantification(
+    do_quantification(
         args.mq_evidence,
-        proteinGroupResults,
-        proteinSequences,
-        peptideToProteinMap,
-        numIbaqPeptidesPerProtein,
+        protein_group_results,
+        protein_sequences,
+        peptide_to_protein_map,
+        num_ibaq_peptides_per_protein,
         args.file_list_file,
-        scoreType,
-        minPeptideRatiosLFQ=args.lfq_min_peptide_ratios,
-        stabilizeLargeRatiosLFQ=args.lfq_stabilize_large_ratios,
-        numThreads=args.num_threads,
+        min_peptide_ratios_lfq=args.lfq_min_peptide_ratios,
+        stabilize_large_ratios_lfq=args.lfq_stabilize_large_ratios,
+        num_threads=args.num_threads,
     )
 
-    proteinGroupResults.write(args.protein_groups_out)
+    protein_group_results.write(args.protein_groups_out)
 
     logger.info(
         f"Protein group results have been written to: {args.protein_groups_out}"
     )
 
 
-def getPeptideToProteinMaps(args, parseId):
-    minLenIbaq = max([6, args.min_length])
-    maxLenIbaq = min([30, args.max_length])
+def get_peptide_to_protein_maps(args, parse_id):
+    min_len_ibaq = max([6, args.min_length])
+    max_len_ibaq = min([30, args.max_length])
 
     logger.info("Loading peptide to protein map...")
     if args.fasta:
-        pre, not_post, post = digest.getCleavageSites(args.enzyme)
+        pre, not_post, post = digest.get_cleavage_sites(args.enzyme)
 
         db = "concat"
         if args.fasta_contains_decoys:
             db = "target"
 
-        peptideToProteinMap = digest.getPeptideToProteinMap(
+        peptide_to_protein_map = digest.get_peptide_to_protein_map(
             args.fasta,
             db=db,
             digestion=args.digestion,
@@ -196,190 +192,192 @@ def getPeptideToProteinMaps(args, parseId):
             not_post=not_post,
             post=post,
             miscleavages=args.cleavages,
-            methionineCleavage=True,
-            specialAAs=list(args.special_aas),
-            parseId=parseId,
-            useHashKey=(args.digestion == "none"),
+            methionine_cleavage=True,
+            special_aas=list(args.special_aas),
+            parse_od=parse_id,
+            use_hash_key=(args.digestion == "none"),
         )
 
-        peptideToProteinMapIbaq = digest.getPeptideToProteinMap(
+        peptide_to_protein_map_ibaq = digest.get_peptide_to_protein_map(
             args.fasta,
             db=db,
             digestion=args.digestion,
-            min_len=minLenIbaq,
-            max_len=maxLenIbaq,
+            min_len=min_len_ibaq,
+            max_len=max_len_ibaq,
             pre=pre,
             not_post=not_post,
             post=post,
             miscleavages=0,
-            methionineCleavage=False,
-            specialAAs=list(args.special_aas),
-            parseId=parseId,
-            useHashKey=(args.digestion == "none"),
+            methionine_cleavage=False,
+            special_aas=list(args.special_aas),
+            parse_od=parse_id,
+            use_hash_key=(args.digestion == "none"),
         )
     elif args.peptide_protein_map:
-        pre, not_post, post = digest.getCleavageSites(args.enzyme)
+        pre, not_post, post = digest.get_cleavage_sites(args.enzyme)
 
-        peptideToProteinMap = digest.getPeptideToProteinMapFromFile(
+        peptide_to_protein_map = digest.get_peptide_to_protein_map_from_file(
             args.peptide_protein_map, useHashKey=True
         )
 
-        peptideToProteinMapIbaq = dict()
-        for peptide, proteins in peptideToProteinMap.items():
-            peptideLen = len(peptide)
+        peptide_to_protein_map_ibaq = dict()
+        for peptide, proteins in peptide_to_protein_map.items():
+            peptide_len = len(peptide)
             if (
-                peptideLen >= minLenIbaq
-                and peptideLen <= maxLenIbaq
-                and not digest.hasMiscleavage(peptide, pre, not_post, post)
+                peptide_len >= min_len_ibaq
+                and peptide_len <= max_len_ibaq
+                and not digest.has_miscleavage(peptide, pre, not_post, post)
             ):
-                peptideToProteinMapIbaq[peptide] = proteins
+                peptide_to_protein_map_ibaq[peptide] = proteins
     else:
-        sys.exit(
+        raise ValueError(
             "No peptide to protein map found, use either the --fasta or the --peptide_protein_map arguments"
         )
 
-    numIbaqPeptidesPerProtein = digest.getNumPeptidesPerProtein(peptideToProteinMapIbaq)
-
-    return peptideToProteinMap, numIbaqPeptidesPerProtein
-
-
-def doQuantification(
-    mqEvidenceFiles: List[str],
-    proteinGroupResults: ProteinGroupResults,
-    proteinSequences: Dict[str, str],
-    peptideToProteinMaps: List[Dict[str, List[str]]],
-    numIbaqPeptidesPerProtein: Dict[str, int],
-    fileListFile: str,
-    scoreType: ProteinScoringStrategy,
-    psmQvalCutoff: float = 0.01,
-    discardSharedPeptides: bool = True,
-    minPeptideRatiosLFQ: int = 2,
-    stabilizeLargeRatiosLFQ: bool = True,
-    numThreads: int = 1,
-):
-    params = initTriqlerParams()
-
-    logger.info("Preparing for quantification")
-    fileMapping = None
-    if fileListFile:
-        experiments, fileMapping, params = parseFileList(fileListFile, params)
-
-    (
-        proteinGroupResults,
-        postErrProbs,
-        numTmtChannels,
-        numSilacChannels,
-        parsedExperiments,
-    ) = parseEvidenceFiles(
-        proteinGroupResults,
-        mqEvidenceFiles,
-        peptideToProteinMaps,
-        fileMapping,
-        scoreType,
-        discardSharedPeptides,
+    num_ibaq_peptides_per_protein = digest.get_num_peptides_per_protein(
+        peptide_to_protein_map_ibaq
     )
 
-    silacChannels = getSilacChannels(numSilacChannels)
+    return peptide_to_protein_map, num_ibaq_peptides_per_protein
 
-    if len(parsedExperiments) > 0:
-        experiments = sorted(list(parsedExperiments))
-    experimentToIdxMap = dict([(v, k) for k, v in enumerate(experiments)])
+
+def do_quantification(
+    mq_evidence_files: List[str],
+    protein_group_results: ProteinGroupResults,
+    protein_sequences: Dict[str, str],
+    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    num_ibaq_peptides_per_protein: Dict[str, int],
+    file_list_file: str,
+    psm_fdr_cutoff: float = 0.01,
+    discard_shared_peptides: bool = True,
+    min_peptide_ratios_lfq: int = 2,
+    stabilize_large_ratios_lfq: bool = True,
+    num_threads: int = 1,
+):
+    params = init_triqler_params()
+
+    logger.info("Preparing for quantification")
+    file_mapping = None
+    if file_list_file:
+        experiments, file_mapping, params = parse_file_list(file_list_file, params)
+
+    (
+        protein_group_results,
+        post_err_probs,
+        num_tmt_channels,
+        num_silac_channels,
+        parsed_experiments,
+    ) = parse_evidence_files(
+        protein_group_results,
+        mq_evidence_files,
+        peptide_to_protein_maps,
+        file_mapping,
+        discard_shared_peptides,
+    )
+
+    silac_channels = get_silac_channels(num_silac_channels)
+
+    if len(parsed_experiments) > 0:
+        experiments = sorted(list(parsed_experiments))
+    experiment_to_idx_map = dict([(v, k) for k, v in enumerate(experiments)])
 
     # (1) technically this is a precursor-level FDR and not a PSM-level FDR
     # (2) in contrast to MaxQuant, we set a global precursor-level FDR
     #         instead of a per raw file PSM-level FDR
-    postErrProbCutoff = fdr.calc_post_err_prob_cutoff(
-        [x[0] for x in postErrProbs if not helpers.is_mbr(x[0])], psmQvalCutoff
+    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
+        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
     )
     logger.info(
-        f"PEP-cutoff corresponding to {psmQvalCutoff*100:g}% PSM-level FDR: {postErrProbCutoff}"
+        f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
     )
 
-    printNumPeptidesAtFDR(postErrProbs, postErrProbCutoff)
+    print_num_peptides_at_fdr(post_err_probs, post_err_prob_cutoff)
 
     logger.info("Filtering for identified precursors")
     # precursor = (peptide, charge) tuple
     # this filter also ensures that MBR precursors which were matched to
     # unidentified precursors are removed
-    for pgr in proteinGroupResults:
+    for pgr in protein_group_results:
         pgr.precursorQuants = retain_only_identified_precursors(
-            pgr.precursorQuants, postErrProbCutoff
+            pgr.precursorQuants, post_err_prob_cutoff
         )
 
     columns: List[quant.ProteinGroupColumns] = [
         quant.UniquePeptideCountColumns(),
         quant.IdentificationTypeColumns(),
-        quant.SummedIntensityAndIbaqColumns(silacChannels, numIbaqPeptidesPerProtein),
-        quant.SequenceCoverageColumns(proteinSequences),
+        quant.SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        quant.SequenceCoverageColumns(protein_sequences),
         quant.EvidenceIdsColumns(),
     ]
 
-    if numTmtChannels > 0:
-        columns.append(quant.TMTIntensityColumns(numTmtChannels))
+    if num_tmt_channels > 0:
+        columns.append(quant.TMTIntensityColumns(num_tmt_channels))
     else:
         columns.append(
             quant.LFQIntensityColumns(
-                silacChannels, minPeptideRatiosLFQ, stabilizeLargeRatiosLFQ, numThreads
+                silac_channels,
+                min_peptide_ratios_lfq,
+                stabilize_large_ratios_lfq,
+                num_threads,
             )
         )
         # TODO: add SILAC functionality of Triqler
-        if numSilacChannels == 0:
+        if num_silac_channels == 0:
             columns.append(quant.TriqlerIntensityColumns(params))
 
     for c in columns:
-        c.append_headers(proteinGroupResults, experiments)
-        c.append_columns(proteinGroupResults, experimentToIdxMap, postErrProbCutoff)
+        c.append_headers(protein_group_results, experiments)
+        c.append_columns(protein_group_results, experiment_to_idx_map, post_err_prob_cutoff)
 
 
-def parseEvidenceFiles(
-    proteinGroupResults,
-    mqEvidenceFiles,
-    peptideToProteinMaps,
-    fileMapping,
-    scoreType,
-    discard_shared_peptides,
+def parse_evidence_files(
+    protein_group_results: ProteinGroupResults,
+    mq_evidence_files: List[str],
+    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    file_mapping: Dict[str, Tuple[str, str]],
+    discard_shared_peptides: bool,
 ):
-    protein_groups = ProteinGroups.from_protein_group_results(proteinGroupResults)
+    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
     protein_groups.create_index()
 
-    postErrProbs = list()
+    post_err_probs = list()
     shared_peptide_precursors, unique_peptide_precursors = 0, 0
-    numTmtChannels, numSilacChannels = -1, -1
-    parsedExperiments = set()
+    num_tmt_channels, num_silac_channels = -1, -1
+    parsed_experiments = set()
     missing_peptides_in_protein_groups = 0
 
     for (
         peptide,
         proteins,
         charge,
-        rawFile,
+        raw_file,
         experiment,
         fraction,
         intensity,
-        postErrProb,
-        tmtCols,
-        silacCols,
-        evidenceId,
+        post_err_prob,
+        tmt_cols,
+        silac_cols,
+        evidence_id,
     ) in psm.parse_evidence_file_multiple(
-        mqEvidenceFiles,
-        peptide_to_protein_maps=peptideToProteinMaps,
+        mq_evidence_files,
+        peptide_to_protein_maps=peptide_to_protein_maps,
         score_type=ProteinScoringStrategy("bestPEP"),
         for_quantification=True,
     ):
-        if numTmtChannels == -1:
+        if num_tmt_channels == -1:
             # There are 3 columns per TMT channel:
             #     Reporter intensity corrected,
             #     Reporter intensity
             #     Reporter intensity count
-            numTmtChannels = int(len(tmtCols) / 3)
-        if numSilacChannels == -1:
-            numSilacChannels = len(silacCols)
+            num_tmt_channels = int(len(tmt_cols) / 3)
+        if num_silac_channels == -1:
+            num_silac_channels = len(silac_cols)
 
         # override the parsed experiment and fraction if --file_list_file option is used
-        if fileMapping:
-            experiment, fraction = fileMapping[rawFile]
-        elif experiment not in parsedExperiments:
-            parsedExperiments.add(experiment)
+        if file_mapping:
+            experiment, fraction = file_mapping[raw_file]
+        elif experiment not in parsed_experiments:
+            parsed_experiments.add(experiment)
 
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
@@ -398,34 +396,33 @@ def parseEvidenceFiles(
         unique_peptide_precursors += 1
 
         if not helpers.is_decoy(proteins):
-            postErrProbs.append((postErrProb, rawFile, experiment, peptide))
+            post_err_probs.append((post_err_prob, raw_file, experiment, peptide))
 
-        if len(tmtCols) > 0:
-            tmtCols = np.array(tmtCols, dtype="float64")
+        if len(tmt_cols) > 0:
+            tmt_cols = np.array(tmt_cols, dtype="float64")
         else:
-            tmtCols = None
+            tmt_cols = None
 
-        if len(silacCols) > 0:
-            silacCols = np.array(silacCols, dtype="float64")
+        if len(silac_cols) > 0:
+            silac_cols = np.array(silac_cols, dtype="float64")
         else:
-            silacCols = None
+            silac_cols = None
 
-        for proteinGroupIdx in protein_group_idxs:
-            precursorQuant = quant.PrecursorQuant(
+        for protein_group_idx in protein_group_idxs:
+            precursor_quant = quant.PrecursorQuant(
                 peptide,
                 charge,
                 experiment,
                 fraction,
                 intensity,
-                postErrProb,
-                tmtCols,
-                silacCols,
-                evidenceId,
+                post_err_prob,
+                tmt_cols,
+                silac_cols,
+                evidence_id,
             )
-            proteinGroupResults[proteinGroupIdx].precursorQuants.append(precursorQuant)
-
-    # if missingPeptidesInFasta > 0:
-    #     logger.warning(f"Skipped {missingPeptidesInFasta} precursors not present in the fasta file")
+            protein_group_results[protein_group_idx].precursorQuants.append(
+                precursor_quant
+            )
 
     if missing_peptides_in_protein_groups > 0:
         logger.debug(
@@ -437,60 +434,60 @@ def parseEvidenceFiles(
     )
 
     return (
-        proteinGroupResults,
-        postErrProbs,
-        numTmtChannels,
-        numSilacChannels,
-        parsedExperiments,
+        protein_group_results,
+        post_err_probs,
+        num_tmt_channels,
+        num_silac_channels,
+        parsed_experiments,
     )
 
 
-def printNumPeptidesAtFDR(postErrProbs, postErrProbCutoff):
-    survivingModPeptides = set(
-        [x[3] for x in postErrProbs if x[0] <= postErrProbCutoff]
+def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float):
+    surviving_mod_peptides = set(
+        [x[3] for x in post_err_probs if x[0] <= post_err_prob_cutoff]
     )
 
-    peptidesPerRawFile = collections.defaultdict(list)
-    peptidesPerExperiment = collections.defaultdict(list)
-    peptidesPerRawFileMbr = collections.defaultdict(list)
-    peptidesPerExperimentMbr = collections.defaultdict(list)
-    for postErrProb, rawFile, experiment, peptide in postErrProbs:
-        if postErrProb <= postErrProbCutoff:
-            peptidesPerRawFile[rawFile].append(peptide)
-            peptidesPerExperiment[experiment].append(peptide)
-        elif helpers.is_mbr(postErrProb) and peptide in survivingModPeptides:
-            peptidesPerRawFileMbr[rawFile].append(peptide)
-            peptidesPerExperimentMbr[experiment].append(peptide)
+    peptides_per_rawfile = collections.defaultdict(list)
+    peptides_per_experiment = collections.defaultdict(list)
+    peptides_per_rawfile_mbr = collections.defaultdict(list)
+    peptides_per_experiment_mbr = collections.defaultdict(list)
+    for post_err_prob, rawfile, experiment, peptide in post_err_probs:
+        if post_err_prob <= post_err_prob_cutoff:
+            peptides_per_rawfile[rawfile].append(peptide)
+            peptides_per_experiment[experiment].append(peptide)
+        elif helpers.is_mbr(post_err_prob) and peptide in surviving_mod_peptides:
+            peptides_per_rawfile_mbr[rawfile].append(peptide)
+            peptides_per_experiment_mbr[experiment].append(peptide)
 
     logger.info("Precursor counts per rawfile (1% PSM-level FDR):")
-    for rawFile, peptides in sorted(peptidesPerRawFile.items()):
-        numPeptides = len(set(peptides))
-        numPeptidesWithMbr = len(set(peptides + peptidesPerRawFileMbr[rawFile]))
+    for rawfile, peptides in sorted(peptides_per_rawfile.items()):
+        num_peptides = len(set(peptides))
+        num_peptides_with_mbr = len(set(peptides + peptides_per_rawfile_mbr[rawfile]))
         logger.info(
-            f"    {rawFile}: {numPeptides} {'(' + str(numPeptidesWithMbr) + ' with MBR)' if numPeptidesWithMbr > numPeptides else ''}"
+            f"    {rawfile}: {num_peptides} {'(' + str(num_peptides_with_mbr) + ' with MBR)' if num_peptides_with_mbr > num_peptides else ''}"
         )
 
     logger.info("Precursor counts per experiment (1% PSM-level FDR):")
-    for experiment, peptides in sorted(peptidesPerExperiment.items()):
-        numPeptides = len(set(peptides))
-        numPeptidesWithMbr = len(set(peptides + peptidesPerExperimentMbr[experiment]))
+    for experiment, peptides in sorted(peptides_per_experiment.items()):
+        num_peptides = len(set(peptides))
+        num_peptides_with_mbr = len(set(peptides + peptides_per_experiment_mbr[experiment]))
         logger.info(
-            f"    {experiment}: {numPeptides} {'(' + str(numPeptidesWithMbr) + ' with MBR)' if numPeptidesWithMbr > numPeptides else ''}"
+            f"    {experiment}: {num_peptides} {'(' + str(num_peptides_with_mbr) + ' with MBR)' if num_peptides_with_mbr > num_peptides else ''}"
         )
 
 
-def getSilacChannels(numSilacChannels):
-    silacChannels = list()
-    if numSilacChannels == 3:
-        silacChannels = ["L", "M", "H"]
-    elif numSilacChannels == 2:
-        silacChannels = ["L", "H"]
-    elif numSilacChannels != 0:
+def get_silac_channels(num_silac_channels: int):
+    silac_channels = list()
+    if num_silac_channels == 3:
+        silac_channels = ["L", "M", "H"]
+    elif num_silac_channels == 2:
+        silac_channels = ["L", "H"]
+    elif num_silac_channels != 0:
         sys.exit("ERROR: Found a number of SILAC channels not equal to 2 or 3")
-    return silacChannels
+    return silac_channels
 
 
-def initTriqlerParams():
+def init_triqler_params():
     params = dict()
     # TODO: make these parameters configurable from the command line
     params["decoyPattern"] = "REV__"
@@ -504,14 +501,14 @@ def initTriqlerParams():
     return params
 
 
-def parseFileList(fileListFile, params):
-    fileInfoList = triqler.parsers.parseFileList(fileListFile)
-    fileMapping = dict()
+def parse_file_list(file_list_file: str, params: Dict):
+    file_info_list = triqler.parsers.parseFileList(file_list_file)
+    file_mapping = dict()
     experiments = list()
-    for rawFile, condition, experiment, fraction in fileInfoList:
+    for rawfile, condition, experiment, fraction in file_info_list:
         if experiment not in experiments:
             experiments.append(experiment)
-        fileMapping[rawFile] = (experiment, fraction)
+        file_mapping[rawfile] = (experiment, fraction)
         # Note that params["groupLabels"] and params["groups"] are only used by Triqler
         if condition not in params["groupLabels"]:
             params["groupLabels"].append(condition)
@@ -519,20 +516,20 @@ def parseFileList(fileListFile, params):
         params["groups"][params["groupLabels"].index(condition)].append(
             experiments.index(experiment)
         )
-    return experiments, fileMapping, params
+    return experiments, file_mapping, params
 
 
 def retain_only_identified_precursors(
-    peptideIntensityList: List[quant.PrecursorQuant], postErrProbCutoff
+    precursor_list: List[quant.PrecursorQuant], post_err_prob_cutoff
 ):
-    identifiedPrecursors = set()
-    for precursor in peptideIntensityList:
-        if precursor.post_err_prob <= postErrProbCutoff:
-            identifiedPrecursors.add((precursor.peptide, precursor.charge))
+    identified_precursors = set()
+    for precursor in precursor_list:
+        if precursor.post_err_prob <= post_err_prob_cutoff:
+            identified_precursors.add((precursor.peptide, precursor.charge))
     return [
-        precursorRow
-        for precursorRow in peptideIntensityList
-        if (precursorRow.peptide, precursorRow.charge) in identifiedPrecursors
+        precursor_row
+        for precursor_row in precursor_list
+        if (precursor_row.peptide, precursor_row.charge) in identified_precursors
     ]
 
 
