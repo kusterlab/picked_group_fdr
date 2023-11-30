@@ -1,15 +1,15 @@
+from __future__ import annotations
+
 from typing import List, Dict
 import logging
 
 import numpy as np
 import triqler.qvality
 
-from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from .precursor_quant import PrecursorQuant
-from ..results import ProteinGroupResults
+from .. import results
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 class ProteinProbabilityColumns(ProteinGroupColumns):
     def append_headers(
         self,
-        protein_group_results: ProteinGroupResults,
+        protein_group_results: results.ProteinGroupResults,
         experiments: List[str],
     ) -> None:
         protein_group_results.append_header("Protein Probability")
 
     def append_columns(
         self,
-        protein_group_results: ProteinGroupResults,
+        protein_group_results: results.ProteinGroupResults,
         experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:

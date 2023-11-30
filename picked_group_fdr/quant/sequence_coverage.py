@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Dict, Set
 import logging
 
@@ -8,7 +10,7 @@ from .base import ProteinGroupColumns
 
 # for type hints only
 from .precursor_quant import PrecursorQuant
-from ..results import ProteinGroupResults
+from .. import results
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ class SequenceCoverageColumns(ProteinGroupColumns):
 
     def append_headers(
         self,
-        protein_group_results: ProteinGroupResults,
+        protein_group_results: results.ProteinGroupResults,
         experiments: List[str],
     ) -> None:
         # TODO: properly implement this, right now it is the same as Unique sequence coverage [%]
@@ -39,7 +41,7 @@ class SequenceCoverageColumns(ProteinGroupColumns):
 
     def append_columns(
         self,
-        protein_group_results: ProteinGroupResults,
+        protein_group_results: results.ProteinGroupResults,
         experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:

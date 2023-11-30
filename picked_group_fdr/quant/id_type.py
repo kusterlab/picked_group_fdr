@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Dict
 import logging
 
@@ -6,7 +8,7 @@ from .base import ProteinGroupColumns
 
 # for type hints only
 from .precursor_quant import PrecursorQuant
-from ..results import ProteinGroupResults
+from .. import results
 
 
 logger = logging.getLogger(__name__)
@@ -14,14 +16,16 @@ logger = logging.getLogger(__name__)
 
 class IdentificationTypeColumns(ProteinGroupColumns):
     def append_headers(
-        self, proteinGroupResults: ProteinGroupResults, experiments: List[str]
+        self,
+        proteinGroupResults: results.ProteinGroupResults,
+        experiments: List[str],
     ) -> None:
         for experiment in experiments:
             proteinGroupResults.append_header("Identification type " + experiment)
 
     def append_columns(
         self,
-        proteinGroupResults: ProteinGroupResults,
+        proteinGroupResults: results.ProteinGroupResults,
         experimentToIdxMap: Dict[str, int],
         postErrProbCutoff: float,
     ) -> None:
@@ -31,6 +35,7 @@ class IdentificationTypeColumns(ProteinGroupColumns):
                 pgr.precursorQuants, experimentToIdxMap, postErrProbCutoff
             )
             pgr.extend(idType)
+
 
 def _identification_type_per_experiment(
     peptideIntensityList: List[PrecursorQuant],

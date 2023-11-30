@@ -513,7 +513,6 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
         peptideToProteinMaps,
         numIbaqPeptidesPerProtein,
         args.file_list_file,
-        config["scoreType"],
         min_peptide_ratios_lfq=args.lfq_min_peptide_ratios,
         num_threads=args.num_threads,
     )

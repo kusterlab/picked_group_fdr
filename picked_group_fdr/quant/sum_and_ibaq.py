@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Dict
 import logging
 
@@ -8,7 +10,7 @@ from .base import ProteinGroupColumns
 
 # for type hints only
 from .precursor_quant import PrecursorQuant
-from ..results import ProteinGroupResults
+from .. import results
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
 
     def append_headers(
         self,
-        proteinGroupResults: ProteinGroupResults,
+        proteinGroupResults: results.ProteinGroupResults,
         experiments: List[str],
     ) -> None:
         proteinGroupResults.append_header("Intensity")
@@ -49,7 +51,7 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
 
     def append_columns(
         self,
-        proteinGroupResults: ProteinGroupResults,
+        proteinGroupResults: results.ProteinGroupResults,
         experimentToIdxMap: Dict[str, int],
         postErrProbCutoff: float,
     ) -> None:

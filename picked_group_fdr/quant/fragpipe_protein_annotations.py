@@ -1,11 +1,15 @@
-from typing import Dict
+from __future__ import annotations
+
+from typing import Dict, List
 import logging
 
 from picked_group_fdr import protein_groups as pg
 
 from ..protein_annotation import ProteinAnnotation
-from ..results import ProteinGroupResults
 from .base import ProteinGroupColumns
+
+# for type hints only
+from .. import results
 
 
 logger = logging.getLogger(__name__)
@@ -34,12 +38,16 @@ class FragpipeProteinAnnotationsColumns(ProteinGroupColumns):
         self.protein_groups = protein_groups
         self.protein_annotations = protein_annotations
 
-    def append_headers(self, protein_group_results: ProteinGroupResults, experiments):
+    def append_headers(
+        self,
+        protein_group_results: results.ProteinGroupResults,
+        experiments: List[str],
+    ):
         protein_group_results.append_headers(FRAGPIPE_PROTEIN_ANNOTATION_HEADERS)
 
     def append_columns(
         self,
-        protein_group_results: ProteinGroupResults,
+        protein_group_results: results.ProteinGroupResults,
         experimentToIdxMap,
         postErrProbCutoff,
     ):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import itertools
 from typing import List, Dict, Tuple
@@ -15,7 +17,7 @@ from .peptide_count import _unique_peptide_counts_per_experiment
 from ..utils import multiprocessing_pool as pool
 
 # imports for typing
-from ..results import ProteinGroupResults
+from .. import results
 from .precursor_quant import PrecursorQuant
 
 
@@ -41,7 +43,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
     def append_headers(
         self,
-        protein_group_results: ProteinGroupResults,
+        protein_group_results: results.ProteinGroupResults,
         experiments: List[str],
     ) -> None:
         if len(experiments) <= 1:
@@ -59,7 +61,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
     def append_columns(
         self,
-        protein_group_results: ProteinGroupResults,
+        protein_group_results: results.ProteinGroupResults,
         experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:
