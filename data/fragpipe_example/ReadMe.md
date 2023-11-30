@@ -11,7 +11,7 @@ To run this example, follow these steps:
 
 **Download FragPipe result files**
 
-1. Download `fragpipe.zip` file from this folder. It contains the necessary FragPipe results files needed to run this example and allows one to skip directly to step 5. For the settings used to generate these files, see step 4 in Option 2.
+1. Download the `fragpipe.zip` file from this folder. It contains the necessary FragPipe results files needed to run this example. For the FragPipe settings used to generate these files, see step 4 in Option 2.
 
 **Running PickedGroupFDR**
 
@@ -30,9 +30,6 @@ As additional files, it will produce a protein grouping result similar to MaxQua
 2. Download and install FragPipe (version used for this example was v19.1).
 
 **Running FragPipe**
-
-The zip file already contains all necessary FragPipe results files needed to run this example. 
-If you want to rerun the analysis with different parameters, follow these steps:
 
 3. Run the standard LFQ workflow using the fasta file `iprg2016_with_labels.fasta` included in the `fragpipe.zip` file.
 4. In the `Validation` tab, in the `FDR Filter and Report` section, tick the `Print decoys` checkbox and add the following in the `Filter` field.
