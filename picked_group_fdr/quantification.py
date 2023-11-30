@@ -1,18 +1,17 @@
 import sys
 import os
 import logging
-import collections
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import triqler.parsers
 
+from . import serializers
 from . import digest
 from . import digestion_params
 from . import protein_annotation
 from . import helpers
 from . import quant
-from . import fdr
 from .parsers import maxquant
 from .parsers import psm
 from .protein_groups import ProteinGroups
@@ -148,7 +147,7 @@ def main(argv):
     protein_sequences = digest.get_protein_sequences(args.fasta, parse_id)
     protein_group_results = maxquant.parse_mq_protein_groups_file(
         args.mq_protein_groups,
-        additional_headers=maxquant.MQ_PROTEIN_ANNOTATION_HEADERS,
+        additional_headers=serializers.MQ_PROTEIN_ANNOTATION_HEADERS,
     )
 
     protein_group_results = do_quantification(
@@ -275,7 +274,7 @@ def do_quantification(
         discard_shared_peptides,
     )
 
-    columns = get_mq_protein_groups_columns(
+    columns = serializers.get_mq_protein_groups_columns(
         num_ibaq_peptides_per_protein,
         protein_sequences,
         num_tmt_channels,
@@ -289,90 +288,9 @@ def do_quantification(
     if len(parsed_experiments) > 0:
         experiments = sorted(list(parsed_experiments))
 
-    return append_quant_columns(
+    return serializers.append_quant_columns(
         protein_group_results, columns, experiments, post_err_probs, psm_fdr_cutoff
     )
-
-
-def append_quant_columns(
-    protein_group_results: ProteinGroupResults,
-    columns: List[quant.ProteinGroupColumns],
-    experiments: List[str],
-    post_err_probs: List,
-    psm_fdr_cutoff: float,
-):
-    protein_group_results.remove_protein_groups_without_precursors()
-
-    experiment_to_idx_map = {
-        experiment: idx for idx, experiment in enumerate(experiments)
-    }
-    # (1) technically this is a precursor-level FDR and not a PSM-level FDR
-    # (2) in contrast to MaxQuant, we set a global precursor-level FDR
-    #         instead of a per raw file PSM-level FDR
-    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
-        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
-    )
-    logger.info(
-        f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
-    )
-
-    print_num_peptides_at_fdr(post_err_probs, post_err_prob_cutoff)
-
-    logger.info("Filtering for identified precursors")
-    # precursor = (peptide, charge) tuple
-    # this filter also ensures that MBR precursors which were matched to
-    # unidentified precursors are removed
-    for pgr in protein_group_results:
-        pgr.precursorQuants = retain_only_identified_precursors(
-            pgr.precursorQuants, post_err_prob_cutoff
-        )
-
-    for c in columns:
-        c.append_headers(protein_group_results, experiments)
-        c.append_columns(
-            protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
-        )
-
-    return protein_group_results
-
-
-def get_mq_protein_groups_columns(
-    num_ibaq_peptides_per_protein: Dict[str, int],
-    protein_sequences: Dict[str, str],
-    num_tmt_channels: int,
-    num_silac_channels: int,
-    min_peptide_ratios_lfq: int,
-    stabilize_large_ratios_lfq: bool,
-    num_threads: int,
-    params: Dict[str, Any],
-) -> List[quant.ProteinGroupColumns]:
-    silac_channels = get_silac_channels(num_silac_channels)
-
-    columns: List[quant.ProteinGroupColumns] = [
-        quant.UniquePeptideCountColumns(),
-        quant.IdentificationTypeColumns(),
-        quant.SummedIntensityAndIbaqColumns(
-            silac_channels, num_ibaq_peptides_per_protein
-        ),
-        quant.SequenceCoverageColumns(protein_sequences),
-        quant.EvidenceIdsColumns(),
-    ]
-
-    if num_tmt_channels > 0:
-        columns.append(quant.TMTIntensityColumns(num_tmt_channels))
-    else:
-        columns.append(
-            quant.LFQIntensityColumns(
-                silac_channels,
-                min_peptide_ratios_lfq,
-                stabilize_large_ratios_lfq,
-                num_threads,
-            )
-        )
-        # TODO: add SILAC functionality of Triqler
-        if num_silac_channels == 0:
-            columns.append(quant.TriqlerIntensityColumns(params))
-    return columns
 
 
 def parse_evidence_files(
@@ -487,53 +405,6 @@ def parse_evidence_files(
     )
 
 
-def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float):
-    surviving_mod_peptides = set(
-        [x[3] for x in post_err_probs if x[0] <= post_err_prob_cutoff]
-    )
-
-    peptides_per_rawfile = collections.defaultdict(list)
-    peptides_per_experiment = collections.defaultdict(list)
-    peptides_per_rawfile_mbr = collections.defaultdict(list)
-    peptides_per_experiment_mbr = collections.defaultdict(list)
-    for post_err_prob, rawfile, experiment, peptide in post_err_probs:
-        if post_err_prob <= post_err_prob_cutoff:
-            peptides_per_rawfile[rawfile].append(peptide)
-            peptides_per_experiment[experiment].append(peptide)
-        elif helpers.is_mbr(post_err_prob) and peptide in surviving_mod_peptides:
-            peptides_per_rawfile_mbr[rawfile].append(peptide)
-            peptides_per_experiment_mbr[experiment].append(peptide)
-
-    logger.info("Precursor counts per rawfile (1% PSM-level FDR):")
-    for rawfile, peptides in sorted(peptides_per_rawfile.items()):
-        num_peptides = len(set(peptides))
-        num_peptides_with_mbr = len(set(peptides + peptides_per_rawfile_mbr[rawfile]))
-        logger.info(
-            f"    {rawfile}: {num_peptides} {'(' + str(num_peptides_with_mbr) + ' with MBR)' if num_peptides_with_mbr > num_peptides else ''}"
-        )
-
-    logger.info("Precursor counts per experiment (1% PSM-level FDR):")
-    for experiment, peptides in sorted(peptides_per_experiment.items()):
-        num_peptides = len(set(peptides))
-        num_peptides_with_mbr = len(
-            set(peptides + peptides_per_experiment_mbr[experiment])
-        )
-        logger.info(
-            f"    {experiment}: {num_peptides} {'(' + str(num_peptides_with_mbr) + ' with MBR)' if num_peptides_with_mbr > num_peptides else ''}"
-        )
-
-
-def get_silac_channels(num_silac_channels: int):
-    silac_channels = list()
-    if num_silac_channels == 3:
-        silac_channels = ["L", "M", "H"]
-    elif num_silac_channels == 2:
-        silac_channels = ["L", "H"]
-    elif num_silac_channels != 0:
-        sys.exit("ERROR: Found a number of SILAC channels not equal to 2 or 3")
-    return silac_channels
-
-
 def init_triqler_params():
     params = dict()
     # TODO: make these parameters configurable from the command line
@@ -564,20 +435,6 @@ def parse_file_list(file_list_file: str, params: Dict):
             experiments.index(experiment)
         )
     return experiments, file_mapping, params
-
-
-def retain_only_identified_precursors(
-    precursor_list: List[quant.PrecursorQuant], post_err_prob_cutoff
-):
-    identified_precursors = set()
-    for precursor in precursor_list:
-        if precursor.post_err_prob <= post_err_prob_cutoff:
-            identified_precursors.add((precursor.peptide, precursor.charge))
-    return [
-        precursor_row
-        for precursor_row in precursor_list
-        if (precursor_row.peptide, precursor_row.charge) in identified_precursors
-    ]
 
 
 if __name__ == "__main__":

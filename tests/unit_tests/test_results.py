@@ -1,5 +1,5 @@
 from typing import List
-from picked_group_fdr.parsers import maxquant
+from picked_group_fdr.serializers import maxquant
 from picked_group_fdr.protein_annotation import ProteinAnnotation
 from picked_group_fdr.quant.base import ProteinGroupColumns
 from picked_group_fdr.quant.protein_annotations import ProteinAnnotationsColumns

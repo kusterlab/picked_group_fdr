@@ -3,10 +3,11 @@ from __future__ import annotations
 import collections
 import logging
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
+from . import serializers
 from . import helpers
 from .parsers import tsv
 
@@ -16,27 +17,6 @@ from .protein_groups import ProteinGroups
 from . import quant
 
 logger = logging.getLogger(__name__)
-
-
-PROTEIN_GROUP_HEADERS = [
-    "Protein IDs",
-    "Majority protein IDs",
-    "Peptide counts (unique)",
-    "Best peptide",
-    "Number of proteins",
-    "Q-value",
-    "Score",
-    "Reverse",
-    "Potential contaminant",
-]
-
-
-def _format_extra_columns(x: Union[str, float]) -> str:
-    if type(x) == str:
-        return x
-    if np.isnan(x):
-        return ""
-    return "%.0f" % (x)
 
 
 @dataclass
@@ -128,7 +108,7 @@ class ProteinGroupResult:
 
     def to_list(self, format_extra_columns=None):
         if format_extra_columns is None:
-            format_extra_columns = _format_extra_columns
+            format_extra_columns = serializers.format_extra_columns
         return [
             self.proteinIds,
             self.majorityProteinIds,
@@ -143,8 +123,8 @@ class ProteinGroupResult:
 
 
 class ProteinGroupResults:
-    headers = List[str]
-    protein_group_results: List[ProteinGroupResult] = field(default_factory=list)
+    headers: List[str]
+    protein_group_results: List[ProteinGroupResult]
 
     def __init__(self, protein_group_results: List[ProteinGroupResult] = None):
         """
@@ -153,7 +133,7 @@ class ProteinGroupResults:
         self.protein_group_results = []
         if protein_group_results is not None:
             self.protein_group_results = protein_group_results
-        self.headers = PROTEIN_GROUP_HEADERS.copy()
+        self.headers = serializers.PROTEIN_GROUP_HEADERS.copy()
 
     def __iter__(self):
         return iter(self.protein_group_results)
@@ -186,7 +166,7 @@ class ProteinGroupResults:
         column_idx = self.headers.index(header)
         del self.headers[column_idx]
 
-        column_idx -= len(PROTEIN_GROUP_HEADERS)
+        column_idx -= len(serializers.PROTEIN_GROUP_HEADERS)
         for pgr in self.protein_group_results:
             del pgr.extraColumns[column_idx]
 
@@ -222,7 +202,7 @@ class ProteinGroupResults:
     @classmethod
     def from_protein_groups(
         cls,
-        proteinGroups: ProteinGroups,
+        protein_groups: ProteinGroups,
         proteinGroupPeptideInfos: ProteinGroupPeptideInfos,
         proteinScores: List[float],
         reportedQvals: List[float],
@@ -231,7 +211,7 @@ class ProteinGroupResults:
     ) -> ProteinGroupResults:
         protein_group_results = list()
         for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(
-            proteinGroups, proteinGroupPeptideInfos, proteinScores, reportedQvals
+            protein_groups, proteinGroupPeptideInfos, proteinScores, reportedQvals
         ):
             if helpers.isObsolete(proteinGroup):
                 continue

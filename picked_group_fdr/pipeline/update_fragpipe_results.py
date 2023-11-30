@@ -1,9 +1,8 @@
-import collections
 from pathlib import Path
 import sys
 import os
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -12,8 +11,8 @@ from .. import helpers
 from .. import digest
 from .. import protein_annotation
 from .. import quant
+from .. import serializers
 from ..picked_group_fdr import ArgumentParserWithLogger
-from ..quantification import append_quant_columns
 from ..parsers import maxquant
 from ..parsers import tsv
 from ..parsers import fragpipe
@@ -21,51 +20,8 @@ from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
 
-
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
-
-FRAGPIPE_PROTEIN_OUTPUT_DICT = {
-    "Protein": "Protein",
-    "Protein ID": "Protein ID",
-    "Entry Name": "Entry Name",
-    "Gene": "Gene",
-    "Length": "Length",
-    "Organism": "Organism",
-    "Protein Description": "Protein Description",
-    "Protein Existence": "Protein Existence",
-    "Coverage": "Sequence coverage [%]",
-    "Protein Probability": "Protein Probability",
-    "Top Peptide Probability": "Top Peptide Probability",
-    "Total Peptides": "Unique peptides 1",
-    "Unique Peptides": "Unique peptides 1",
-    "Razor Peptides": "Unique peptides 1",
-    "Total Spectral Count": "Spectral count 1",
-    "Unique Spectral Count": "Spectral count 1",
-    "Razor Spectral Count": "Spectral count 1",
-    "Total Intensity": "Intensity 1",
-    "Unique Intensity": "Intensity 1",
-    "Razor Intensity": "Intensity 1",
-    "Razor Assigned Modifications": "Razor Assigned Modifications",
-    "Razor Observed Modifications": "Razor Observed Modifications",
-    "Indistinguishable Proteins": "Indistinguishable Proteins",
-}
-
-FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT = {
-    "Protein": "Protein",
-    "Protein group": "Protein IDs",
-    "Protein ID": "Protein ID",
-    "Entry Name": "Entry Name",
-    "Gene": "Gene",
-    "Protein Length": "Length",
-    "Organism": "Organism",
-    "Protein Existence": "Protein Existence",
-    "Description": "Protein Description",
-    "Combined Total Peptides": "Combined Total Peptides",
-    "Combined Spectral Count": "Combined Spectral Count",
-    "Combined Unique Spectral Count": "Combined Spectral Count",
-    "Combined Total Spectral Count": "Combined Spectral Count",
-}
 
 
 def parse_args(argv):
@@ -362,18 +318,18 @@ def generate_fragpipe_protein_file(
         output_folder, fragpipe_psm_file
     )
 
-    columns = get_fragpipe_protein_tsv_columns(
+    columns = serializers.get_fragpipe_protein_tsv_columns(
         protein_groups, protein_annotations, protein_sequences
     )
 
-    protein_group_results = append_quant_columns(
+    protein_group_results = serializers.append_quant_columns(
         protein_group_results, columns, [experiment], post_err_probs, psm_fdr_cutoff
     )
 
     protein_group_results.write(
         fragpipe_protein_file_out,
-        header_dict=FRAGPIPE_PROTEIN_OUTPUT_DICT,
-        format_extra_columns=fragpipe_format_extra_columns,
+        header_dict=serializers.FRAGPIPE_PROTEIN_OUTPUT_DICT,
+        format_extra_columns=serializers.fragpipe_format_extra_columns,
     )
 
 
@@ -398,31 +354,6 @@ def get_fragpipe_protein_out_path(output_folder, fragpipe_psm_file):
                 fragpipe_protein_file_backup,
             )
     return fragpipe_protein_file_out
-
-
-def get_fragpipe_protein_tsv_columns(
-    protein_groups: ProteinGroups,
-    protein_annotations: Dict[str, ProteinAnnotation],
-    protein_sequences: Dict[str, str],
-):
-    silac_channels = []
-    num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
-
-    columns: List[quant.ProteinGroupColumns] = [
-        quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
-        quant.SequenceCoverageColumns(protein_sequences),
-        quant.ProteinProbabilityColumns(),
-        quant.TopPeptideProbabilityColumns(),
-        quant.UniquePeptideCountColumns(),
-        quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(
-            silac_channels, num_ibaq_peptides_per_protein
-        ),
-        quant.ModificationsColumns(),
-        quant.IndistinguishableProteinsColumns(),
-    ]
-
-    return columns
 
 
 def add_precursor_quants(
@@ -477,16 +408,6 @@ def add_precursor_quants(
                 precursor_quant
             )
     return protein_group_results, post_err_probs
-
-
-def fragpipe_format_extra_columns(x: Union[str, int, float]) -> str:
-    if type(x) == str:
-        return x
-    if type(x) == int:
-        return x
-    if np.isnan(x) or x == 0.0:
-        return 0.0
-    return "%.5g" % (x)
 
 
 def generate_fragpipe_combined_protein_file(
@@ -584,9 +505,9 @@ def write_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    columns = get_fragpipe_combined_protein_columns(protein_groups, protein_annotations)
+    columns = serializers.get_fragpipe_combined_protein_columns(protein_groups, protein_annotations)
 
-    protein_group_results = append_quant_columns(
+    protein_group_results = serializers.append_quant_columns(
         protein_group_results, columns, experiments, post_err_probs, psm_fdr_cutoff
     )
 
@@ -600,43 +521,9 @@ def write_fragpipe_combined_protein_file(
 
     protein_group_results.write(
         protein_groups_out_file,
-        header_dict=get_fragpipe_combined_protein_headers(experiments),
-        format_extra_columns=fragpipe_format_extra_columns,
+        header_dict=serializers.get_fragpipe_combined_protein_headers(experiments),
+        format_extra_columns=serializers.fragpipe_format_extra_columns,
     )
-
-
-def get_fragpipe_combined_protein_columns(
-    protein_groups: ProteinGroups,
-    protein_annotations: Dict[str, ProteinAnnotation],
-    min_peptide_ratios_lfq: int = 1,
-    stabilize_large_ratios_lfq: bool = True,
-    num_threads: int = 1,
-) -> List[quant.ProteinGroupColumns]:
-    silac_channels = []
-    num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
-
-    columns: List[quant.ProteinGroupColumns] = [
-        quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
-        quant.ProteinProbabilityColumns(),
-        quant.TopPeptideProbabilityColumns(),
-        quant.UniquePeptideCountColumns(),
-        quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(
-            silac_channels, num_ibaq_peptides_per_protein
-        ),
-        quant.IndistinguishableProteinsColumns(),
-    ]
-
-    columns.append(
-        quant.LFQIntensityColumns(
-            silac_channels,
-            min_peptide_ratios_lfq,
-            stabilize_large_ratios_lfq,
-            num_threads,
-        )
-    )
-
-    return columns
 
 
 def update_precursor_quants(
@@ -711,40 +598,6 @@ def update_precursor_quants(
                         precursor_quant
                     )
     return protein_group_results
-
-
-def get_fragpipe_combined_protein_headers(experiments: List[str]):
-    """Adds experiment specific headers.
-
-    - <Experiment> Spectral Count
-    - <Experiment> Unique Spectral Count
-    - <Experiment> Total Spectral Count
-    - <Experiment> Intensity
-    - <Experiment> MaxLFQ Intensity
-    """
-    header_dict = FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT.copy()
-    for experiment in experiments:
-        header_dict[f"{experiment} Spectra Count"] = f"Spectral count {experiment}"
-
-    for experiment in experiments:
-        header_dict[
-            f"{experiment} Unique Spectra Count"
-        ] = f"Spectral count {experiment}"
-
-    for experiment in experiments:
-        header_dict[
-            f"{experiment} Total Spectra Count"
-        ] = f"Spectral count {experiment}"
-
-    for experiment in experiments:
-        header_dict[f"{experiment} Intensity"] = f"Intensity {experiment}"
-
-    for experiment in experiments:
-        header_dict[f"{experiment} MaxLFQ Intensity"] = f"LFQ Intensity {experiment}"
-
-    header_dict["Indistinguishable Proteins"] = "Indistinguishable Proteins"
-
-    return header_dict
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ from . import quantification
 from . import entrapment
 from . import methods
 from . import fdr
-
+from . import serializers
 from .digestion_params import add_digestion_arguments, get_digestion_params_list
 from .parsers import psm
 from .grouping import PseudoGeneGrouping
@@ -29,8 +29,6 @@ from .scoring import ProteinScoringStrategy
 from .grouping import ProteinGroupingStrategy
 from .competition import ProteinCompetitionStrategy
 from .plotter import Plotter, NoPlotter
-from .quant.base import ProteinGroupColumns
-from .quant.protein_annotations import ProteinAnnotationsColumns
 
 logger = logging.getLogger(__name__)
 
@@ -321,10 +319,9 @@ def main(argv):
         )
 
         plotter.set_series_label_base(config.get("label", None))
-        proteinGroupResults = getProteinGroupResults(
+        protein_group_results = get_protein_group_results(
             peptideInfoList,
             args.mq_protein_groups,
-            protein_annotations,
             peptideToProteotypicityMap,
             config["pickedStrategy"],
             config["scoreType"],
@@ -333,14 +330,20 @@ def main(argv):
             args.keep_all_proteins,
         )
 
+        columns = serializers.get_minimal_protein_groups_columns(protein_annotations)
+
+        for c in columns:
+            c.append_headers(protein_group_results, None)
+            c.append_columns(protein_group_results, None, None)
+
         if args.do_quant:
-            proteinGroupResults = doQuantification(
-                config, args, proteinGroupResults, parseId, peptide_to_protein_maps
+            protein_group_results = doQuantification(
+                config, args, protein_group_results, parseId, peptide_to_protein_maps
             )
 
         if args.protein_groups_out:
             write_protein_groups(
-                proteinGroupResults,
+                protein_group_results,
                 args.protein_groups_out,
                 config,
                 apply_suffix=len(configs) > 1,
@@ -356,18 +359,17 @@ def main(argv):
     plotter.show()
 
 
-def getProteinGroupResults(
+def get_protein_group_results(
     peptideInfoList: PeptideInfoList,
     mqProteinGroupsFile: str,
-    proteinAnnotations,
-    peptideToProteotypicityMap,
+    peptide_to_proteotypicity_map,
     pickedStrategy: ProteinCompetitionStrategy,
     scoreType: ProteinScoringStrategy,
     groupingStrategy: ProteinGroupingStrategy,
     plotter: Union[Plotter, NoPlotter],
     keep_all_proteins: bool,
 ):
-    proteinGroups = groupingStrategy.group_proteins(
+    protein_groups = groupingStrategy.group_proteins(
         peptideInfoList, mqProteinGroupsFile
     )
 
@@ -380,65 +382,57 @@ def getProteinGroupResults(
                 raise Exception(
                     "Cannot do rescue step for other score types than bestPEP"
                 )
-            proteinGroups = groupingStrategy.rescue_protein_groups(
+            protein_groups = groupingStrategy.rescue_protein_groups(
                 peptideInfoList,
-                proteinGroupResults,
-                proteinGroups,
-                proteinGroupPeptideInfos,
+                protein_group_results,
+                protein_groups,
+                protein_group_peptide_infos,
             )
 
-        proteinGroupPeptideInfos = scoreType.collect_peptide_scores_per_protein(
-            proteinGroups, peptideInfoList, suppressMissingProteinWarning=rescue_step
+        protein_group_peptide_infos = scoreType.collect_peptide_scores_per_protein(
+            protein_groups, peptideInfoList, suppressMissingProteinWarning=rescue_step
         )
 
         # find optimal division factor for multPEP score
-        scoreType.optimize_hyperparameters(proteinGroups, proteinGroupPeptideInfos)
+        scoreType.optimize_hyperparameters(protein_groups, protein_group_peptide_infos)
 
         if rescue_step and pickedStrategy.short_description() == "pgT":
             (
-                proteinGroups,
-                proteinGroupPeptideInfos,
+                protein_groups,
+                protein_group_peptide_infos,
             ) = groupingStrategy.update_protein_groups(
-                proteinGroups, proteinGroupPeptideInfos
+                protein_groups, protein_group_peptide_infos
             )
 
         (
-            pickedProteinGroups,
-            pickedProteinGroupPeptideInfos,
-            proteinScores,
+            picked_protein_groups,
+            picked_protein_group_peptide_infos,
+            protein_scores,
         ) = pickedStrategy.do_competition(
-            proteinGroups, proteinGroupPeptideInfos, scoreType
+            protein_groups, protein_group_peptide_infos, scoreType
         )
 
-        reportedQvals, observedQvals = fdr.calculateProteinFDRs(
-            pickedProteinGroups, proteinScores
+        reported_qvals, observedQvals = fdr.calculateProteinFDRs(
+            picked_protein_groups, protein_scores
         )
 
         peptide_score_cutoff = (
             scoreType.peptide_score_cutoff if rescue_step else float("inf")
         )
-        proteinGroupResults = ProteinGroupResults.from_protein_groups(
-            pickedProteinGroups,
-            pickedProteinGroupPeptideInfos,
-            proteinScores,
-            reportedQvals,
+        protein_group_results = ProteinGroupResults.from_protein_groups(
+            picked_protein_groups,
+            picked_protein_group_peptide_infos,
+            protein_scores,
+            reported_qvals,
             peptide_score_cutoff,
             keep_all_proteins,
         )
 
-        columns: List[ProteinGroupColumns] = [
-            ProteinAnnotationsColumns(proteinAnnotations)
-        ]
-
-        for c in columns:
-            c.append_headers(proteinGroupResults, None)
-            c.append_columns(proteinGroupResults, None, None)
-
     if scoreType.use_proteotypicity:
         proteotypicity.calculateProteotypicityScores(
-            pickedProteinGroups,
-            pickedProteinGroupPeptideInfos,
-            peptideToProteotypicityMap,
+            picked_protein_groups,
+            picked_protein_group_peptide_infos,
+            peptide_to_proteotypicity_map,
             scoreType,
             peptide_score_cutoff,
         )
@@ -447,10 +441,10 @@ def getProteinGroupResults(
         scoreType, groupingStrategy, pickedStrategy, rescue_step=rescue_step
     )
     plotter.plotQvalCalibrationAndPerformance(
-        reportedQvals, observedQvals, absentRatio=1.0
+        reported_qvals, observedQvals, absentRatio=1.0
     )
 
-    return proteinGroupResults
+    return protein_group_results
 
 
 def parse_evidence_files(

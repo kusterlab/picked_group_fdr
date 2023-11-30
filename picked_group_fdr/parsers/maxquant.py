@@ -10,15 +10,13 @@ from .parsers import tsv
 from . import tsv
 from .. import helpers
 from .. import results
+from .. import serializers
 
 # for type hints only
 from .. import scoring
 
 
 logger = logging.getLogger(__name__)
-
-MQ_PROTEIN_ANNOTATION_HEADERS = ["Protein names", "Gene names", "Fasta headers"]
-
 
 def parse_mq_evidence_file(
     reader,
@@ -149,7 +147,7 @@ def parse_mq_protein_groups_file(
 
     cols = {
         x: headers.index(x)
-        for x in results.PROTEIN_GROUP_HEADERS + additional_headers
+        for x in serializers.PROTEIN_GROUP_HEADERS + additional_headers
         if x in headers
     }
 

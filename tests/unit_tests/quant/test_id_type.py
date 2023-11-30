@@ -1,5 +1,5 @@
 from picked_group_fdr.quant.id_type import _identification_type_per_experiment
-from picked_group_fdr.quantification import retain_only_identified_precursors
+from picked_group_fdr.serializers.base import retain_only_identified_precursors
 
 
 def test_getIdentificationTypePerExperiment_matchBetweenRuns(peptideIntensityListMatchBetweenRuns, experimentToIdxMap):
