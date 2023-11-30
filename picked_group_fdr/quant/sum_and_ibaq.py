@@ -107,6 +107,9 @@ def _get_intensities(
 ) -> List[float]:
     intensities = [0.0] * (len(experimentToIdxMap) * (1 + numSilacChannels))
     for precursor in peptideIntensityList:
+        if np.isnan(precursor.intensity):
+            continue
+
         if (
             helpers.isMbr(precursor.post_err_prob)
             or precursor.post_err_prob <= postErrProbCutoff

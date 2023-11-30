@@ -6,13 +6,12 @@ import logging
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from picked_group_fdr import fdr
-
-from picked_group_fdr.quant.lfq import LFQIntensityColumns
 
 from .. import __version__, __copyright__
 from .. import helpers
+from .. import fdr
 from ..picked_group_fdr import ArgumentParserWithLogger
+from ..quantification import retainOnlyIdentifiedPrecursors
 from .. import digest
 from .. import protein_annotation
 from ..parsers import maxquant, tsv, fragpipe
@@ -29,6 +28,7 @@ from ..quant.protein_probability import ProteinProbabilityColumns
 from ..quant.top_peptide import TopPeptideProbabilityColumns
 from ..quant.spectral_count import SpectralCountColumns
 from ..quant.sum_and_ibaq import SummedIntensityAndIbaqColumns
+from ..quant.lfq import LFQIntensityColumns
 from ..quant.modifications import ModificationsColumns
 from ..quant.indistinguishable_proteins import IndistinguishableProteinsColumns
 from ..results import ProteinGroupResults
@@ -65,6 +65,7 @@ FRAGPIPE_PROTEIN_OUTPUT_DICT = {
 
 FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT = {
     "Protein": "Protein",
+    "Protein group": "Protein IDs",
     "Protein ID": "Protein ID",
     "Entry Name": "Entry Name",
     "Gene": "Gene",
@@ -389,6 +390,9 @@ def generate_fragpipe_protein_file(
     post_err_prob_cutoff = fdr.calcPostErrProbCutoff(
         [x[0] for x in post_err_probs if not helpers.isMbr(x[0])], psm_fdr_cutoff
     )
+    logger.info(
+        f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
+    )
     for c in columns:
         c.append_headers(protein_group_results, experiments)
         c.append_columns(
@@ -576,6 +580,19 @@ def generate_fragpipe_combined_protein_file(
     post_err_prob_cutoff = fdr.calcPostErrProbCutoff(
         [x[0] for x in post_err_probs if not helpers.isMbr(x[0])], psm_fdr_cutoff
     )
+    logger.info(
+        f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
+    )
+
+    logger.info("Filtering for identified precursors")
+    # precursor = (peptide, charge) tuple
+    # this filter also ensures that MBR precursors which were matched to
+    # unidentified precursors are removed
+    for pgr in protein_group_results:
+        pgr.precursorQuants = retainOnlyIdentifiedPrecursors(
+            pgr.precursorQuants, post_err_prob_cutoff
+        )
+        
     for c in columns:
         c.append_headers(protein_group_results, experiments)
         c.append_columns(

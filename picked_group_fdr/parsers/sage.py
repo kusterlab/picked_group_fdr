@@ -50,6 +50,16 @@ results.sage.tsv columns:
 34 protein_q
 35 ms1_intensity
 36 ms2_intensity
+
+lfq.tsv columns:
+1 peptide
+2 charge
+3 proteins
+4 q_value
+5 score
+6 spectral_angle
+7 <file_1>
+...
 """
 
 
@@ -62,12 +72,12 @@ def parse_sage_results_file(
     headers,
     get_proteins,
     score_type: scoring.ProteinScoringStrategy,
-    **kwargs,
+    for_quantification: bool = False,
 ):
     pept_col = tsv.get_column_index(headers, "peptide")
-    score_col = tsv.get_column_index(
-        headers, "sage_discriminant_score"
-    )  # could also use Hyperscore
+    charge_col = tsv.get_column_index(headers, "charge")
+    score_col = tsv.get_column_index(headers, "sage_discriminant_score")
+    experiment_col = tsv.get_column_index(headers, "filename")
     post_err_prob_col = tsv.get_column_index(headers, "posterior_error")
     protein_col = tsv.get_column_index(headers, "proteins")
 
@@ -80,88 +90,56 @@ def parse_sage_results_file(
             logger.info(f"    Reading line {line_idx}")
 
         peptide = row[pept_col]
-        experiment = 1
+        charge = int(row[charge_col])
+        experiment = row[experiment_col]
         score = float(row[score_col])
         if score_type.get_score_column() == "pep":
+            # sage's posterior_error column is log10(PEP) transformed
             score = np.power(10, score)
 
         proteins = row[protein_col].split(";")
 
         proteins = get_proteins(peptide, proteins)
         if proteins:
-            yield peptide, proteins, experiment, score
+            if for_quantification:
+                yield peptide, proteins, experiment, score, charge
+            else:
+                yield peptide, proteins, experiment, score
 
 
-def parse_fragpipe_psm_file_for_peptide_remapping(reader, headers):
-    protein_col = tsv.get_column_index(headers, "Protein")
-    other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
-
-    logger.info("Parsing FragPipe psm.tsv file")
-    for line_idx, row in enumerate(reader):
-        if line_idx % 500000 == 0:
-            logger.info(f"    Reading line {line_idx}")
-
-        proteins = [row[protein_col]]
-        if len(row[other_proteins_col]) > 0:
-            proteins += row[other_proteins_col].split(", ")
-
-        yield row, proteins
+def get_experiments_from_sage_lfq_headers(headers):
+    # here we make the dangerous assumption that the columns after spectral_angle are
+    # the intensity columns. For now, there is no better way, since there is no other
+    # way to identify the intensity columns.
+    spectral_angle_col = tsv.get_column_index(headers, "spectral_angle")
+    return headers[spectral_angle_col+1:]
 
 
-def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
-    pept_col = tsv.get_column_index(headers, "Peptide")
-    charge_col = tsv.get_column_index(headers, "Charge")
-    post_err_prob_col = tsv.get_column_index(headers, "PeptideProphet Probability")
-    protein_col = tsv.get_column_index(headers, "Protein")
-    other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
-    assigned_mods_col = tsv.get_column_index(headers, "Assigned Modifications")
-    observed_mods_col = tsv.get_column_index(headers, "Observed Modifications")
+def parse_sage_lfq_file(reader, headers):
+    pept_col = tsv.get_column_index(headers, "peptide")
+    charge_col = tsv.get_column_index(headers, "charge")
+    protein_col = tsv.get_column_index(headers, "proteins")
 
-    logger.info("Parsing FragPipe psm.tsv file")
-    for line_idx, row in enumerate(reader):
-        if line_idx % 500000 == 0:
-            logger.info(f"    Reading line {line_idx}")
-
-        peptide = row[pept_col]
-        charge = int(row[charge_col])
-        post_err_prob = 1 - float(row[post_err_prob_col]) + 1e-16
-        assigned_mods = row[assigned_mods_col]
-        observed_mods = row[observed_mods_col]
-
-        proteins = [row[protein_col]]
-        if len(row[other_proteins_col]) > 0:
-            proteins += row[other_proteins_col].split(", ")
-
-        yield peptide, charge, post_err_prob, assigned_mods, observed_mods, proteins
-
-
-def parse_fragpipe_combined_ion_file(reader, headers):
-    pept_col = tsv.get_column_index(headers, "Peptide Sequence")
-    charge_col = tsv.get_column_index(headers, "Charge")
-    protein_col = tsv.get_column_index(headers, "Protein")
-    other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
-    assigned_mods_col = tsv.get_column_index(headers, "Assigned Modifications")
+    # here we make the dangerous assumption that the columns after spectral_angle are
+    # the intensity columns. For now, there is no better way, since there is no other
+    # way to identify the intensity columns.
+    spectral_angle_col = tsv.get_column_index(headers, "spectral_angle")
     intensity_cols = [
-        (idx, h.replace(" Intensity", ""))
-        for idx, h in enumerate(headers)
-        if h.endswith(" Intensity")
+        (idx, h) for idx, h in enumerate(headers) if idx > spectral_angle_col
     ]
 
-    logger.info("Parsing FragPipe combined_ion.tsv file")
+    logger.info("Parsing Sage lfq.tsv file")
     for line_idx, row in enumerate(reader):
         if line_idx % 100000 == 0:
             logger.info(f"    Reading line {line_idx}")
 
         peptide = row[pept_col]
         charge = int(row[charge_col])
-        assigned_mods = row[assigned_mods_col]
 
-        proteins = [row[protein_col]]
-        if len(row[other_proteins_col]) > 0:
-            proteins += row[other_proteins_col].split(", ")
+        proteins = row[protein_col].split(";")
 
         intensities = [
             (experiment, float(row[col_idx])) for col_idx, experiment in intensity_cols
         ]
 
-        yield peptide, charge, assigned_mods, proteins, intensities
+        yield peptide, charge, proteins, intensities

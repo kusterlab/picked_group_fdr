@@ -553,14 +553,14 @@ def getIbaqPeptideToProteinMap(
 
 def getNumIbaqPeptidesPerProtein(
     fasta_files: List[str], digestion_params_list: List[DigestionParams]
-):
+) -> Dict[str, int]:
     peptideToProteinMapIbaq = getIbaqPeptideToProteinMap(
         fasta_files, digestion_params_list
     )
     return getNumPeptidesPerProtein(peptideToProteinMapIbaq)
 
 
-def getNumPeptidesPerProtein(peptideToProteinMap):
+def getNumPeptidesPerProtein(peptideToProteinMap) -> Dict[str, int]:
     numPeptidesPerProtein = collections.defaultdict(int)
     for peptide, proteins in peptideToProteinMap.items():
         for protein in proteins:
