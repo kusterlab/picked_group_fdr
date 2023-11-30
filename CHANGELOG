@@ -1,3 +1,9 @@
+v0.6.0-prerelease
+- Added support for FragPipe and Sage for LFQ data
+- Support input files with byte order mark (#9)
+- Added tool for entrapment FDR calculation and plotting
+- Gui build fix (#8)
+
 v0.5.0
 - Added support for proteases that cleave before an amino acid, e.g. Asp-N, Lys-N
 - Fix for empty score field in evidence file
