@@ -146,7 +146,7 @@ def main(argv):
 
     args = parseArgs(argv)
 
-    parseId = digest.parseUntilFirstSpace
+    parseId = digest.parse_until_first_space
     if args.gene_level:
         parseId = protein_annotation.parse_gene_name_func
     elif args.fasta_use_uniprot_id:
@@ -155,7 +155,7 @@ def main(argv):
     peptideToProteinMap, numIbaqPeptidesPerProtein = getPeptideToProteinMaps(
         args, parseId
     )
-    proteinSequences = digest.getProteinSequences(args.fasta, parseId)
+    proteinSequences = digest.get_protein_sequences(args.fasta, parseId)
     proteinGroupResults = maxquant.parse_mq_protein_groups_file(
         args.mq_protein_groups,
         additional_headers=maxquant.MQ_PROTEIN_ANNOTATION_HEADERS,
@@ -296,8 +296,8 @@ def doQuantification(
     # (1) technically this is a precursor-level FDR and not a PSM-level FDR
     # (2) in contrast to MaxQuant, we set a global precursor-level FDR
     #         instead of a per raw file PSM-level FDR
-    postErrProbCutoff = fdr.calcPostErrProbCutoff(
-        [x[0] for x in postErrProbs if not helpers.isMbr(x[0])], psmQvalCutoff
+    postErrProbCutoff = fdr.calc_post_err_prob_cutoff(
+        [x[0] for x in postErrProbs if not helpers.is_mbr(x[0])], psmQvalCutoff
     )
     logger.info(
         f"PEP-cutoff corresponding to {psmQvalCutoff*100:g}% PSM-level FDR: {postErrProbCutoff}"
@@ -310,7 +310,7 @@ def doQuantification(
     # this filter also ensures that MBR precursors which were matched to
     # unidentified precursors are removed
     for pgr in proteinGroupResults:
-        pgr.precursorQuants = retainOnlyIdentifiedPrecursors(
+        pgr.precursorQuants = retain_only_identified_precursors(
             pgr.precursorQuants, postErrProbCutoff
         )
 
@@ -405,7 +405,7 @@ def parseEvidenceFiles(
 
         unique_peptide_precursors += 1
 
-        if not helpers.isDecoy(proteins):
+        if not helpers.is_decoy(proteins):
             postErrProbs.append((postErrProb, rawFile, experiment, peptide))
 
         if len(tmtCols) > 0:
@@ -466,7 +466,7 @@ def printNumPeptidesAtFDR(postErrProbs, postErrProbCutoff):
         if postErrProb <= postErrProbCutoff:
             peptidesPerRawFile[rawFile].append(peptide)
             peptidesPerExperiment[experiment].append(peptide)
-        elif helpers.isMbr(postErrProb) and peptide in survivingModPeptides:
+        elif helpers.is_mbr(postErrProb) and peptide in survivingModPeptides:
             peptidesPerRawFileMbr[rawFile].append(peptide)
             peptidesPerExperimentMbr[experiment].append(peptide)
 
@@ -530,7 +530,7 @@ def parseFileList(fileListFile, params):
     return experiments, fileMapping, params
 
 
-def retainOnlyIdentifiedPrecursors(
+def retain_only_identified_precursors(
     peptideIntensityList: List[PrecursorQuant], postErrProbCutoff
 ):
     identifiedPrecursors = set()

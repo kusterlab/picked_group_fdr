@@ -169,18 +169,18 @@ def writeProteinToGeneMap(fastaFile, outputFile):
         writer.writerow([proteinId, geneId])
 
 
-def parseUntilFirstSpace(fastaId: str) -> str:
+def parse_until_first_space(fastaId: str) -> str:
     return fastaId.split(" ")[0]
 
 
-def readFastaTide(filePath, db="target", parseId=parseUntilFirstSpace):
+def readFastaTide(filePath, db="target", parseId=parse_until_first_space):
     readFastaMaxQuant(filePath, db, parseId, specialAAs=[], decoyPrefix="decoy_")
 
 
 def readFastaMaxQuant(
     filePath,
     db="target",
-    parseId=parseUntilFirstSpace,
+    parseId=parse_until_first_space,
     specialAAs=["K", "R"],
     decoyPrefix="REV__",
 ):
@@ -237,10 +237,10 @@ def getProteinIds(filePath):
     return set(proteinIds)
 
 
-def getProteinSequences(filePaths, parseId):
+def get_protein_sequences(filePaths, parse_id):
     proteinSequences = dict()
     for filePath in filePaths:
-        for proteinId, proteinSeq in readFasta(filePath, db="concat", parseId=parseId):
+        for proteinId, proteinSeq in readFasta(filePath, db="concat", parseId=parse_id):
             if (
                 proteinId not in proteinSequences
             ):  # keep only first sequence per identifier
@@ -442,7 +442,7 @@ def getPeptideToProteinMap(
     methionineCleavage=True,
     useHashKey=False,
     specialAAs=["K", "R"],
-    parseId=parseUntilFirstSpace,
+    parseId=parse_until_first_space,
 ):
     peptideToProteinMap = collections.defaultdict(list)
     proteinToSeqMap = dict()

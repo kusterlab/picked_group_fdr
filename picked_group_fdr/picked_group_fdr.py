@@ -225,7 +225,7 @@ def main(argv):
     plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
     plotter.initPlots()
 
-    parseId = digest.parseUntilFirstSpace
+    parseId = digest.parse_until_first_space
     proteinAnnotations = dict()
     if args.fasta:
         proteinAnnotations = protein_annotation.get_protein_annotations_multiple(
@@ -491,7 +491,7 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
         numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(
             args.fasta, digestion_params_list
         )
-        proteinSequences = digest.getProteinSequences(args.fasta, parseId)
+        proteinSequences = digest.get_protein_sequences(args.fasta, parseId)
     elif args.peptide_protein_map:
         logger.warning("Found peptide_protein_map (instead of fasta input): ")
         logger.warning(

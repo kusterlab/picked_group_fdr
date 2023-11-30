@@ -142,7 +142,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
             elif percolator.is_mokapot_file(headers):
                 proteins = row[proteinCol].split('\t')
             
-            isDecoy = helpers.isDecoy(proteins)
+            isDecoy = helpers.is_decoy(proteins)
 
             if isDecoy:
                 qValue = float(row[qvalCol])

@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from picked_group_fdr.quant.sum_and_ibaq import _get_intensities
-from picked_group_fdr.quantification import retainOnlyIdentifiedPrecursors
+from picked_group_fdr.quantification import retain_only_identified_precursors
 
 
 class TestGetIntensities:
@@ -32,11 +32,11 @@ class TestGetIntensities:
   
   def test_getIntensities_matchBetweenRuns(self, peptideIntensityListMatchBetweenRuns, experimentToIdxMap):
     postErrProbCutoff = 0.1
-    peptideIntensityList = retainOnlyIdentifiedPrecursors(peptideIntensityListMatchBetweenRuns, postErrProbCutoff)
+    peptideIntensityList = retain_only_identified_precursors(peptideIntensityListMatchBetweenRuns, postErrProbCutoff)
     np.testing.assert_almost_equal(_get_intensities(peptideIntensityList, experimentToIdxMap, postErrProbCutoff, numSilacChannels=0), [25.0, 10.0, 5.0])
 
   def test_getIntensities_matchBetweenRunsWithUnidentified(self, peptideIntensityListMatchBetweenRunsWithUnidentified, experimentToIdxMap):
     postErrProbCutoff = 0.1
-    peptideIntensityList = retainOnlyIdentifiedPrecursors(peptideIntensityListMatchBetweenRunsWithUnidentified, postErrProbCutoff)
+    peptideIntensityList = retain_only_identified_precursors(peptideIntensityListMatchBetweenRunsWithUnidentified, postErrProbCutoff)
     np.testing.assert_almost_equal(_get_intensities(peptideIntensityList, experimentToIdxMap, postErrProbCutoff, numSilacChannels=0), [0.0, 0.0, 0.0])
 

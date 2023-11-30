@@ -40,7 +40,7 @@ class TMTIntensityColumns(ProteinGroupColumns):
     def _getTmtIntensities(self, peptideIntensityList: List[PrecursorQuant], experimentToIdxMap, postErrProbCutoff):
         intensities = [np.zeros(self.numTmtChannels*3) for i in range(len(experimentToIdxMap))]
         for precursor in peptideIntensityList:
-            if helpers.isMbr(precursor.post_err_prob) or precursor.post_err_prob <= postErrProbCutoff:
+            if helpers.is_mbr(precursor.post_err_prob) or precursor.post_err_prob <= postErrProbCutoff:
                 intensities[experimentToIdxMap[precursor.experiment]] += precursor.tmt_intensities
         return np.concatenate(intensities)
 

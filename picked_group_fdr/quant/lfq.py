@@ -182,7 +182,7 @@ def _getPeptideIntensities(
 
     def filterMissingAndUnidentified(p: PrecursorQuant):
         return p.intensity > 0.0 and (
-            helpers.isMbr(p.post_err_prob) or p.post_err_prob <= postErrProbCutoff
+            helpers.is_mbr(p.post_err_prob) or p.post_err_prob <= postErrProbCutoff
         )
 
     precursor_list = filter(filterMissingAndUnidentified, precursor_list)

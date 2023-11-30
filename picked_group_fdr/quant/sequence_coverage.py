@@ -74,7 +74,7 @@ class SequenceCoverageColumns(ProteinGroupColumns):
         uniquePeptides = [set() for _ in range(len(experiment_to_idx_map))]
         for precursor in precursor_list:
             if (
-                helpers.isMbr(precursor.post_err_prob)
+                helpers.is_mbr(precursor.post_err_prob)
                 or precursor.post_err_prob <= post_err_prob_cutoff
             ):
                 uniquePeptides[experiment_to_idx_map[precursor.experiment]].add(

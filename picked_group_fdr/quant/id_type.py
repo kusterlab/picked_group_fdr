@@ -40,7 +40,7 @@ def _identification_type_per_experiment(
     idType = [""] * len(experimentToIdxMap)
     for precursor in peptideIntensityList:
         idx = experimentToIdxMap[precursor.experiment]
-        if helpers.isMbr(precursor.post_err_prob) and idType[idx] != "By MS/MS":
+        if helpers.is_mbr(precursor.post_err_prob) and idType[idx] != "By MS/MS":
             idType[idx] = "By matching"
         elif precursor.post_err_prob <= postErrProbCutoff:
             idType[idx] = "By MS/MS"

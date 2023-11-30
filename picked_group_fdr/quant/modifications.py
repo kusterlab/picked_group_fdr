@@ -43,7 +43,7 @@ def _collect_modifications(
     observed_mods = dict()
     for precursor in precursor_list:
         if (
-            helpers.isMbr(precursor.post_err_prob)
+            helpers.is_mbr(precursor.post_err_prob)
             or precursor.post_err_prob <= post_err_prob_cutoff
         ):
             if len(precursor.assigned_mods) > 0:

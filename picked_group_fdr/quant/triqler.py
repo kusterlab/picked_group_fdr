@@ -116,7 +116,7 @@ class TriqlerIntensityColumns(ProteinGroupColumns):
                 expIdx = experimentToIdxMap[precursor.experiment]
                 if prevExpFrac != (precursor.experiment, precursor.fraction) or prevPrecursor != (precursor.peptide, precursor.charge):
                     peptideIntensities[(precursor.peptide, precursor.charge)][expIdx][0] += precursor.intensity
-                    if not helpers.isMbr(precursor.postErrProb):
+                    if not helpers.is_mbr(precursor.postErrProb):
                         currentPostErrProb = peptideIntensities[(precursor.peptide, precursor.charge)][expIdx][1]
                         peptideIntensities[(precursor.peptide, precursor.charge)][expIdx][1] = min([currentPostErrProb, precursor.postErrProb])
                 prevExpFrac = (precursor.experiment, precursor.fraction)

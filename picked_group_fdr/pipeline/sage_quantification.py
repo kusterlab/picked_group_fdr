@@ -16,7 +16,7 @@ from .update_fragpipe_results import (
     fragpipe_format_extra_columns,
 )
 from ..scoring import ProteinScoringStrategy
-from ..quantification import retainOnlyIdentifiedPrecursors
+from ..quantification import retain_only_identified_precursors
 from ..picked_group_fdr import ArgumentParserWithLogger
 from .. import digest
 from .. import protein_annotation
@@ -153,7 +153,7 @@ def main(argv):
     protein_groups.create_index()
 
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
-        args.fasta, parseId=digest.parseUntilFirstSpace
+        args.fasta, parse_id=digest.parse_until_first_space
     )
 
     # create a fresh ProteinGroupResults object for combined_protein.tsv
@@ -202,7 +202,7 @@ def add_precursor_quants(
         if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
             continue
 
-        if not helpers.isDecoy(proteins):
+        if not helpers.is_decoy(proteins):
             post_err_probs.append((post_err_prob, "", experiment, peptide))
 
         for protein_group_idx in protein_group_idxs:
@@ -310,8 +310,8 @@ def generate_fragpipe_combined_protein_file(
     experiment_to_idx_map = {
         experiment: idx for idx, experiment in enumerate(experiments)
     }
-    post_err_prob_cutoff = fdr.calcPostErrProbCutoff(
-        [x[0] for x in post_err_probs if not helpers.isMbr(x[0])], psm_fdr_cutoff
+    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
+        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
     )
     logger.info(
         f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
@@ -322,7 +322,7 @@ def generate_fragpipe_combined_protein_file(
     # this filter also ensures that MBR precursors which were matched to
     # unidentified precursors are removed
     for pgr in protein_group_results:
-        pgr.precursorQuants = retainOnlyIdentifiedPrecursors(
+        pgr.precursorQuants = retain_only_identified_precursors(
             pgr.precursorQuants, post_err_prob_cutoff
         )
 

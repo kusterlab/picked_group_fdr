@@ -77,7 +77,7 @@ def calculateProteotypicityScores(proteinGroups, proteinGroupPeptideInfos, pepti
         else:
             numUniquePeptides = 0
         
-        targetDecoyLabel = -1 if helpers.isDecoy(proteinGroup) else 1
+        targetDecoyLabel = -1 if helpers.is_decoy(proteinGroup) else 1
         ptWriter.writerow([";".join(proteinGroup), targetDecoyLabel, # metadata
                                              proteinScore, proteotypicityRatio, numUniquePeptides, numInsilicoPeptides, maxObservedProteotypicity, maxProteinProteotypicity, proteotypicityDiff, # features
                                              "-.APEPTIDE.-", entrapment.isEntrapment(proteinGroup)] + proteotypicities) # fill peptide and proteins columns with useful metadata

@@ -13,11 +13,11 @@ def test_is_contaminant_false():
 
 
 def test_is_decoy_true():
-  assert helpers.isDecoy(["REV__decoyA"]) == True
+  assert helpers.is_decoy(["REV__decoyA"]) == True
 
   
 def test_is_decoy_false():
-  assert helpers.isDecoy(["REV__decoyA", "proteinA"]) == False
+  assert helpers.is_decoy(["REV__decoyA", "proteinA"]) == False
 
 
 def test_is_shared_peptide_true():

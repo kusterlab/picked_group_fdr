@@ -273,7 +273,7 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
                 logger.info(f"Processing line {i}")
             
             isDecoy = False
-            if helpers.isDecoy(row[proteinsCol:]):
+            if helpers.is_decoy(row[proteinsCol:]):
                 isDecoy = True
             
             postErrorProb = float(row[postErrorProbCol])

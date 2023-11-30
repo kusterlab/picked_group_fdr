@@ -99,7 +99,7 @@ class ProteinGroupResult:
 
         qValue = reportedFdr
         score = proteinScore
-        reverse = "+" if helpers.isDecoy(proteinGroup) else ""
+        reverse = "+" if helpers.is_decoy(proteinGroup) else ""
         potentialContaminant = "+" if helpers.is_contaminant(proteinGroup) else ""
         return cls(
             proteinIds,
@@ -170,7 +170,7 @@ class ProteinGroupResults:
     def append_header(self, header: str) -> None:
         if header in self.headers:
             raise ValueError(
-                f"Trying to addprecursorQuants duplicate column name: {header}"
+                f"Trying to add duplicate column name: {header}"
             )
         self.headers.append(header)
 

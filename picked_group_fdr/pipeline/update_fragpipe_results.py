@@ -10,27 +10,16 @@ import numpy as np
 from .. import __version__, __copyright__
 from .. import helpers
 from .. import fdr
-from ..picked_group_fdr import ArgumentParserWithLogger
-from ..quantification import retainOnlyIdentifiedPrecursors
 from .. import digest
 from .. import protein_annotation
-from ..parsers import maxquant, tsv, fragpipe
+from .. import quant
+from ..picked_group_fdr import ArgumentParserWithLogger
+from ..quantification import retain_only_identified_precursors
+from ..parsers import maxquant
+from ..parsers import tsv
+from ..parsers import fragpipe
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
-from ..quant.precursor_quant import PrecursorQuant
-from ..quant.base import ProteinGroupColumns
-from ..quant.fragpipe_protein_annotations import (
-    FragpipeProteinAnnotationsColumns,
-)
-from ..quant.peptide_count import UniquePeptideCountColumns
-from ..quant.sequence_coverage import SequenceCoverageColumns
-from ..quant.protein_probability import ProteinProbabilityColumns
-from ..quant.top_peptide import TopPeptideProbabilityColumns
-from ..quant.spectral_count import SpectralCountColumns
-from ..quant.sum_and_ibaq import SummedIntensityAndIbaqColumns
-from ..quant.lfq import LFQIntensityColumns
-from ..quant.modifications import ModificationsColumns
-from ..quant.indistinguishable_proteins import IndistinguishableProteinsColumns
 from ..results import ProteinGroupResults
 
 
@@ -80,7 +69,7 @@ FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT = {
 }
 
 
-def parseArgs(argv):
+def parse_args(argv):
     import argparse
 
     apars = ArgumentParserWithLogger(
@@ -145,16 +134,16 @@ def main(argv):
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
     )
 
-    args = parseArgs(argv)
+    args = parse_args(argv)
 
     protein_groups = ProteinGroups.from_mq_protein_groups_file(args.protein_groups)
     protein_groups.create_index()
 
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
-        args.fasta, parseId=digest.parseUntilFirstSpace
+        args.fasta, parse_id=digest.parse_until_first_space
     )
-    protein_sequences = digest.getProteinSequences(
-        args.fasta, parseId=digest.parseUntilFirstSpace
+    protein_sequences = digest.get_protein_sequences(
+        args.fasta, parse_id=digest.parse_until_first_space
     )
 
     for fragpipe_psm_file in args.fragpipe_psm:
@@ -373,22 +362,22 @@ def generate_fragpipe_protein_file(
     silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
 
-    columns: List[ProteinGroupColumns] = [
-        FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
-        SequenceCoverageColumns(protein_sequences),
-        ProteinProbabilityColumns(),
-        TopPeptideProbabilityColumns(),
-        UniquePeptideCountColumns(),
-        SpectralCountColumns(),
-        SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
-        ModificationsColumns(),
-        IndistinguishableProteinsColumns(),
+    columns: List[quant.ProteinGroupColumns] = [
+        quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
+        quant.SequenceCoverageColumns(protein_sequences),
+        quant.ProteinProbabilityColumns(),
+        quant.TopPeptideProbabilityColumns(),
+        quant.UniquePeptideCountColumns(),
+        quant.SpectralCountColumns(),
+        quant.SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        quant.ModificationsColumns(),
+        quant.IndistinguishableProteinsColumns(),
     ]
 
     experiments = [experiment]
     experiment_to_idx_map = {experiment: 0}
-    post_err_prob_cutoff = fdr.calcPostErrProbCutoff(
-        [x[0] for x in post_err_probs if not helpers.isMbr(x[0])], psm_fdr_cutoff
+    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
+        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
     )
     logger.info(
         f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
@@ -452,11 +441,11 @@ def add_precursor_quants(
         if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
             continue
 
-        if not helpers.isDecoy(proteins):
+        if not helpers.is_decoy(proteins):
             post_err_probs.append((post_err_prob, "", experiment, peptide))
 
         for protein_group_idx in protein_group_idxs:
-            precursorQuant = PrecursorQuant(
+            precursor_quant = quant.PrecursorQuant(
                 peptide=peptide,
                 charge=charge,
                 experiment=experiment,
@@ -470,7 +459,7 @@ def add_precursor_quants(
                 observed_mods=observed_mods,
             )
             protein_group_results[protein_group_idx].precursorQuants.append(
-                precursorQuant
+                precursor_quant
             )
     return protein_group_results, post_err_probs
 
@@ -552,21 +541,21 @@ def generate_fragpipe_combined_protein_file(
     silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
 
-    columns: List[ProteinGroupColumns] = [
-        FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
-        ProteinProbabilityColumns(),
-        TopPeptideProbabilityColumns(),
-        UniquePeptideCountColumns(),
-        SpectralCountColumns(),
-        SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
-        IndistinguishableProteinsColumns(),
+    columns: List[quant.ProteinGroupColumns] = [
+        quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
+        quant.ProteinProbabilityColumns(),
+        quant.TopPeptideProbabilityColumns(),
+        quant.UniquePeptideCountColumns(),
+        quant.SpectralCountColumns(),
+        quant.SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        quant.IndistinguishableProteinsColumns(),
     ]
 
     min_peptide_ratios_lfq = 1
     stabilize_large_ratios_lfq = True
     num_threads = 1
     columns.append(
-        LFQIntensityColumns(
+        quant.LFQIntensityColumns(
             silac_channels,
             min_peptide_ratios_lfq,
             stabilize_large_ratios_lfq,
@@ -577,8 +566,8 @@ def generate_fragpipe_combined_protein_file(
     experiment_to_idx_map = {
         experiment: idx for idx, experiment in enumerate(experiments)
     }
-    post_err_prob_cutoff = fdr.calcPostErrProbCutoff(
-        [x[0] for x in post_err_probs if not helpers.isMbr(x[0])], psm_fdr_cutoff
+    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
+        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
     )
     logger.info(
         f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
@@ -589,7 +578,7 @@ def generate_fragpipe_combined_protein_file(
     # this filter also ensures that MBR precursors which were matched to
     # unidentified precursors are removed
     for pgr in protein_group_results:
-        pgr.precursorQuants = retainOnlyIdentifiedPrecursors(
+        pgr.precursorQuants = retain_only_identified_precursors(
             pgr.precursorQuants, post_err_prob_cutoff
         )
         
@@ -673,7 +662,7 @@ def update_precursor_quants(
                     ].intensity = intensity
                 else:
                     # match-between-runs hit
-                    precursorQuant = PrecursorQuant(
+                    precursor_quant = quant.PrecursorQuant(
                         peptide=peptide,
                         charge=charge,
                         experiment=experiment,
@@ -687,7 +676,7 @@ def update_precursor_quants(
                         observed_mods="",
                     )
                     protein_group_results[protein_group_idx].precursorQuants.append(
-                        precursorQuant
+                        precursor_quant
                     )
     return protein_group_results
 

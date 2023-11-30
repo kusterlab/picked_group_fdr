@@ -48,7 +48,7 @@ def _unique_peptide_counts_per_experiment(
     uniquePeptides = [set() for _ in range(len(experiment_to_idx_map))]
     for precursor in precursor_list:
         if (
-            helpers.isMbr(precursor.post_err_prob)
+            helpers.is_mbr(precursor.post_err_prob)
             or precursor.post_err_prob <= post_err_prob_cutoff
         ):
             uniquePeptides[experiment_to_idx_map[precursor.experiment]].add(
@@ -64,7 +64,7 @@ def _unique_peptide_counts_combined(
     uniquePeptides = set()
     for precursor in precursor_list:
         if (
-            helpers.isMbr(precursor.post_err_prob)
+            helpers.is_mbr(precursor.post_err_prob)
             or precursor.post_err_prob <= post_err_prob_cutoff
         ):
             uniquePeptides.add(precursor.peptide)

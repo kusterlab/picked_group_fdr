@@ -111,7 +111,7 @@ def _get_intensities(
             continue
 
         if (
-            helpers.isMbr(precursor.post_err_prob)
+            helpers.is_mbr(precursor.post_err_prob)
             or precursor.post_err_prob <= postErrProbCutoff
         ):
             intensities[

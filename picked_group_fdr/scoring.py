@@ -135,7 +135,7 @@ class MultPEPScore(ProteinScore):
         for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupPeptideInfos):
             multPEP, numPeptides = self._get_score_and_num_peptides(proteinGroupScoreList)
             if numPeptides > 0 and not np.isnan(multPEP):
-                proteinScoreTuples.append([multPEP, numPeptides, helpers.isDecoy(proteinGroup)])
+                proteinScoreTuples.append([multPEP, numPeptides, helpers.is_decoy(proteinGroup)])
         
         proteinScoreTuples = np.array(proteinScoreTuples)
         min_range, max_range = 0.1, 1.0
@@ -445,10 +445,10 @@ class ProteinScoringStrategy:
             for proteinGroupIdx in proteinGroupIdxs:
                 proteinGroupPeptideInfos[proteinGroupIdx].append((score, peptide, proteins))
             
-            if not helpers.isDecoy(proteins) and not helpers.isMbr(score):
+            if not helpers.is_decoy(proteins) and not helpers.is_mbr(score):
                 postErrProbs.append(score)
         
-        self.peptide_score_cutoff = fdr.calcPostErrProbCutoff(postErrProbs, self.peptide_qval_cutoff)
+        self.peptide_score_cutoff = fdr.calc_post_err_prob_cutoff(postErrProbs, self.peptide_qval_cutoff)
         logger.info(f"#Precursors: Shared peptides = {sharedPeptides}; Unique peptides = {uniquePeptides}")
         return proteinGroupPeptideInfos
     

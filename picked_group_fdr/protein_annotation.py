@@ -3,7 +3,7 @@ import os
 
 from typing import Dict, Iterator, Optional, Tuple
 
-from .digest import parseUntilFirstSpace
+from .digest import parse_until_first_space
 from picked_group_fdr import digest
 
 
@@ -66,7 +66,7 @@ def parse_gene_name_func(fasta_header: str) -> Optional[str]:
 
 
 def parse_uniprot_id(fastaId: str) -> str:
-    proteinId = parseUntilFirstSpace(fastaId)
+    proteinId = parse_until_first_space(fastaId)
     if "|" in proteinId:
         return proteinId.split("|")[1]
     else:
@@ -74,7 +74,7 @@ def parse_uniprot_id(fastaId: str) -> str:
 
 
 def parse_entry_name(fasta_header: str) -> str:
-    protein_id = parseUntilFirstSpace(fasta_header)
+    protein_id = parse_until_first_space(fasta_header)
     if "|" in protein_id:
         return protein_id.split("|")[2]
     else:
@@ -88,7 +88,7 @@ def parse_fasta_header(fasta_header: str) -> str:
 def read_fasta_proteins(
     filePath: str,
     db="concat",
-    parseId=parseUntilFirstSpace,
+    parseId=parse_until_first_space,
     parseProteinName=parse_protein_name_func,
     parseGeneName=parse_gene_name_func,
 ):
@@ -127,13 +127,13 @@ def get_protein_annotations_single(fasta_file: str, parseId):
 
 
 def get_protein_annotations_multiple(
-    fastaFiles: Iterator[str], parseId
+    fastaFiles: Iterator[str], parse_id
 ) -> Dict[str, Tuple[str, str, str]]:
     proteinAnnotations = dict()
     for fastaFile in fastaFiles:
         proteinAnnotations = {
             **proteinAnnotations,
-            **get_protein_annotations_single(fastaFile, parseId),
+            **get_protein_annotations_single(fastaFile, parse_id),
         }
 
     return proteinAnnotations

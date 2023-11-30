@@ -44,7 +44,7 @@ def _spectral_counts_per_experiment(
     spectral_counts = [0] * len(experiment_to_idx_map)
     for precursor in precursor_list:
         if (
-            not helpers.isMbr(precursor.post_err_prob)
+            not helpers.is_mbr(precursor.post_err_prob)
             and precursor.post_err_prob <= post_err_prob_cutoff
         ):
             spectral_counts[experiment_to_idx_map[precursor.experiment]] += 1

@@ -19,7 +19,7 @@ def calculateProteinFDRs(proteinGroups, proteinScores):
         if proteinScore == -100.0:
             break
 
-        if helpers.isDecoy(proteinGroup):
+        if helpers.is_decoy(proteinGroup):
             numDecoys += 1
         else:
             numTargets += 1
@@ -28,7 +28,7 @@ def calculateProteinFDRs(proteinGroups, proteinScores):
         reportedFdr = (numDecoys + 1) / (numTargets + 1)
         observedFdr = (numEntrapments + 1) / (numTargets + 1)
 
-        skipForCounting = helpers.isDecoy(proteinGroup) or helpers.isObsolete(
+        skipForCounting = helpers.is_decoy(proteinGroup) or helpers.isObsolete(
             proteinGroup
         )
         proteinGroupInfoList.append((reportedFdr, observedFdr, skipForCounting))
@@ -78,7 +78,7 @@ def calculatePeptideFDRs(peptideScores, scoreType):
         if helpers.is_contaminant(proteins):
             continue
 
-        if helpers.isDecoy(proteins):
+        if helpers.is_decoy(proteins):
             decoyScores.append(score)
         else:
             if entrapment.isEntrapment(proteins):
@@ -171,7 +171,7 @@ def countBelowThreshold(
         )
 
 
-def calcPostErrProbCutoff(postErrProbs, psmQvalCutoff):
+def calc_post_err_prob_cutoff(postErrProbs, psmQvalCutoff):
     postErrProbCutoff = 1.0
     sumPEP = 0.0
     numPSMs = 0

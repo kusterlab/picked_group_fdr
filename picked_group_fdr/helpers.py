@@ -12,7 +12,7 @@ def is_contaminant(proteinGroup: List[str]) -> bool:
     return allContain(proteinGroup, "CON__")
 
     
-def isDecoy(proteinGroup: List[str]) -> bool:
+def is_decoy(proteinGroup: List[str]) -> bool:
     return allContain(proteinGroup, "REV__") or allContain(proteinGroup, "rev_")
 
 
@@ -20,7 +20,7 @@ def isObsolete(proteinGroup: List[str]) -> bool:
     return allContain(proteinGroup, "OBSOLETE__")
 
 
-def isMbr(postErrProb: float) -> bool:
+def is_mbr(postErrProb: float) -> bool:
     return np.isnan(postErrProb) # match-between-runs have NaNs in the PEP column
 
 
@@ -35,7 +35,7 @@ def remove_decoy_proteins_from_target_peptides(proteins: List[str]) -> List[str]
     undesired situations where a decoy protein in a target protein group 
     outcompetes its target counterpart
     """
-    isTargetPeptide = not isDecoy(proteins)
+    isTargetPeptide = not is_decoy(proteins)
     new_proteins = list()
     for protein in proteins:
         if isTargetPeptide and (protein.startswith("REV__") or protein.startswith("rev_")):

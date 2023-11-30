@@ -40,7 +40,7 @@ def _collect_evidence_ids(
     evidence_ids = list()
     for precursor in precursor_list:
         if (
-            helpers.isMbr(precursor.post_err_prob)
+            helpers.is_mbr(precursor.post_err_prob)
             or precursor.post_err_prob <= post_err_prob_cutoff
         ):
             evidence_ids.append(precursor.evidence_id)

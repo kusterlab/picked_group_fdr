@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from picked_group_fdr.quant.sequence_coverage import SequenceCoverageColumns
-from picked_group_fdr.quantification import retainOnlyIdentifiedPrecursors
+from picked_group_fdr.quantification import retain_only_identified_precursors
 from picked_group_fdr.quant.precursor_quant import PrecursorQuant
 
 

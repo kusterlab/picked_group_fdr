@@ -39,7 +39,7 @@ def _top_peptide_probability(
     top_peptide_probability = 0.0
     for precursor in precursor_list:
         if (
-            not helpers.isMbr(precursor.post_err_prob) and
+            not helpers.is_mbr(precursor.post_err_prob) and
             1.0 - precursor.post_err_prob > top_peptide_probability
         ):
             top_peptide_probability = 1.0 - precursor.post_err_prob
