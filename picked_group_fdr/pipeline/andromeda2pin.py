@@ -19,7 +19,7 @@ from ..picked_group_fdr import ArgumentParserWithLogger
 from ..digestion_params import get_digestion_params_list, add_digestion_arguments
 
 
-# hacky way to get the package logger instead of just __main__ when running as a module
+# hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
 
 

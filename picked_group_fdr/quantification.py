@@ -17,16 +17,8 @@ from .parsers import psm
 
 from .protein_groups import ProteinGroups
 from .scoring import ProteinScoringStrategy
-from .quant.base import ProteinGroupColumns
-from .quant.precursor_quant import PrecursorQuant
-from .quant.lfq import LFQIntensityColumns
-from .quant.sum_and_ibaq import SummedIntensityAndIbaqColumns
-from .quant.peptide_count import UniquePeptideCountColumns
-from .quant.id_type import IdentificationTypeColumns
-from .quant.tmt import TMTIntensityColumns
-from .quant.triqler import TriqlerIntensityColumns
-from .quant.sequence_coverage import SequenceCoverageColumns
-from .quant.evidence_ids import EvidenceIdsColumns
+
+from . import quant
 
 # for type hints only
 from .results import ProteinGroupResults
@@ -314,25 +306,25 @@ def doQuantification(
             pgr.precursorQuants, postErrProbCutoff
         )
 
-    columns: List[ProteinGroupColumns] = [
-        UniquePeptideCountColumns(),
-        IdentificationTypeColumns(),
-        SummedIntensityAndIbaqColumns(silacChannels, numIbaqPeptidesPerProtein),
-        SequenceCoverageColumns(proteinSequences),
-        EvidenceIdsColumns(),
+    columns: List[quant.ProteinGroupColumns] = [
+        quant.UniquePeptideCountColumns(),
+        quant.IdentificationTypeColumns(),
+        quant.SummedIntensityAndIbaqColumns(silacChannels, numIbaqPeptidesPerProtein),
+        quant.SequenceCoverageColumns(proteinSequences),
+        quant.EvidenceIdsColumns(),
     ]
 
     if numTmtChannels > 0:
-        columns.append(TMTIntensityColumns(numTmtChannels))
+        columns.append(quant.TMTIntensityColumns(numTmtChannels))
     else:
         columns.append(
-            LFQIntensityColumns(
+            quant.LFQIntensityColumns(
                 silacChannels, minPeptideRatiosLFQ, stabilizeLargeRatiosLFQ, numThreads
             )
         )
         # TODO: add SILAC functionality of Triqler
         if numSilacChannels == 0:
-            columns.append(TriqlerIntensityColumns(params))
+            columns.append(quant.TriqlerIntensityColumns(params))
 
     for c in columns:
         c.append_headers(proteinGroupResults, experiments)
@@ -419,7 +411,7 @@ def parseEvidenceFiles(
             silacCols = None
 
         for proteinGroupIdx in protein_group_idxs:
-            precursorQuant = PrecursorQuant(
+            precursorQuant = quant.PrecursorQuant(
                 peptide,
                 charge,
                 experiment,
@@ -531,7 +523,7 @@ def parseFileList(fileListFile, params):
 
 
 def retain_only_identified_precursors(
-    peptideIntensityList: List[PrecursorQuant], postErrProbCutoff
+    peptideIntensityList: List[quant.PrecursorQuant], postErrProbCutoff
 ):
     identifiedPrecursors = set()
     for precursor in peptideIntensityList:

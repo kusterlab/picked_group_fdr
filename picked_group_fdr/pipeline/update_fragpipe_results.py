@@ -23,7 +23,7 @@ from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
 
 
-# hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
+# hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
 
 FRAGPIPE_PROTEIN_OUTPUT_DICT = {
@@ -166,7 +166,9 @@ def main(argv):
 
     if args.combined_ion is not None:
         # create a fresh ProteinGroupResults object for combined_protein.tsv
-        protein_group_results = maxquant.parse_mq_protein_groups_file(args.protein_groups)
+        protein_group_results = maxquant.parse_mq_protein_groups_file(
+            args.protein_groups
+        )
         generate_fragpipe_combined_protein_file(
             args.fragpipe_psm,
             args.combined_ion,
@@ -369,7 +371,9 @@ def generate_fragpipe_protein_file(
         quant.TopPeptideProbabilityColumns(),
         quant.UniquePeptideCountColumns(),
         quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        quant.SummedIntensityAndIbaqColumns(
+            silac_channels, num_ibaq_peptides_per_protein
+        ),
         quant.ModificationsColumns(),
         quant.IndistinguishableProteinsColumns(),
     ]
@@ -484,7 +488,62 @@ def generate_fragpipe_combined_protein_file(
     psm_fdr_cutoff: float = 0.01,
     discard_shared_peptides: bool = True,
 ):
-    """Generate experiment specific protein.tsv file from psm.tsv and fasta file.
+    """Generate combined_protein.tsv file from psm.tsv and protein annotations.
+
+    Args:
+        fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
+        fasta_file (str): fasta file with all protein sequences
+    """
+    experiments = []
+    post_err_probs_combined = []
+    for fragpipe_psm_file in fragpipe_psm_files:
+        experiment = Path(fragpipe_psm_file).parent.name
+        experiments.append(experiment)
+        protein_group_results, post_err_probs = add_precursor_quants(
+            fragpipe_psm_file,
+            protein_group_results,
+            protein_groups,
+            experiment,
+            discard_shared_peptides,
+        )
+        post_err_probs_combined.extend(post_err_probs)
+
+    if combined_ion_file is not None:
+        protein_group_results = update_precursor_quants(
+            protein_group_results,
+            protein_groups,
+            combined_ion_file,
+            discard_shared_peptides,
+        )
+
+    if output_folder is None:
+        output_folder = Path(fragpipe_psm_files[0]).parents[1]
+    fragpipe_combined_protein_file_out = f"{output_folder}/combined_protein.tsv"
+
+    write_fragpipe_combined_protein_file(
+        fragpipe_combined_protein_file_out,
+        protein_groups,
+        protein_group_results,
+        protein_annotations,
+        experiments,
+        post_err_probs,
+        psm_fdr_cutoff,
+    )
+
+
+def write_fragpipe_combined_protein_file(
+    fragpipe_combined_protein_file_out: str,
+    protein_groups: ProteinGroups,
+    protein_group_results: ProteinGroupResults,
+    protein_annotations: Dict[str, ProteinAnnotation],
+    experiments: List[str],
+    post_err_probs: List,
+    psm_fdr_cutoff: float = 0.01,
+):
+    """Write combined_protein.tsv file using FragPipe's format.
+
+    An additional column "Protein group" is added that is not present in
+    FragPipe's output format.
 
     https://fragpipe.nesvilab.org/docs/tutorial_fragpipe_outputs.html
 
@@ -514,32 +573,13 @@ def generate_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    experiments = []
-    post_err_probs_combined = []
-    for fragpipe_psm_file in fragpipe_psm_files:
-        experiment = Path(fragpipe_psm_file).parent.name
-        experiments.append(experiment)
-        protein_group_results, post_err_probs = add_precursor_quants(
-            fragpipe_psm_file,
-            protein_group_results,
-            protein_groups,
-            experiment,
-            discard_shared_peptides,
-        )
-        post_err_probs_combined.extend(post_err_probs)
-
-    if combined_ion_file is not None:
-        protein_group_results = update_precursor_quants(
-            protein_group_results,
-            protein_groups,
-            combined_ion_file,
-            discard_shared_peptides,
-        )
-
     protein_group_results.remove_protein_groups_without_precursors()
 
     silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
+    min_peptide_ratios_lfq = 1
+    stabilize_large_ratios_lfq = True
+    num_threads = 1
 
     columns: List[quant.ProteinGroupColumns] = [
         quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
@@ -547,13 +587,12 @@ def generate_fragpipe_combined_protein_file(
         quant.TopPeptideProbabilityColumns(),
         quant.UniquePeptideCountColumns(),
         quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        quant.SummedIntensityAndIbaqColumns(
+            silac_channels, num_ibaq_peptides_per_protein
+        ),
         quant.IndistinguishableProteinsColumns(),
     ]
 
-    min_peptide_ratios_lfq = 1
-    stabilize_large_ratios_lfq = True
-    num_threads = 1
     columns.append(
         quant.LFQIntensityColumns(
             silac_channels,
@@ -581,24 +620,20 @@ def generate_fragpipe_combined_protein_file(
         pgr.precursorQuants = retain_only_identified_precursors(
             pgr.precursorQuants, post_err_prob_cutoff
         )
-        
+
     for c in columns:
         c.append_headers(protein_group_results, experiments)
         c.append_columns(
             protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
         )
 
-    if output_folder is not None:
-        fragpipe_combined_protein_file_out = f"{output_folder}/combined_protein.tsv"
-    else:
-        fragpipe_combined_protein_file_out = (
-            f"{Path(fragpipe_psm_files[0]).parents[1]}/combined_protein.tsv"
+    if os.path.isfile(fragpipe_combined_protein_file_out) and not os.path.isfile(
+        fragpipe_combined_protein_file_out.replace(".tsv", ".original.tsv")
+    ):
+        os.rename(
+            fragpipe_combined_protein_file_out,
+            fragpipe_combined_protein_file_out.replace(".tsv", ".original.tsv"),
         )
-        if os.path.isfile(fragpipe_combined_protein_file_out):
-            os.rename(
-                fragpipe_combined_protein_file_out,
-                fragpipe_combined_protein_file_out.replace(".tsv", ".original.tsv"),
-            )
 
     protein_group_results.write(
         fragpipe_combined_protein_file_out,

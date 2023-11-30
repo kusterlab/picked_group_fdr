@@ -13,7 +13,7 @@ from ..parsers import modifications
 from ..parsers import percolator
 from ..parsers import maxquant
 
-# hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
+# hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
 
 
