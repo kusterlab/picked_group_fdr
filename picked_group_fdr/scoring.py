@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Callable, Dict, List
 import logging
 import hashlib
 
@@ -10,6 +10,10 @@ from . import fdr
 from . import digest
 from .parsers import parsers
 from .parsers import psm
+from .parsers import percolator
+from .parsers import maxquant
+from .parsers import fragpipe
+from .parsers import sage
 from .observed_peptides import ObservedPeptides
 from .protein_groups import ProteinGroups
 from .peptide_info import ProteinGroupPeptideInfos, PeptideInfoList
@@ -194,6 +198,10 @@ class ScoreOrigin(ABC):
     @abstractmethod
     def get_evidence_file(self, args):
         pass
+
+    @abstractmethod
+    def get_evidence_parser(self):
+        pass
     
     @abstractmethod
     def remaps_peptides_to_proteins(self):
@@ -203,10 +211,21 @@ class ScoreOrigin(ABC):
     def can_do_quantification(self):
         pass
 
+    @abstractmethod
+    def short_description(self):
+        pass
+    
+    @abstractmethod
+    def long_description(self):
+        pass
+
 
 class PercolatorInput(ScoreOrigin):
     def get_evidence_file(self, args):
         return args.perc_evidence
+    
+    def get_evidence_parser(self):
+        return percolator.parse_percolator_out_file
     
     def remaps_peptides_to_proteins(self):
         return False
@@ -230,6 +249,9 @@ class MaxQuantInput(ScoreOrigin):
     def get_evidence_file(self, args):
         return args.mq_evidence
     
+    def get_evidence_parser(self):
+        return maxquant.parse_mq_evidence_file
+    
     def remaps_peptides_to_proteins(self):
         return True
     
@@ -247,6 +269,9 @@ class FragPipeInput(ScoreOrigin):
     def get_evidence_file(self, args):
         return args.fragpipe_psm
     
+    def get_evidence_parser(self):
+        return fragpipe.parse_fragpipe_psm_file
+    
     def remaps_peptides_to_proteins(self):
         return False
     
@@ -258,6 +283,26 @@ class FragPipeInput(ScoreOrigin):
     
     def long_description(self):
         return 'FragPipe'
+
+
+class SageInput(ScoreOrigin):
+    def get_evidence_file(self, args):
+        return args.sage_results
+    
+    def get_evidence_parser(self):
+        return sage.parse_sage_results_file
+    
+    def remaps_peptides_to_proteins(self):
+        return False
+    
+    def can_do_quantification(self):
+        return True
+    
+    def short_description(self):
+        return 's'
+    
+    def long_description(self):
+        return 'Sage'
 
 
 class ProteinScoringStrategy:
@@ -295,11 +340,16 @@ class ProteinScoringStrategy:
                 self.score_origin = PercolatorInput()
         elif "FragPipe" in score_description:
             self.score_origin = FragPipeInput()
+        elif "Sage" in score_description:
+            self.score_origin = SageInput()
         else:
             self.score_origin = MaxQuantInput()
         
     def get_evidence_file(self, args) -> str:
         return self.score_origin.get_evidence_file(args)
+
+    def get_evidence_parser(self) -> Callable:
+        return self.score_origin.get_evidence_parser()
     
     def remaps_peptides_to_proteins(self) -> bool:
         return self.score_origin.remaps_peptides_to_proteins()

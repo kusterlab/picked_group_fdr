@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import logging
 from typing import Dict, Tuple
@@ -8,6 +10,9 @@ from .tsv import (
     get_delimiter,
     get_tsv_reader,
 )
+
+# for type hints only
+from .. import scoring
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +48,9 @@ def get_percolator_column_idxs(headers):
     return id_col, pept_col, score_col, qval_col, post_err_prob_col, protein_col
 
 
-def parse_percolator_out_file(reader, headers, get_proteins, score_type="PEP"):
+def parse_percolator_out_file(
+    reader, headers, get_proteins, score_type: scoring.ProteinScoringStrategy, **kwargs
+):
     (
         _,
         pept_col,

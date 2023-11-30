@@ -75,6 +75,15 @@ def parseArgs(argv):
     )
 
     apars.add_argument(
+        "--sage_results",
+        default=None,
+        metavar="PSM",
+        nargs="+",
+        help="""Sage results.sage.tsv output file(s); alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
         "--protein_groups_out",
         default=None,
         metavar="PG",
@@ -300,7 +309,7 @@ def main(argv):
                 )
             )
 
-        peptideInfoList = parseEvidenceFiles(
+        peptideInfoList = parse_evidence_files(
             evidenceFiles,
             peptideToProteinMaps,
             config["scoreType"],
@@ -438,25 +447,25 @@ def getProteinGroupResults(
     return proteinGroupResults
 
 
-def parseEvidenceFiles(
-    evidenceFiles: List[str],
-    peptideToProteinMaps: List[Dict[str, List[str]]],
-    scoreType,
-    suppressMissingPeptideWarning: bool,
+def parse_evidence_files(
+    evidence_files: List[str],
+    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    score_type: ProteinScoringStrategy,
+    suppress_missing_peptide_warning: bool,
 ) -> PeptideInfoList:
     """Returns best score per peptide"""
-    if not scoreType.remaps_peptides_to_proteins():
-        peptideToProteinMaps = [None]
+    if not score_type.remaps_peptides_to_proteins():
+        peptide_to_protein_maps = [None]
 
-    if len(peptideToProteinMaps) == 1:
-        peptideToProteinMaps = peptideToProteinMaps * len(evidenceFiles)
+    if len(peptide_to_protein_maps) == 1:
+        peptide_to_protein_maps = peptide_to_protein_maps * len(evidence_files)
 
     peptideInfoList = dict()
     for peptide, proteins, _, score in psm.parse_evidence_file_multiple(
-        evidenceFiles,
-        peptide_to_protein_maps=peptideToProteinMaps,
-        score_type=scoreType,
-        suppress_missing_peptide_warning=suppressMissingPeptideWarning,
+        evidence_files,
+        peptide_to_protein_maps=peptide_to_protein_maps,
+        score_type=score_type,
+        suppress_missing_peptide_warning=suppress_missing_peptide_warning,
     ):
         peptide = helpers.clean_peptide(peptide)
         if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Callable, Dict, List
 import logging
 
 from .. import digest
@@ -8,19 +8,32 @@ from .. import helpers
 from .. import scoring
 
 from . import tsv
-from . import fragpipe
-from . import maxquant
-from . import percolator
 
 
 logger = logging.getLogger(__name__)
 
 
 def get_peptide_to_protein_mapper(
-    peptide_to_protein_map: Dict,
+    peptide_to_protein_map: Dict[str, List[str]],
     score_type: scoring.ProteinScoringStrategy,
     suppress_missing_peptide_warning: bool,
-):
+) -> Callable[[str, List[str]], List[str]]:
+    """Returns a function that updates the list of proteins for a peptide.
+
+    In most cases, the returned function simply returns the same list of proteins as 
+    were used as input. In some cases, the mapping from peptide to protein is not
+    accurate (e.g. MaxQuant) and a remapping is applied. Note that this is also the 
+    place where razor peptide decisions are made.
+
+    Args:
+        peptide_to_protein_map (Dict): _description_
+        score_type (scoring.ProteinScoringStrategy): _description_
+        suppress_missing_peptide_warning (bool): _description_
+
+    Returns:
+        Callable[[str, List[str]], List[str]]: a function that maps a peptide and a list
+            of proteins to an updated list of proteins.
+    """    
     def get_proteins(peptide, tmp_proteins):
         if score_type.remaps_peptides_to_proteins():
             proteins = digest.get_proteins(peptide_to_protein_map, peptide)
@@ -57,22 +70,9 @@ def parse_evidence_file_single(
         peptide_to_protein_map, score_type, suppress_missing_peptide_warning
     )
 
-    if percolator.is_percolator_file(headers):
-        yield from percolator.parse_percolator_out_file(
-            reader, headers, get_proteins, score_type
-        )
-    elif fragpipe.is_fragpipe_psm_file(headers):
-        yield from fragpipe.parse_fragpipe_psm_file(
-            reader, headers, get_proteins, score_type
-        )
-    else:
-        # convert headers to lowercase since MQ changes the capitalization frequently
-        headers = list(map(str.lower, headers))
-        if evidence_file.endswith(".csv"):
-            headers = [x.replace(".", " ") for x in headers]
-        yield from maxquant.parse_mq_evidence_file(
-            reader, headers, get_proteins, score_type, for_quantification
-        )
+    yield from score_type.get_evidence_parser()(
+        reader, headers, get_proteins, score_type, for_quantification=for_quantification
+    )
 
 
 def parse_evidence_file_multiple(

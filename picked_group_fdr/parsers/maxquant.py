@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
 import logging
@@ -9,6 +11,9 @@ from . import tsv
 from .. import helpers
 from .. import results
 
+# for type hints only
+from .. import scoring
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +21,12 @@ MQ_PROTEIN_ANNOTATION_HEADERS = ["Protein names", "Gene names", "Fasta headers"]
 
 
 def parse_mq_evidence_file(
-    reader, headers, get_proteins, score_type, for_quantification=False
+    reader,
+    headers,
+    get_proteins,
+    score_type: scoring.ProteinScoringStrategy,
+    for_quantification: bool = False,
+    **kwargs,
 ):
     """
     Reads in approximately 100,000 lines per second with for_quantification=False
@@ -41,6 +51,9 @@ def parse_mq_evidence_file(
     - Intensity H (for SILAC)
     - Intensity M (optional, for SILAC)
     """
+    # convert headers to lowercase since MQ changes the capitalization frequently
+    headers = list(map(str.lower, headers))
+
     get_header_col = tsv.get_header_col_func(headers)
     get_header_cols_starting_with = tsv.get_header_cols_starting_with_func(headers)
 

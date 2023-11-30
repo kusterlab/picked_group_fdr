@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 
+import numpy as np
+
 from . import tsv
 
 # for type hints only
@@ -9,66 +11,70 @@ from .. import scoring
 
 logger = logging.getLogger(__name__)
 
-"""psm.tsv columns:
-1 Spectrum
-2 Spectrum File
-3 Peptide
-4 Modified Peptide
-5 Prev AA
-6 Next AA
-7 Peptide Length
-8 Charge
-9 Retention
-10 Observed Mass
-11 Calibrated Observed Mass
-12 Observed M/Z
-13 Calibrated Observed M/Z
-14 Calculated Peptide Mass
-15 Calculated M/Z
-16 Delta Mass
-17 SpectralSim
-18 RTScore
-19 Expectation
-20 Hyperscore
-21 Nextscore
-22 PeptideProphet Probability
-23 Number of Enzymatic Termini
-24 Number of Missed Cleavages
-25 Protein Start
-26 Protein End
-27 Intensity
-28 Assigned Modifications
-29 Observed Modifications
-30 Is Unique
-31 Protein
-32 Protein ID
-33 Entry Name
-34 Gene
-35 Protein Description
-36 Mapped Genes
-37 Mapped Proteins
+"""https://sage-docs.vercel.app/docs/results/search
+
+results.sage.tsv columns:
+1 peptide
+2 proteins
+3 num_proteins
+4 filename
+5 scannr
+6 rank
+7 label
+8 expmass
+9 calcmass
+10 charge
+11 peptide_len
+12 missed_cleavages
+13 isotope_error
+14 precursor_ppm
+15 fragment_ppm
+16 hyperscore
+17 delta_next
+18 delta_best
+19 rt
+20 aligned_rt
+21 predicted_rt
+22 delta_rt_model
+23 matched_peaks
+24 longest_b
+25 longest_y
+26 longest_y_pct
+27 matched_intensity_pct
+28 scored_candidates
+29 poisson
+30 sage_discriminant_score
+31 posterior_error
+32 spectrum_q
+33 peptide_q
+34 protein_q
+35 ms1_intensity
+36 ms2_intensity
 """
 
 
-def is_fragpipe_psm_file(headers):
-    return "peptideprophet probability" in map(str.lower, headers)
+def is_sage_results_file(headers):
+    return "sage_discriminant_score" in map(str.lower, headers)
 
 
-def parse_fragpipe_psm_file(
-    reader, headers, get_proteins, score_type: scoring.ProteinScoringStrategy, **kwargs
+def parse_sage_results_file(
+    reader,
+    headers,
+    get_proteins,
+    score_type: scoring.ProteinScoringStrategy,
+    **kwargs,
 ):
-    pept_col = tsv.get_column_index(headers, "Peptide")
+    pept_col = tsv.get_column_index(headers, "peptide")
     score_col = tsv.get_column_index(
-        headers, "SpectralSim"
+        headers, "sage_discriminant_score"
     )  # could also use Hyperscore
-    post_err_prob_col = tsv.get_column_index(headers, "PeptideProphet Probability")
-    protein_col = tsv.get_column_index(headers, "Protein")
-    other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
+    post_err_prob_col = tsv.get_column_index(headers, "posterior_error")
+    protein_col = tsv.get_column_index(headers, "proteins")
 
     if score_type.get_score_column() == "pep":
         score_col = post_err_prob_col
 
-    logger.info("Parsing FragPipe psm.tsv file")
+    logger.info("Parsing Sage results.sage.tsv file")
     for line_idx, row in enumerate(reader):
         if line_idx % 500000 == 0:
             logger.info(f"    Reading line {line_idx}")
@@ -77,11 +83,9 @@ def parse_fragpipe_psm_file(
         experiment = 1
         score = float(row[score_col])
         if score_type.get_score_column() == "pep":
-            score = 1 - score + 1e-16
+            score = np.power(10, score)
 
-        proteins = [row[protein_col]]
-        if len(row[other_proteins_col]) > 0:
-            proteins += row[other_proteins_col].split(", ")
+        proteins = row[protein_col].split(";")
 
         proteins = get_proteins(peptide, proteins)
         if proteins:
