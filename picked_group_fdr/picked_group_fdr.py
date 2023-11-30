@@ -3,7 +3,7 @@ import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import List, Dict, Union
+from typing import Any, List, Dict, Union
 
 import numpy as np
 
@@ -226,16 +226,20 @@ def main(argv):
     plotter.initPlots()
 
     parseId = digest.parse_until_first_space
-    proteinAnnotations = dict()
+    protein_annotations = dict()
     if args.fasta:
-        proteinAnnotations = protein_annotation.get_protein_annotations_multiple(
+        protein_annotations = protein_annotation.get_protein_annotations_multiple(
             args.fasta, parseId
         )
         if args.gene_level:
-            if protein_annotation.has_gene_names(proteinAnnotations, min_ratio_with_genes=0.5):
+            if protein_annotation.has_gene_names(
+                protein_annotations, min_ratio_with_genes=0.5
+            ):
                 parseId = protein_annotation.parse_gene_name_func
-                proteinAnnotations = protein_annotation.get_protein_annotations_multiple(
-                    args.fasta, parseId
+                protein_annotations = (
+                    protein_annotation.get_protein_annotations_multiple(
+                        args.fasta, parseId
+                    )
                 )
             else:
                 logger.warning(
@@ -248,7 +252,7 @@ def main(argv):
                 for config in configs:
                     config["grouping"] = PseudoGeneGrouping()
 
-    peptideToProteinMaps = list()
+    peptide_to_protein_maps = list()
     peptideToProteotypicityMap = dict()
     for config in configs:
         methodDescriptionLong = methods.long_description(
@@ -269,24 +273,24 @@ def main(argv):
             )
             continue
 
-        if len(peptideToProteinMaps) == 0 and (
+        if len(peptide_to_protein_maps) == 0 and (
             config["grouping"].needs_peptide_to_protein_map()
             or config["scoreType"].remaps_peptides_to_proteins()
         ):
             if args.fasta:
                 for digestion_params in digestion_params_list:
-                    peptideToProteinMaps.append(
+                    peptide_to_protein_maps.append(
                         digest.get_peptide_to_protein_map_from_params(
                             args.fasta, [digestion_params]
                         )
                     )
                     entrapment.markEntrapmentProteins(
-                        peptideToProteinMaps[-1], args.mq_protein_groups
+                        peptide_to_protein_maps[-1], args.mq_protein_groups
                     )
             elif args.peptide_protein_map:
                 logger.info("Loading peptide to protein map")
                 for peptide_protein_map in args.peptide_protein_map:
-                    peptideToProteinMaps.append(
+                    peptide_to_protein_maps.append(
                         digest.get_peptide_to_protein_map_from_file(
                             peptide_protein_map, useHashKey=False
                         )
@@ -311,7 +315,7 @@ def main(argv):
 
         peptideInfoList = parse_evidence_files(
             evidenceFiles,
-            peptideToProteinMaps,
+            peptide_to_protein_maps,
             config["scoreType"],
             args.suppress_missing_peptide_warning,
         )
@@ -320,7 +324,7 @@ def main(argv):
         proteinGroupResults = getProteinGroupResults(
             peptideInfoList,
             args.mq_protein_groups,
-            proteinAnnotations,
+            protein_annotations,
             peptideToProteotypicityMap,
             config["pickedStrategy"],
             config["scoreType"],
@@ -330,12 +334,12 @@ def main(argv):
         )
 
         if args.do_quant:
-            doQuantification(
-                config, args, proteinGroupResults, parseId, peptideToProteinMaps
+            proteinGroupResults = doQuantification(
+                config, args, proteinGroupResults, parseId, peptide_to_protein_maps
             )
 
         if args.protein_groups_out:
-            writeProteinGroups(
+            write_protein_groups(
                 proteinGroupResults,
                 args.protein_groups_out,
                 config,
@@ -410,7 +414,9 @@ def getProteinGroupResults(
             pickedProteinGroups, proteinScores
         )
 
-        peptide_score_cutoff = scoreType.peptide_score_cutoff if rescue_step else float("inf")
+        peptide_score_cutoff = (
+            scoreType.peptide_score_cutoff if rescue_step else float("inf")
+        )
         proteinGroupResults = ProteinGroupResults.from_protein_groups(
             pickedProteinGroups,
             pickedProteinGroupPeptideInfos,
@@ -423,7 +429,7 @@ def getProteinGroupResults(
         columns: List[ProteinGroupColumns] = [
             ProteinAnnotationsColumns(proteinAnnotations)
         ]
-                
+
         for c in columns:
             c.append_headers(proteinGroupResults, None)
             c.append_columns(proteinGroupResults, None, None)
@@ -506,7 +512,7 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
             "No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags"
         )
 
-    quantification.do_quantification(
+    return quantification.do_quantification(
         args.mq_evidence,
         proteinGroupResults,
         proteinSequences,
@@ -518,7 +524,12 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
     )
 
 
-def writeProteinGroups(proteinGroupResults: ProteinGroupResults, protein_groups_out, config, apply_suffix):
+def write_protein_groups(
+    protein_group_results: ProteinGroupResults,
+    protein_groups_out: str,
+    config: Dict[str, Any],
+    apply_suffix: bool,
+):
     if apply_suffix:
         base, ext = os.path.splitext(protein_groups_out)
         label = config.get("label", None)
@@ -529,7 +540,7 @@ def writeProteinGroups(proteinGroupResults: ProteinGroupResults, protein_groups_
         else:
             label = label.lower().replace(" ", "_")
         protein_groups_out = f"{base}_{label}{ext}"
-    proteinGroupResults.write(protein_groups_out)
+    protein_group_results.write(protein_groups_out)
     logger.info(f"Protein group results have been written to: {protein_groups_out}")
 
 

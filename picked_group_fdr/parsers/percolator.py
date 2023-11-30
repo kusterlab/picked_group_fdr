@@ -82,10 +82,6 @@ def parse_percolator_out_file(
             yield peptide, proteins, experiment, score
 
 
-def is_percolator_file(headers):
-    return is_native_percolator_file(headers) or is_mokapot_file(headers)
-
-
 def parse_percolator_out_file_to_dict(
     perc_out_file: str, results_dict: dict, input_type: str = ""
 ) -> Tuple[Dict[str, str], Dict[str, Dict[Tuple[int, str], Tuple[float, float]]]]:

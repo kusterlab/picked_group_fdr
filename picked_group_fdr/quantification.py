@@ -2,7 +2,7 @@ import sys
 import os
 import logging
 import collections
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import triqler.parsers
@@ -151,7 +151,7 @@ def main(argv):
         additional_headers=maxquant.MQ_PROTEIN_ANNOTATION_HEADERS,
     )
 
-    do_quantification(
+    protein_group_results = do_quantification(
         args.mq_evidence,
         protein_group_results,
         protein_sequences,
@@ -275,12 +275,37 @@ def do_quantification(
         discard_shared_peptides,
     )
 
-    silac_channels = get_silac_channels(num_silac_channels)
+    columns = get_mq_protein_groups_columns(
+        num_ibaq_peptides_per_protein,
+        protein_sequences,
+        num_tmt_channels,
+        num_silac_channels,
+        min_peptide_ratios_lfq,
+        stabilize_large_ratios_lfq,
+        num_threads,
+        params,
+    )
 
     if len(parsed_experiments) > 0:
         experiments = sorted(list(parsed_experiments))
-    experiment_to_idx_map = dict([(v, k) for k, v in enumerate(experiments)])
 
+    return append_quant_columns(
+        protein_group_results, columns, experiments, post_err_probs, psm_fdr_cutoff
+    )
+
+
+def append_quant_columns(
+    protein_group_results: ProteinGroupResults,
+    columns: List[quant.ProteinGroupColumns],
+    experiments: List[str],
+    post_err_probs: List,
+    psm_fdr_cutoff: float,
+):
+    protein_group_results.remove_protein_groups_without_precursors()
+
+    experiment_to_idx_map = {
+        experiment: idx for idx, experiment in enumerate(experiments)
+    }
     # (1) technically this is a precursor-level FDR and not a PSM-level FDR
     # (2) in contrast to MaxQuant, we set a global precursor-level FDR
     #         instead of a per raw file PSM-level FDR
@@ -302,10 +327,33 @@ def do_quantification(
             pgr.precursorQuants, post_err_prob_cutoff
         )
 
+    for c in columns:
+        c.append_headers(protein_group_results, experiments)
+        c.append_columns(
+            protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
+        )
+
+    return protein_group_results
+
+
+def get_mq_protein_groups_columns(
+    num_ibaq_peptides_per_protein: Dict[str, int],
+    protein_sequences: Dict[str, str],
+    num_tmt_channels: int,
+    num_silac_channels: int,
+    min_peptide_ratios_lfq: int,
+    stabilize_large_ratios_lfq: bool,
+    num_threads: int,
+    params: Dict[str, Any],
+) -> List[quant.ProteinGroupColumns]:
+    silac_channels = get_silac_channels(num_silac_channels)
+
     columns: List[quant.ProteinGroupColumns] = [
         quant.UniquePeptideCountColumns(),
         quant.IdentificationTypeColumns(),
-        quant.SummedIntensityAndIbaqColumns(silac_channels, num_ibaq_peptides_per_protein),
+        quant.SummedIntensityAndIbaqColumns(
+            silac_channels, num_ibaq_peptides_per_protein
+        ),
         quant.SequenceCoverageColumns(protein_sequences),
         quant.EvidenceIdsColumns(),
     ]
@@ -324,10 +372,7 @@ def do_quantification(
         # TODO: add SILAC functionality of Triqler
         if num_silac_channels == 0:
             columns.append(quant.TriqlerIntensityColumns(params))
-
-    for c in columns:
-        c.append_headers(protein_group_results, experiments)
-        c.append_columns(protein_group_results, experiment_to_idx_map, post_err_prob_cutoff)
+    return columns
 
 
 def parse_evidence_files(
@@ -470,7 +515,9 @@ def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float)
     logger.info("Precursor counts per experiment (1% PSM-level FDR):")
     for experiment, peptides in sorted(peptides_per_experiment.items()):
         num_peptides = len(set(peptides))
-        num_peptides_with_mbr = len(set(peptides + peptides_per_experiment_mbr[experiment]))
+        num_peptides_with_mbr = len(
+            set(peptides + peptides_per_experiment_mbr[experiment])
+        )
         logger.info(
             f"    {experiment}: {num_peptides} {'(' + str(num_peptides_with_mbr) + ' with MBR)' if num_peptides_with_mbr > num_peptides else ''}"
         )

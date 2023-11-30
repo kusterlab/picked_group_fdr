@@ -9,12 +9,11 @@ import numpy as np
 
 from .. import __version__, __copyright__
 from .. import helpers
-from .. import fdr
 from .. import digest
 from .. import protein_annotation
 from .. import quant
 from ..picked_group_fdr import ArgumentParserWithLogger
-from ..quantification import retain_only_identified_precursors
+from ..quantification import append_quant_columns
 from ..parsers import maxquant
 from ..parsers import tsv
 from ..parsers import fragpipe
@@ -359,8 +358,53 @@ def generate_fragpipe_protein_file(
         discard_shared_peptides,
     )
 
-    protein_group_results.remove_protein_groups_without_precursors()
+    fragpipe_protein_file_out = get_fragpipe_protein_out_path(
+        output_folder, fragpipe_psm_file
+    )
 
+    columns = get_fragpipe_protein_tsv_columns(
+        protein_groups, protein_annotations, protein_sequences
+    )
+
+    protein_group_results = append_quant_columns(
+        protein_group_results, columns, [experiment], post_err_probs, psm_fdr_cutoff
+    )
+
+    protein_group_results.write(
+        fragpipe_protein_file_out,
+        header_dict=FRAGPIPE_PROTEIN_OUTPUT_DICT,
+        format_extra_columns=fragpipe_format_extra_columns,
+    )
+
+
+def get_fragpipe_protein_out_path(output_folder, fragpipe_psm_file):
+    fragpipe_protein_file_out = fragpipe_psm_file.replace("psm.tsv", "protein.tsv")
+    if output_folder is not None:
+        output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
+        fragpipe_protein_file_out = Path(fragpipe_psm_file).name.replace(
+            "psm.tsv", "protein.tsv"
+        )
+        fragpipe_protein_file_out = f"{output_folder}/{fragpipe_protein_file_out}"
+    else:
+        fragpipe_protein_file_backup = fragpipe_protein_file_out.replace(
+            ".tsv", ".original.tsv"
+        )
+        if os.path.isfile(fragpipe_protein_file_out) and not os.path.isfile(
+            fragpipe_protein_file_backup
+        ):
+            os.rename(
+                fragpipe_protein_file_out,
+                fragpipe_protein_file_backup,
+            )
+    return fragpipe_protein_file_out
+
+
+def get_fragpipe_protein_tsv_columns(
+    protein_groups: ProteinGroups,
+    protein_annotations: Dict[str, ProteinAnnotation],
+    protein_sequences: Dict[str, str],
+):
     silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
 
@@ -378,40 +422,7 @@ def generate_fragpipe_protein_file(
         quant.IndistinguishableProteinsColumns(),
     ]
 
-    experiments = [experiment]
-    experiment_to_idx_map = {experiment: 0}
-    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
-        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
-    )
-    logger.info(
-        f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
-    )
-    for c in columns:
-        c.append_headers(protein_group_results, experiments)
-        c.append_columns(
-            protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
-        )
-
-    fragpipe_protein_file_out = fragpipe_psm_file.replace("psm.tsv", "protein.tsv")
-    if output_folder is not None:
-        output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
-        Path(output_folder).mkdir(parents=True, exist_ok=True)
-        fragpipe_protein_file_out = Path(fragpipe_psm_file).name.replace(
-            "psm.tsv", "protein.tsv"
-        )
-        fragpipe_protein_file_out = f"{output_folder}/{fragpipe_protein_file_out}"
-    else:
-        if os.path.isfile(fragpipe_protein_file_out):
-            os.rename(
-                fragpipe_protein_file_out,
-                fragpipe_protein_file_out.replace(".tsv", ".original.tsv"),
-            )
-
-    protein_group_results.write(
-        fragpipe_protein_file_out,
-        header_dict=FRAGPIPE_PROTEIN_OUTPUT_DICT,
-        format_extra_columns=fragpipe_format_extra_columns,
-    )
+    return columns
 
 
 def add_precursor_quants(
@@ -532,7 +543,7 @@ def generate_fragpipe_combined_protein_file(
 
 
 def write_fragpipe_combined_protein_file(
-    fragpipe_combined_protein_file_out: str,
+    protein_groups_out_file: str,
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, ProteinAnnotation],
@@ -573,13 +584,36 @@ def write_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    protein_group_results.remove_protein_groups_without_precursors()
+    columns = get_fragpipe_combined_protein_columns(protein_groups, protein_annotations)
 
+    protein_group_results = append_quant_columns(
+        protein_group_results, columns, experiments, post_err_probs, psm_fdr_cutoff
+    )
+
+    if os.path.isfile(protein_groups_out_file) and not os.path.isfile(
+        protein_groups_out_file.replace(".tsv", ".original.tsv")
+    ):
+        os.rename(
+            protein_groups_out_file,
+            protein_groups_out_file.replace(".tsv", ".original.tsv"),
+        )
+
+    protein_group_results.write(
+        protein_groups_out_file,
+        header_dict=get_fragpipe_combined_protein_headers(experiments),
+        format_extra_columns=fragpipe_format_extra_columns,
+    )
+
+
+def get_fragpipe_combined_protein_columns(
+    protein_groups: ProteinGroups,
+    protein_annotations: Dict[str, ProteinAnnotation],
+    min_peptide_ratios_lfq: int = 1,
+    stabilize_large_ratios_lfq: bool = True,
+    num_threads: int = 1,
+) -> List[quant.ProteinGroupColumns]:
     silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
-    min_peptide_ratios_lfq = 1
-    stabilize_large_ratios_lfq = True
-    num_threads = 1
 
     columns: List[quant.ProteinGroupColumns] = [
         quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
@@ -602,44 +636,7 @@ def write_fragpipe_combined_protein_file(
         )
     )
 
-    experiment_to_idx_map = {
-        experiment: idx for idx, experiment in enumerate(experiments)
-    }
-    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
-        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
-    )
-    logger.info(
-        f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
-    )
-
-    logger.info("Filtering for identified precursors")
-    # precursor = (peptide, charge) tuple
-    # this filter also ensures that MBR precursors which were matched to
-    # unidentified precursors are removed
-    for pgr in protein_group_results:
-        pgr.precursorQuants = retain_only_identified_precursors(
-            pgr.precursorQuants, post_err_prob_cutoff
-        )
-
-    for c in columns:
-        c.append_headers(protein_group_results, experiments)
-        c.append_columns(
-            protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
-        )
-
-    if os.path.isfile(fragpipe_combined_protein_file_out) and not os.path.isfile(
-        fragpipe_combined_protein_file_out.replace(".tsv", ".original.tsv")
-    ):
-        os.rename(
-            fragpipe_combined_protein_file_out,
-            fragpipe_combined_protein_file_out.replace(".tsv", ".original.tsv"),
-        )
-
-    protein_group_results.write(
-        fragpipe_combined_protein_file_out,
-        header_dict=get_fragpipe_combined_protein_headers(experiments),
-        format_extra_columns=fragpipe_format_extra_columns,
-    )
+    return columns
 
 
 def update_precursor_quants(

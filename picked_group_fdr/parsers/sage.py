@@ -63,10 +63,6 @@ lfq.tsv columns:
 """
 
 
-def is_sage_results_file(headers):
-    return "sage_discriminant_score" in map(str.lower, headers)
-
-
 def parse_sage_results_file(
     reader,
     headers,

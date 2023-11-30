@@ -50,10 +50,6 @@ logger = logging.getLogger(__name__)
 """
 
 
-def is_fragpipe_psm_file(headers):
-    return "peptideprophet probability" in map(str.lower, headers)
-
-
 def parse_fragpipe_psm_file(
     reader, headers, get_proteins, score_type: scoring.ProteinScoringStrategy, **kwargs
 ):
