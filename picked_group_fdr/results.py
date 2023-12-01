@@ -7,7 +7,7 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-from . import serializers
+from . import writers
 from . import helpers
 from .parsers import tsv
 
@@ -108,7 +108,7 @@ class ProteinGroupResult:
 
     def to_list(self, format_extra_columns=None):
         if format_extra_columns is None:
-            format_extra_columns = serializers.format_extra_columns
+            format_extra_columns = writers.format_extra_columns
         return [
             self.proteinIds,
             self.majorityProteinIds,
@@ -137,7 +137,7 @@ class ProteinGroupResults:
         if protein_group_results is not None:
             self.protein_group_results = protein_group_results
         self.experiments = []
-        self.headers = serializers.PROTEIN_GROUP_HEADERS.copy()
+        self.headers = writers.PROTEIN_GROUP_HEADERS.copy()
 
     def __iter__(self):
         return iter(self.protein_group_results)
@@ -168,7 +168,7 @@ class ProteinGroupResults:
         column_idx = self.headers.index(header)
         del self.headers[column_idx]
 
-        column_idx -= len(serializers.PROTEIN_GROUP_HEADERS)
+        column_idx -= len(writers.PROTEIN_GROUP_HEADERS)
         for pgr in self.protein_group_results:
             del pgr.extraColumns[column_idx]
 

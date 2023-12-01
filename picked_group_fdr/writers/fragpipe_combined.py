@@ -32,7 +32,6 @@ def get_fragpipe_combined_protein_columns(
     stabilize_large_ratios_lfq: bool = True,
     num_threads: int = 1,
 ) -> List[columns.ProteinGroupColumns]:
-    silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
 
     return [

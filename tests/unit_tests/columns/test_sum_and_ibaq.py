@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from picked_group_fdr.columns.sum_and_ibaq import _get_intensities
-from picked_group_fdr.serializers.base import retain_only_identified_precursors
+from picked_group_fdr.writers.base import retain_only_identified_precursors
 
 
 class TestGetIntensities:

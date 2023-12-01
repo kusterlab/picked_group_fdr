@@ -16,7 +16,7 @@ from . import quantification
 from . import entrapment
 from . import methods
 from . import fdr
-from . import serializers
+from . import writers
 from .digestion_params import add_digestion_arguments, get_digestion_params_list
 from .parsers import psm
 from .grouping import PseudoGeneGrouping
@@ -312,7 +312,7 @@ def main(argv):
             args.keep_all_proteins,
         )
 
-        minimal_columns = serializers.get_minimal_protein_groups_columns(
+        minimal_columns = writers.get_minimal_protein_groups_columns(
             protein_annotations
         )
 

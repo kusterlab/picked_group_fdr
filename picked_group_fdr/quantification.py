@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from . import serializers
+from . import writers
 from . import digest
 from . import digestion_params
 from . import protein_annotation
@@ -239,7 +239,7 @@ def do_quantification(
         discard_shared_peptides,
     )
 
-    mq_columns = serializers.get_mq_protein_groups_columns(
+    mq_columns = writers.get_mq_protein_groups_columns(
         num_ibaq_peptides_per_protein,
         protein_sequences,
         min_peptide_ratios_lfq,
@@ -248,7 +248,7 @@ def do_quantification(
         params,
     )
 
-    return serializers.append_quant_columns(
+    return writers.append_quant_columns(
         protein_group_results, mq_columns, post_err_probs, psm_fdr_cutoff
     )
 

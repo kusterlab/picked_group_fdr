@@ -11,7 +11,7 @@ from .. import helpers
 from .. import digest
 from .. import protein_annotation
 from .. import columns
-from .. import serializers
+from .. import writers
 from ..picked_group_fdr import ArgumentParserWithLogger
 from ..parsers import maxquant
 from ..parsers import tsv
@@ -326,18 +326,18 @@ def generate_fragpipe_protein_file(
         output_folder, fragpipe_psm_file
     )
 
-    fragpipe_columns = serializers.get_fragpipe_protein_tsv_columns(
+    fragpipe_columns = writers.get_fragpipe_protein_tsv_columns(
         protein_groups, protein_annotations, protein_sequences
     )
 
-    protein_group_results = serializers.append_quant_columns(
+    protein_group_results = writers.append_quant_columns(
         protein_group_results, fragpipe_columns, post_err_probs, psm_fdr_cutoff
     )
 
     protein_group_results.write(
         fragpipe_protein_file_out,
-        header_dict=serializers.FRAGPIPE_PROTEIN_OUTPUT_DICT,
-        format_extra_columns=serializers.fragpipe_format_extra_columns,
+        header_dict=writers.FRAGPIPE_PROTEIN_OUTPUT_DICT,
+        format_extra_columns=writers.fragpipe_format_extra_columns,
     )
 
 
@@ -513,12 +513,12 @@ def write_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    fragpipe_columns = serializers.get_fragpipe_combined_protein_columns(
+    fragpipe_columns = writers.get_fragpipe_combined_protein_columns(
         protein_groups, protein_annotations
     )
 
     protein_group_results.experiments = experiments
-    protein_group_results = serializers.append_quant_columns(
+    protein_group_results = writers.append_quant_columns(
         protein_group_results, fragpipe_columns, post_err_probs, psm_fdr_cutoff
     )
 
@@ -532,8 +532,8 @@ def write_fragpipe_combined_protein_file(
 
     protein_group_results.write(
         protein_groups_out_file,
-        header_dict=serializers.get_fragpipe_combined_protein_headers(experiments),
-        format_extra_columns=serializers.fragpipe_format_extra_columns,
+        header_dict=writers.get_fragpipe_combined_protein_headers(experiments),
+        format_extra_columns=writers.fragpipe_format_extra_columns,
     )
 
 

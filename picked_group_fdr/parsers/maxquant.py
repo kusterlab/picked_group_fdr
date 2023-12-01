@@ -10,7 +10,7 @@ from .parsers import tsv
 from . import tsv
 from .. import helpers
 from .. import results
-from .. import serializers
+from .. import writers
 
 # for type hints only
 from .. import scoring
@@ -147,7 +147,7 @@ def parse_mq_protein_groups_file(
 
     cols = {
         x: headers.index(x)
-        for x in serializers.PROTEIN_GROUP_HEADERS + additional_headers
+        for x in writers.PROTEIN_GROUP_HEADERS + additional_headers
         if x in headers
     }
 
