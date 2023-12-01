@@ -1,8 +1,11 @@
+WORK_DIR=./fragpipe
 RESULT_DIR=./results
+
+cd ${WORK_DIR}
 
 mkdir -p ${RESULT_DIR}
 
-fasta_files="./iprg2016_with_labels.fasta"
+fasta_files="../iprg2016_with_labels.fasta"
 
 fragpipe_psm_files="./A1/psm.tsv ./A2/psm.tsv ./A3/psm.tsv \
     ./B1/psm.tsv ./B2/psm.tsv ./B3/psm.tsv \

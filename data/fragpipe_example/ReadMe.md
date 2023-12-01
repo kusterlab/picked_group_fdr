@@ -34,7 +34,7 @@ As additional files, it will produce a protein grouping result similar to MaxQua
 3. Run the standard LFQ workflow using the fasta file `iprg2016_with_labels.fasta` included in this folder.
 4. In the `Validation` tab, in the `FDR Filter and Report` section, tick the `Print decoys` checkbox and add the following in the `Filter` field.
    ```
-   --sequential --prot 1.0 --ion 1.0 --pept 1.0 --psm 1.0
+   --sequential --prot 1.0 --ion 1.0 --pep 1.0 --psm 1.0
    ```
    This sets the FDR to 100% on all levels, which allows PickedGroupFDR to achieve increased sensitivity over the regular FragPipe results.
 
