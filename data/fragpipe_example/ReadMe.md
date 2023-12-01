@@ -31,7 +31,7 @@ As additional files, it will produce a protein grouping result similar to MaxQua
 
 **Running FragPipe**
 
-3. Run the standard LFQ workflow using the fasta file `iprg2016_with_labels.fasta` included in the `fragpipe.zip` file.
+3. Run the standard LFQ workflow using the fasta file `iprg2016_with_labels.fasta` included in this folder.
 4. In the `Validation` tab, in the `FDR Filter and Report` section, tick the `Print decoys` checkbox and add the following in the `Filter` field.
    ```
    --sequential --prot 1.0 --ion 1.0 --pept 1.0 --psm 1.0

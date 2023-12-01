@@ -259,9 +259,10 @@ def update_precursor_quants(
                     protein_group_results[protein_group_idx].precursorQuants[
                         pq_idx
                     ].intensity = intensity
-                    protein_group_results[protein_group_idx].precursorQuants[
-                        pq_idx
-                    ].charge = charge
+                    if charge == -1:
+                        protein_group_results[protein_group_idx].precursorQuants[
+                            pq_idx
+                        ].charge = charge
                 else:
                     # match-between-runs hit
                     precursorQuant = quant.PrecursorQuant(
