@@ -10,9 +10,10 @@ from scipy.sparse.linalg import lsqr
 from scipy.sparse import csr_matrix
 import bottleneck as bn
 
+
 from .. import helpers
 from .base import ProteinGroupColumns
-from .sum_and_ibaq import _get_intensities
+from .sum_and_ibaq import _get_intensities, get_silac_channels
 from .peptide_count import _unique_peptide_counts_per_experiment
 from ..utils import multiprocessing_pool as pool
 
@@ -25,18 +26,15 @@ logger = logging.getLogger(__name__)
 
 
 class LFQIntensityColumns(ProteinGroupColumns):
-    silacChannels: List[str]
     minPeptideRatiosLFQ: int
     stabilizeLargeRatiosLFQ: bool
 
     def __init__(
         self,
-        silacChannels: List[str],
         minPeptideRatiosLFQ: int,
         stabilizeLargeRatiosLFQ: bool,
         numThreads: int = 1,
     ) -> None:
-        self.silacChannels = silacChannels
         self.minPeptideRatiosLFQ = minPeptideRatiosLFQ
         self.stabilizeLargeRatiosLFQ = stabilizeLargeRatiosLFQ
         self.numThreads = numThreads
@@ -44,15 +42,17 @@ class LFQIntensityColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiments: List[str],
     ) -> None:
-        if len(experiments) <= 1:
+        if (
+            len(protein_group_results.experiments) <= 1
+            or protein_group_results.num_tmt_channels > 0
+        ):
             return
 
-        numSilacChannels = len(self.silacChannels)
-        for experiment in experiments:
-            if numSilacChannels > 0:
-                for silacChannel in self.silacChannels:
+        silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
+        for experiment in protein_group_results.experiments:
+            if protein_group_results.num_silac_channels > 0:
+                for silacChannel in silac_channels:
                     protein_group_results.append_header(
                         "LFQ Intensity " + silacChannel + " " + experiment
                     )
@@ -62,14 +62,18 @@ class LFQIntensityColumns(ProteinGroupColumns):
     def append_columns(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:
-        if len(experiment_to_idx_map) <= 1:
+        experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
+        if (
+            len(experiment_to_idx_map) <= 1
+            or protein_group_results.num_tmt_channels > 0
+        ):
             return
 
         logger.info("Doing quantification: MaxLFQ intensity")
-        numSilacChannels = len(self.silacChannels)
+        num_silac_channels = protein_group_results.num_silac_channels
+        silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
 
         if self.numThreads > 1:
             processingPool = pool.JobPool(
@@ -84,7 +88,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
                 post_err_prob_cutoff,
                 self.minPeptideRatiosLFQ,
                 self.stabilizeLargeRatiosLFQ,
-                numSilacChannels,
+                num_silac_channels,
             ]
             if self.numThreads > 1:
                 processingPool.applyAsync(_getLFQIntensities, args)
@@ -97,7 +101,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
             allIntensities = processingPool.checkPool(printProgressEvery=100)
 
         proteinGroupCounts = np.zeros(
-            len(experiment_to_idx_map) * max(1, numSilacChannels), dtype="int"
+            len(experiment_to_idx_map) * max(1, num_silac_channels), dtype="int"
         )
         for i, (pgr, intensities) in enumerate(
             zip(protein_group_results, allIntensities)
@@ -112,10 +116,10 @@ class LFQIntensityColumns(ProteinGroupColumns):
         logger.info("#Protein groups quantified (1% protein group-level FDR, LFQ):")
         for experiment, numProteinGroups in zip(
             experiment_to_idx_map.keys(),
-            helpers.chunks(proteinGroupCounts, max(1, numSilacChannels)),
+            helpers.chunks(proteinGroupCounts, max(1, num_silac_channels)),
         ):
-            if numSilacChannels > 0:
-                for silacIdx, silacChannel in enumerate(self.silacChannels):
+            if num_silac_channels > 0:
+                for silacIdx, silacChannel in enumerate(silac_channels):
                     logger.info(
                         f"    {experiment} {silacChannel}: {numProteinGroups[silacIdx]}"
                     )

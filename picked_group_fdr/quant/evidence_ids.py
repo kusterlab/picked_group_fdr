@@ -18,14 +18,12 @@ class EvidenceIdsColumns(ProteinGroupColumns):
     def append_headers(
         self,
         proteinGroupResults: results.ProteinGroupResults,
-        experiments: List[str],
     ) -> None:
         proteinGroupResults.append_header("Evidence IDs")
 
     def append_columns(
         self,
         proteinGroupResults: results.ProteinGroupResults,
-        experimentToIdxMap: Dict[str, int],
         postErrProbCutoff: float,
     ) -> None:
         logger.info("Doing quantification: adding evidence ids")

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Dict
 import logging
 
-from ..serializers import MQ_PROTEIN_ANNOTATION_HEADERS
 from ..protein_annotation import ProteinAnnotation
 from .base import ProteinGroupColumns
 
@@ -11,6 +10,8 @@ from .base import ProteinGroupColumns
 from .. import results
 
 logger = logging.getLogger(__name__)
+
+MQ_PROTEIN_ANNOTATION_HEADERS = ["Protein names", "Gene names", "Fasta headers"]
 
 
 class ProteinAnnotationsColumns(ProteinGroupColumns):
@@ -20,15 +21,14 @@ class ProteinAnnotationsColumns(ProteinGroupColumns):
         self.protein_annotations = protein_annotations
 
     def append_headers(
-        self, protein_group_results: results.ProteinGroupResults, experiments
+        self, protein_group_results: results.ProteinGroupResults
     ):
         protein_group_results.append_headers(MQ_PROTEIN_ANNOTATION_HEADERS)
 
     def append_columns(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experimentToIdxMap,
-        postErrProbCutoff,
+        post_err_prob_cutoff,
     ):
         logger.info("Adding protein annotations")
         for pgr in protein_group_results:

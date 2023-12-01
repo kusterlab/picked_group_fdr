@@ -41,14 +41,12 @@ class FragpipeProteinAnnotationsColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiments: List[str],
     ):
         protein_group_results.append_headers(FRAGPIPE_PROTEIN_ANNOTATION_HEADERS)
 
     def append_columns(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experimentToIdxMap,
         postErrProbCutoff,
     ):
         logger.info("Adding protein annotations")

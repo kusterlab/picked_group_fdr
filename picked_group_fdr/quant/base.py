@@ -12,7 +12,6 @@ class ProteinGroupColumns(ABC):
     def append_headers(
         self,
         proteinGroupResults: results.ProteinGroupResults,
-        experiments: List[str],
     ) -> None:
         pass
 
@@ -20,7 +19,6 @@ class ProteinGroupColumns(ABC):
     def append_columns(
         self,
         proteinGroupResults: results.ProteinGroupResults,
-        experimentToIdxMap: Dict[str, int],
         postErrProbCutoff: float,
     ) -> None:
         pass

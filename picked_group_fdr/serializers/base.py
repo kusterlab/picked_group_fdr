@@ -6,11 +6,12 @@ from typing import List, Union
 
 import numpy as np
 
-from .. import fdr, helpers, quant
+from .. import fdr
+from .. import helpers
 
 # for type hints only
 from .. import results
-
+from .. import quant
 
 logger = logging.getLogger(__name__)
 
@@ -80,15 +81,11 @@ def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float)
 def append_quant_columns(
     protein_group_results: results.ProteinGroupResults,
     columns: List[quant.ProteinGroupColumns],
-    experiments: List[str],
     post_err_probs: List,
     psm_fdr_cutoff: float,
 ):
     protein_group_results.remove_protein_groups_without_precursors()
 
-    experiment_to_idx_map = {
-        experiment: idx for idx, experiment in enumerate(experiments)
-    }
     # (1) technically this is a precursor-level FDR and not a PSM-level FDR
     # (2) in contrast to MaxQuant, we set a global precursor-level FDR
     #         instead of a per raw file PSM-level FDR
@@ -111,9 +108,9 @@ def append_quant_columns(
         )
 
     for c in columns:
-        c.append_headers(protein_group_results, experiments)
+        c.append_headers(protein_group_results)
         c.append_columns(
-            protein_group_results, experiment_to_idx_map, post_err_prob_cutoff
+            protein_group_results, post_err_prob_cutoff
         )
 
     return protein_group_results

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 
 from typing import List, Dict
 import logging
@@ -15,61 +16,71 @@ from .. import results
 logger = logging.getLogger(__name__)
 
 
+def get_silac_channels(num_silac_channels: int):
+    silac_channels = list()
+    if num_silac_channels == 3:
+        silac_channels = ["L", "M", "H"]
+    elif num_silac_channels == 2:
+        silac_channels = ["L", "H"]
+    elif num_silac_channels != 0:
+        sys.exit("ERROR: Found a number of SILAC channels not equal to 2 or 3")
+    return silac_channels
+
+
 class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
     """Summed intensity & iBAQ"""
-
-    silacChannels: List[str]
-    numIbaqPeptidesPerProtein: Dict[str, int]
+    num_ibaq_peptides_per_protein: Dict[str, int]
 
     def __init__(
-        self, silacChannels: List[str], numIbaqPeptidesPerProtein: Dict[str, int]
+        self, num_ibaq_peptides_per_protein: Dict[str, int]
     ):
-        self.silacChannels = silacChannels
-        self.numIbaqPeptidesPerProtein = numIbaqPeptidesPerProtein
+        self.num_ibaq_peptides_per_protein = num_ibaq_peptides_per_protein
 
     def append_headers(
         self,
-        proteinGroupResults: results.ProteinGroupResults,
-        experiments: List[str],
+        protein_group_results: results.ProteinGroupResults,
     ) -> None:
-        proteinGroupResults.append_header("Intensity")
-        for experiment in experiments:
-            proteinGroupResults.append_header("Intensity " + experiment)
-            for silacChannel in self.silacChannels:
-                proteinGroupResults.append_header(
+        silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
+        protein_group_results.append_header("Intensity")
+        for experiment in protein_group_results.experiments:
+            protein_group_results.append_header("Intensity " + experiment)
+            for silacChannel in silac_channels:
+                protein_group_results.append_header(
                     "Intensity " + silacChannel + " " + experiment
                 )
 
-        proteinGroupResults.append_header("Number of theoretical peptides iBAQ")
-        proteinGroupResults.append_header("iBAQ")
-        for experiment in experiments:
-            proteinGroupResults.append_header("iBAQ " + experiment)
-            for silacChannel in self.silacChannels:
-                proteinGroupResults.append_header(
+        protein_group_results.append_header("Number of theoretical peptides iBAQ")
+        protein_group_results.append_header("iBAQ")
+        for experiment in protein_group_results.experiments:
+            protein_group_results.append_header("iBAQ " + experiment)
+            for silacChannel in silac_channels:
+                protein_group_results.append_header(
                     "iBAQ " + silacChannel + " " + experiment
                 )
 
     def append_columns(
         self,
-        proteinGroupResults: results.ProteinGroupResults,
-        experimentToIdxMap: Dict[str, int],
-        postErrProbCutoff: float,
+        protein_group_results: results.ProteinGroupResults,
+        post_err_prob_cutoff: float,
     ) -> None:
         logger.info("Doing quantification: summed peptide intensity")
-        numSilacChannels = len(self.silacChannels)
+        
+        experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
+        num_silac_channels = protein_group_results.num_silac_channels
+        silac_channels = get_silac_channels(num_silac_channels)
 
         proteinGroupCounts = np.zeros(
-            len(experimentToIdxMap) * (1 + numSilacChannels), dtype="int"
+            len(experiment_to_idx_map) * (1 + num_silac_channels), dtype="int"
         )
-        for pgr in proteinGroupResults:
+        for pgr in protein_group_results:
             intensities = _get_intensities(
                 pgr.precursorQuants,
-                experimentToIdxMap,
-                postErrProbCutoff,
-                numSilacChannels,
+                experiment_to_idx_map,
+                post_err_prob_cutoff,
+                num_silac_channels,
             )
 
-            totalIntensity = sum(intensities[:: numSilacChannels + 1])
+            totalIntensity = sum(intensities[:: num_silac_channels + 1])
             pgr.append(totalIntensity)
             pgr.extend(intensities)
 
@@ -80,7 +91,7 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
 
             # iBAQ: divide intensity by number of (fully tryptic) theoretical peptides
             numTheoreticalPeptides = [
-                self.numIbaqPeptidesPerProtein[p] for p in pgr.proteinIds.split(";")
+                self.num_ibaq_peptides_per_protein[p] for p in pgr.proteinIds.split(";")
             ]
             leadingProteinNumPeptides = max([1, numTheoreticalPeptides[0]])
             pgr.append(";".join(map(str, numTheoreticalPeptides)))
@@ -91,11 +102,11 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
             "#Protein groups quantified (1% protein group-level FDR, summed intensity / iBAQ):"
         )
         for experiment, numProteinGroups in zip(
-            experimentToIdxMap.keys(),
-            helpers.chunks(proteinGroupCounts, numSilacChannels + 1),
+            experiment_to_idx_map.keys(),
+            helpers.chunks(proteinGroupCounts, num_silac_channels + 1),
         ):
             logger.info(f"    {experiment}: {numProteinGroups[0]}")
-            for silacIdx, silacChannel in enumerate(self.silacChannels):
+            for silacIdx, silacChannel in enumerate(silac_channels):
                 logger.info(
                     f"    {experiment} {silacChannel}: {numProteinGroups[silacIdx+1]}"
                 )

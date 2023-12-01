@@ -3,7 +3,7 @@ import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import Any, List, Dict, Union
+from typing import Any, Callable, List, Dict, Union
 
 import numpy as np
 
@@ -275,31 +275,12 @@ def main(argv):
             config["grouping"].needs_peptide_to_protein_map()
             or config["scoreType"].remaps_peptides_to_proteins()
         ):
-            if args.fasta:
-                for digestion_params in digestion_params_list:
-                    peptide_to_protein_maps.append(
-                        digest.get_peptide_to_protein_map_from_params(
-                            args.fasta, [digestion_params]
-                        )
-                    )
-                    entrapment.markEntrapmentProteins(
-                        peptide_to_protein_maps[-1], args.mq_protein_groups
-                    )
-            elif args.peptide_protein_map:
-                logger.info("Loading peptide to protein map")
-                for peptide_protein_map in args.peptide_protein_map:
-                    peptide_to_protein_maps.append(
-                        digest.get_peptide_to_protein_map_from_file(
-                            peptide_protein_map, useHashKey=False
-                        )
-                    )
-            else:
-                sys.exit(
-                    (
-                        "No fasta or peptide to protein mapping file detected, please"
-                        "specify either the --fasta or --peptide_protein_map flags."
-                    )
-                )
+            peptide_to_protein_maps = get_peptide_to_protein_maps(
+                args.fasta,
+                args.peptide_protein_map,
+                digestion_params_list,
+                args.mq_protein_groups,
+            )
 
         if (
             len(peptideToProteotypicityMap) == 0
@@ -333,12 +314,16 @@ def main(argv):
         columns = serializers.get_minimal_protein_groups_columns(protein_annotations)
 
         for c in columns:
-            c.append_headers(protein_group_results, None)
-            c.append_columns(protein_group_results, None, None)
+            c.append_headers(protein_group_results)
+            c.append_columns(protein_group_results, None)
 
         if args.do_quant:
-            protein_group_results = doQuantification(
-                config, args, protein_group_results, parseId, peptide_to_protein_maps
+            protein_group_results = do_quantification(
+                config["scoreType"],
+                args,
+                protein_group_results,
+                parseId,
+                peptide_to_protein_maps,
             )
 
         if args.protein_groups_out:
@@ -357,6 +342,36 @@ def main(argv):
     plotter.decoratePlots()
     plotter.savePlots()
     plotter.show()
+
+
+def get_peptide_to_protein_maps(
+    fasta, peptide_protein_map, digestion_params_list, mq_protein_groups
+):
+    peptide_to_protein_maps = list()
+    if fasta:
+        for digestion_params in digestion_params_list:
+            peptide_to_protein_maps.append(
+                digest.get_peptide_to_protein_map_from_params(fasta, [digestion_params])
+            )
+            entrapment.markEntrapmentProteins(
+                peptide_to_protein_maps[-1], mq_protein_groups
+            )
+    elif peptide_protein_map:
+        logger.info("Loading peptide to protein map")
+        for peptide_protein_map in peptide_protein_map:
+            peptide_to_protein_maps.append(
+                digest.get_peptide_to_protein_map_from_file(
+                    peptide_protein_map, useHashKey=False
+                )
+            )
+    else:
+        sys.exit(
+            (
+                "No fasta or peptide to protein mapping file detected, please"
+                "specify either the --fasta or --peptide_protein_map flags."
+            )
+        )
+    return peptide_to_protein_maps
 
 
 def get_protein_group_results(
@@ -476,30 +491,36 @@ def parse_evidence_files(
     return peptideInfoList
 
 
-def doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMaps):
-    if not config["scoreType"].can_do_quantification():
+def do_quantification(
+    score_type: ProteinScoringStrategy,
+    args: argparse.Namespace,
+    protein_group_results: ProteinGroupResults,
+    parse_id: Callable,
+    peptide_to_protein_maps: List[Dict[str, List[str]]],
+):
+    if not score_type.can_do_quantification():
         logger.warning(
             "Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed"
         )
         return
 
-    proteinSequences = {}
+    protein_sequences = {}
     if args.fasta:
         digestion_params_list = get_digestion_params_list(args)
 
         logger.info("In silico protein digest for iBAQ")
-        numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(
+        num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein(
             args.fasta, digestion_params_list
         )
-        proteinSequences = digest.get_protein_sequences(args.fasta, parseId)
+        protein_sequences = digest.get_protein_sequences(args.fasta, parse_id)
     elif args.peptide_protein_map:
         logger.warning("Found peptide_protein_map (instead of fasta input): ")
         logger.warning(
             "- calculating iBAQ values using all peptides in peptide_protein_map."
         )
         logger.warning("- cannot compute sequence coverage.")
-        numIbaqPeptidesPerProtein = digest.get_num_peptides_per_protein(
-            digest.merge_peptide_to_protein_maps(peptideToProteinMaps)
+        num_ibaq_peptides_per_protein = digest.get_num_peptides_per_protein(
+            digest.merge_peptide_to_protein_maps(peptide_to_protein_maps)
         )
     else:
         sys.exit(
@@ -508,10 +529,10 @@ def doQuantification(config, args, proteinGroupResults, parseId, peptideToProtei
 
     return quantification.do_quantification(
         args.mq_evidence,
-        proteinGroupResults,
-        proteinSequences,
-        peptideToProteinMaps,
-        numIbaqPeptidesPerProtein,
+        protein_group_results,
+        protein_sequences,
+        peptide_to_protein_maps,
+        num_ibaq_peptides_per_protein,
         args.file_list_file,
         min_peptide_ratios_lfq=args.lfq_min_peptide_ratios,
         num_threads=args.num_threads,

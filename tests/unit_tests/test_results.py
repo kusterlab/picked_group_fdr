@@ -1,8 +1,7 @@
 from typing import List
-from picked_group_fdr.serializers import maxquant
 from picked_group_fdr.protein_annotation import ProteinAnnotation
 from picked_group_fdr.quant.base import ProteinGroupColumns
-from picked_group_fdr.quant.protein_annotations import ProteinAnnotationsColumns
+from picked_group_fdr.quant.protein_annotations import MQ_PROTEIN_ANNOTATION_HEADERS, ProteinAnnotationsColumns
 from picked_group_fdr.results import ProteinGroupResult, ProteinGroupResults
 from picked_group_fdr.parsers.maxquant import parse_mq_protein_groups_file_row
 
@@ -49,7 +48,7 @@ def test_from_mq_protein_groups():
     p = parse_mq_protein_groups_file_row(
         list(row.values()),
         cols,
-        additional_headers=maxquant.MQ_PROTEIN_ANNOTATION_HEADERS,
+        additional_headers=MQ_PROTEIN_ANNOTATION_HEADERS,
     )
     assert p.proteinIds == "123"
     assert p.majorityProteinIds == "456"
@@ -114,8 +113,8 @@ def test_from_protein_group_keep_all_proteins():
 
     proteinGroupResults = ProteinGroupResults([p])
     for c in columns:
-        c.append_headers(proteinGroupResults, None)
-        c.append_columns(proteinGroupResults, None, None)
+        c.append_headers(proteinGroupResults)
+        c.append_columns(proteinGroupResults, None)
 
     assert p.proteinIds == "protein1;protein2"
     assert p.majorityProteinIds == "protein1;protein2"

@@ -125,6 +125,9 @@ class ProteinGroupResult:
 class ProteinGroupResults:
     headers: List[str]
     protein_group_results: List[ProteinGroupResult]
+    experiments: List[str]
+    num_tmt_channels: Optional[int] = None
+    num_silac_channels: Optional[int] = None
 
     def __init__(self, protein_group_results: List[ProteinGroupResult] = None):
         """
@@ -149,9 +152,7 @@ class ProteinGroupResults:
 
     def append_header(self, header: str) -> None:
         if header in self.headers:
-            raise ValueError(
-                f"Trying to add duplicate column name: {header}"
-            )
+            raise ValueError(f"Trying to add duplicate column name: {header}")
         self.headers.append(header)
 
     def append_headers(self, headers: List[str]) -> None:
@@ -169,6 +170,9 @@ class ProteinGroupResults:
         column_idx -= len(serializers.PROTEIN_GROUP_HEADERS)
         for pgr in self.protein_group_results:
             del pgr.extraColumns[column_idx]
+
+    def get_experiment_to_idx_map(self):
+        return {experiment: idx for idx, experiment in enumerate(self.experiments)}
 
     def write(
         self,

@@ -93,7 +93,7 @@ def main(argv):
     if args.ibaq_map:
         writer = getTsvWriter(args.ibaq_map, delimiter="\t")
 
-        numPeptidesPerProtein = getNumIbaqPeptidesPerProtein(
+        numPeptidesPerProtein = get_num_ibaq_peptides_per_protein(
             args.fasta, digestion_params_list
         )
         for protein, numPeptides in numPeptidesPerProtein.items():
@@ -536,7 +536,7 @@ def getAllProteins(peptideToProteinMap):
     return list(seenProteins)
 
 
-def getIbaqPeptideToProteinMap(
+def get_ibaq_peptide_to_protein_map(
     fasta_files: List[str], digestion_params_list: List[DigestionParams]
 ):
     digestion_params_list_ibaq = []
@@ -551,13 +551,13 @@ def getIbaqPeptideToProteinMap(
     )
 
 
-def getNumIbaqPeptidesPerProtein(
+def get_num_ibaq_peptides_per_protein(
     fasta_files: List[str], digestion_params_list: List[DigestionParams]
 ) -> Dict[str, int]:
-    peptideToProteinMapIbaq = getIbaqPeptideToProteinMap(
+    peptide_to_protein_map_ibaq = get_ibaq_peptide_to_protein_map(
         fasta_files, digestion_params_list
     )
-    return get_num_peptides_per_protein(peptideToProteinMapIbaq)
+    return get_num_peptides_per_protein(peptide_to_protein_map_ibaq)
 
 
 def get_num_peptides_per_protein(peptideToProteinMap) -> Dict[str, int]:

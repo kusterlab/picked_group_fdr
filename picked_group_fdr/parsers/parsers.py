@@ -1,7 +1,8 @@
-from typing import List
+from typing import Dict, List
 import logging
 
 import numpy as np
+import triqler.parsers
 
 from . import tsv
 
@@ -116,3 +117,21 @@ def parse_peptides_file_single(
             if np.isnan(score):
                 continue
         yield row[peptide_col], proteins, experiment, score
+
+
+def parse_file_list(file_list_file: str, params: Dict):
+    file_info_list = triqler.parsers.parseFileList(file_list_file)
+    file_mapping = dict()
+    experiments = list()
+    for rawfile, condition, experiment, fraction in file_info_list:
+        if experiment not in experiments:
+            experiments.append(experiment)
+        file_mapping[rawfile] = (experiment, fraction)
+        # Note that params["groupLabels"] and params["groups"] are only used by Triqler
+        if condition not in params["groupLabels"]:
+            params["groupLabels"].append(condition)
+            params["groups"].append([])
+        params["groups"][params["groupLabels"].index(condition)].append(
+            experiments.index(experiment)
+        )
+    return experiments, file_mapping, params

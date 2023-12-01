@@ -4,7 +4,6 @@ import logging
 from typing import Dict, List, Tuple
 
 import numpy as np
-import triqler.parsers
 
 from . import serializers
 from . import digest
@@ -12,8 +11,11 @@ from . import digestion_params
 from . import protein_annotation
 from . import helpers
 from . import quant
+from . import picked_group_fdr
 from .parsers import maxquant
 from .parsers import psm
+from .parsers import parsers
+from .quant import protein_annotations
 from .protein_groups import ProteinGroups
 from .scoring import ProteinScoringStrategy
 
@@ -141,20 +143,22 @@ def main(argv):
     elif args.fasta_use_uniprot_id:
         parse_id = protein_annotation.parse_uniprot_id
 
-    peptide_to_protein_map, num_ibaq_peptides_per_protein = get_peptide_to_protein_maps(
-        args, parse_id
-    )
+    (
+        peptide_to_protein_maps,
+        num_ibaq_peptides_per_protein,
+    ) = get_peptide_to_protein_maps(args)
     protein_sequences = digest.get_protein_sequences(args.fasta, parse_id)
+
     protein_group_results = maxquant.parse_mq_protein_groups_file(
         args.mq_protein_groups,
-        additional_headers=serializers.MQ_PROTEIN_ANNOTATION_HEADERS,
+        additional_headers=protein_annotations.MQ_PROTEIN_ANNOTATION_HEADERS,
     )
 
     protein_group_results = do_quantification(
         args.mq_evidence,
         protein_group_results,
         protein_sequences,
-        peptide_to_protein_map,
+        peptide_to_protein_maps,
         num_ibaq_peptides_per_protein,
         args.file_list_file,
         min_peptide_ratios_lfq=args.lfq_min_peptide_ratios,
@@ -169,75 +173,37 @@ def main(argv):
     )
 
 
-def get_peptide_to_protein_maps(args, parse_id):
-    min_len_ibaq = max([6, args.min_length])
-    max_len_ibaq = min([30, args.max_length])
-
+def get_peptide_to_protein_maps(args):
     logger.info("Loading peptide to protein map...")
+
+    digestion_params_list = digestion_params.get_digestion_params_list(args)
+
+    peptide_to_protein_maps = picked_group_fdr.get_peptide_to_protein_maps(
+        args.fasta,
+        args.peptide_protein_map,
+        digestion_params_list,
+        args.mq_protein_groups,
+    )
     if args.fasta:
-        pre, not_post, post = digest.get_cleavage_sites(args.enzyme)
-
-        db = "concat"
-        if args.fasta_contains_decoys:
-            db = "target"
-
-        peptide_to_protein_map = digest.get_peptide_to_protein_map(
-            args.fasta,
-            db=db,
-            digestion=args.digestion,
-            min_len=args.min_length,
-            max_len=args.max_length,
-            pre=pre,
-            not_post=not_post,
-            post=post,
-            miscleavages=args.cleavages,
-            methionine_cleavage=True,
-            special_aas=list(args.special_aas),
-            parse_od=parse_id,
-            use_hash_key=(args.digestion == "none"),
-        )
-
-        peptide_to_protein_map_ibaq = digest.get_peptide_to_protein_map(
-            args.fasta,
-            db=db,
-            digestion=args.digestion,
-            min_len=min_len_ibaq,
-            max_len=max_len_ibaq,
-            pre=pre,
-            not_post=not_post,
-            post=post,
-            miscleavages=0,
-            methionine_cleavage=False,
-            special_aas=list(args.special_aas),
-            parse_od=parse_id,
-            use_hash_key=(args.digestion == "none"),
+        logger.info("In silico protein digest for iBAQ")
+        num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein(
+            args.fasta, digestion_params_list
         )
     elif args.peptide_protein_map:
-        pre, not_post, post = digest.get_cleavage_sites(args.enzyme)
-
-        peptide_to_protein_map = digest.get_peptide_to_protein_map_from_file(
-            args.peptide_protein_map, useHashKey=True
+        logger.warning("Found peptide_protein_map (instead of fasta input): ")
+        logger.warning(
+            "- calculating iBAQ values using all peptides in peptide_protein_map."
         )
-
-        peptide_to_protein_map_ibaq = dict()
-        for peptide, proteins in peptide_to_protein_map.items():
-            peptide_len = len(peptide)
-            if (
-                peptide_len >= min_len_ibaq
-                and peptide_len <= max_len_ibaq
-                and not digest.has_miscleavage(peptide, pre, not_post, post)
-            ):
-                peptide_to_protein_map_ibaq[peptide] = proteins
+        logger.warning("- cannot compute sequence coverage.")
+        num_ibaq_peptides_per_protein = digest.get_num_peptides_per_protein(
+            digest.merge_peptide_to_protein_maps(peptide_to_protein_maps)
+        )
     else:
         raise ValueError(
             "No peptide to protein map found, use either the --fasta or the --peptide_protein_map arguments"
         )
 
-    num_ibaq_peptides_per_protein = digest.get_num_peptides_per_protein(
-        peptide_to_protein_map_ibaq
-    )
-
-    return peptide_to_protein_map, num_ibaq_peptides_per_protein
+    return peptide_to_protein_maps, num_ibaq_peptides_per_protein
 
 
 def do_quantification(
@@ -258,15 +224,13 @@ def do_quantification(
     logger.info("Preparing for quantification")
     file_mapping = None
     if file_list_file:
-        experiments, file_mapping, params = parse_file_list(file_list_file, params)
+        (
+            protein_group_results.experiments,
+            file_mapping,
+            params,
+        ) = parsers.parse_file_list(file_list_file, params)
 
-    (
-        protein_group_results,
-        post_err_probs,
-        num_tmt_channels,
-        num_silac_channels,
-        parsed_experiments,
-    ) = parse_evidence_files(
+    protein_group_results, post_err_probs = parse_evidence_files(
         protein_group_results,
         mq_evidence_files,
         peptide_to_protein_maps,
@@ -277,19 +241,14 @@ def do_quantification(
     columns = serializers.get_mq_protein_groups_columns(
         num_ibaq_peptides_per_protein,
         protein_sequences,
-        num_tmt_channels,
-        num_silac_channels,
         min_peptide_ratios_lfq,
         stabilize_large_ratios_lfq,
         num_threads,
         params,
     )
 
-    if len(parsed_experiments) > 0:
-        experiments = sorted(list(parsed_experiments))
-
     return serializers.append_quant_columns(
-        protein_group_results, columns, experiments, post_err_probs, psm_fdr_cutoff
+        protein_group_results, columns, post_err_probs, psm_fdr_cutoff
     )
 
 
@@ -305,7 +264,6 @@ def parse_evidence_files(
 
     post_err_probs = list()
     shared_peptide_precursors, unique_peptide_precursors = 0, 0
-    num_tmt_channels, num_silac_channels = -1, -1
     parsed_experiments = set()
     missing_peptides_in_protein_groups = 0
 
@@ -327,14 +285,14 @@ def parse_evidence_files(
         score_type=ProteinScoringStrategy("bestPEP"),
         for_quantification=True,
     ):
-        if num_tmt_channels == -1:
+        if protein_group_results.num_tmt_channels is None:
             # There are 3 columns per TMT channel:
             #     Reporter intensity corrected,
             #     Reporter intensity
             #     Reporter intensity count
-            num_tmt_channels = int(len(tmt_cols) / 3)
-        if num_silac_channels == -1:
-            num_silac_channels = len(silac_cols)
+            protein_group_results.num_tmt_channels = int(len(tmt_cols) / 3)
+        if protein_group_results.num_silac_channels is None:
+            protein_group_results.num_silac_channels = len(silac_cols)
 
         # override the parsed experiment and fraction if --file_list_file option is used
         if file_mapping:
@@ -396,13 +354,10 @@ def parse_evidence_files(
         f"Found {unique_peptide_precursors} precursors from unique and {shared_peptide_precursors} precursors from shared peptides"
     )
 
-    return (
-        protein_group_results,
-        post_err_probs,
-        num_tmt_channels,
-        num_silac_channels,
-        parsed_experiments,
-    )
+    if len(parsed_experiments) > 0:
+        protein_group_results.experiments = sorted(list(parsed_experiments))
+
+    return protein_group_results, post_err_probs
 
 
 def init_triqler_params():
@@ -417,24 +372,6 @@ def init_triqler_params():
     params["returnPosteriors"] = False
     params["minSamples"] = 5
     return params
-
-
-def parse_file_list(file_list_file: str, params: Dict):
-    file_info_list = triqler.parsers.parseFileList(file_list_file)
-    file_mapping = dict()
-    experiments = list()
-    for rawfile, condition, experiment, fraction in file_info_list:
-        if experiment not in experiments:
-            experiments.append(experiment)
-        file_mapping[rawfile] = (experiment, fraction)
-        # Note that params["groupLabels"] and params["groups"] are only used by Triqler
-        if condition not in params["groupLabels"]:
-            params["groupLabels"].append(condition)
-            params["groups"].append([])
-        params["groups"][params["groupLabels"].index(condition)].append(
-            experiments.index(experiment)
-        )
-    return experiments, file_mapping, params
 
 
 if __name__ == "__main__":

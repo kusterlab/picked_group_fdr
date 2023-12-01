@@ -17,18 +17,18 @@ class UniquePeptideCountColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiments: List[str],
     ) -> None:
         protein_group_results.append_header("Combined Total Peptides")
-        for experiment in experiments:
+        for experiment in protein_group_results.experiments:
             protein_group_results.append_header("Unique peptides " + experiment)
 
     def append_columns(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:
+        experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
+        
         logger.info("Doing quantification: Count unique peptides")
         for pgr in protein_group_results:
             pepCount = _unique_peptide_counts_combined(

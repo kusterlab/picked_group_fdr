@@ -17,7 +17,6 @@ class TopPeptideProbabilityColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiments: List[str],
     ) -> None:    
         protein_group_results.append_header("Top Peptide Probability")
 

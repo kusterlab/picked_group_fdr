@@ -24,7 +24,6 @@ class SequenceCoverageColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiments: List[str],
     ) -> None:
         # TODO: properly implement this, right now it is the same as Unique sequence coverage [%]
         protein_group_results.append_header("Sequence coverage [%]")
@@ -36,16 +35,16 @@ class SequenceCoverageColumns(ProteinGroupColumns):
         # Sequence length
         # Sequence lengths
 
-        for experiment in experiments:
+        for experiment in protein_group_results.experiments:
             protein_group_results.append_header("Sequence coverage [%] " + experiment)
 
     def append_columns(
         self,
         protein_group_results: results.ProteinGroupResults,
-        experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> None:
         logger.info("Doing quantification: sequence coverage")
+        experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
         for pgr in protein_group_results:
             sequence_coverages = self.get_sequence_coverages(
                 pgr.precursorQuants,
@@ -65,7 +64,9 @@ class SequenceCoverageColumns(ProteinGroupColumns):
         peptide_set_per_experiment = self.unique_peptides_per_experiment(
             precursor_list, experiment_to_idx_map, post_err_prob_cutoff
         )
-        return self.calculate_sequence_coverages(peptide_set_per_experiment, protein_ids)
+        return self.calculate_sequence_coverages(
+            peptide_set_per_experiment, protein_ids
+        )
 
     def unique_peptides_per_experiment(
         self,

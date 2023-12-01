@@ -2,7 +2,7 @@ from .base import append_quant_columns, format_extra_columns, PROTEIN_GROUP_HEAD
 
 from .minimal import get_minimal_protein_groups_columns
 
-from .maxquant import get_mq_protein_groups_columns, MQ_PROTEIN_ANNOTATION_HEADERS
+from .maxquant import get_mq_protein_groups_columns
 
 from .fragpipe import fragpipe_format_extra_columns
 from .fragpipe_combined import get_fragpipe_combined_protein_columns, get_fragpipe_combined_protein_headers
