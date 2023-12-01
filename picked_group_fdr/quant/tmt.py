@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class TMTIntensityColumns(ProteinGroupColumns):
+    def is_valid(self, protein_group_results: results.ProteinGroupResults):
+        return protein_group_results.num_tmt_channels > 0
+    
     def append_headers(self, protein_group_results: results.ProteinGroupResults):
         for experiment in protein_group_results.experiments:
             for i in range(1, protein_group_results.num_tmt_channels + 1):
@@ -39,16 +42,10 @@ class TMTIntensityColumns(ProteinGroupColumns):
         protein_group_results: results.ProteinGroupResults,
         post_err_prob_cutoff,
     ):
-        if (
-            protein_group_results.num_tmt_channels is None
-            or protein_group_results.num_tmt_channels == 0
-        ):
-            return
-
         logger.info("Doing quantification: TMT intensity")
         experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
         for pgr in protein_group_results:
-            intensities = self._get_tmt_intensities(
+            intensities = _get_tmt_intensities(
                 pgr.precursorQuants,
                 experiment_to_idx_map,
                 post_err_prob_cutoff,
@@ -56,22 +53,22 @@ class TMTIntensityColumns(ProteinGroupColumns):
             )
             pgr.extend(intensities)
 
-    def _get_tmt_intensities(
-        self,
-        precursor_list: List[PrecursorQuant],
-        experiment_to_idx_map: Dict[str, int],
-        post_err_prob_cutoff: float,
-        num_tmt_channels: int,
-    ):
-        intensities = [
-            np.zeros(num_tmt_channels * 3) for i in range(len(experiment_to_idx_map))
-        ]
-        for precursor in precursor_list:
-            if (
-                helpers.is_mbr(precursor.post_err_prob)
-                or precursor.post_err_prob <= post_err_prob_cutoff
-            ):
-                intensities[
-                    experiment_to_idx_map[precursor.experiment]
-                ] += precursor.tmt_intensities
-        return np.concatenate(intensities)
+
+def _get_tmt_intensities(
+    precursor_list: List[PrecursorQuant],
+    experiment_to_idx_map: Dict[str, int],
+    post_err_prob_cutoff: float,
+    num_tmt_channels: int,
+):
+    intensities = [
+        np.zeros(num_tmt_channels * 3) for i in range(len(experiment_to_idx_map))
+    ]
+    for precursor in precursor_list:
+        if (
+            helpers.is_mbr(precursor.post_err_prob)
+            or precursor.post_err_prob <= post_err_prob_cutoff
+        ):
+            intensities[
+                experiment_to_idx_map[precursor.experiment]
+            ] += precursor.tmt_intensities
+    return np.concatenate(intensities)

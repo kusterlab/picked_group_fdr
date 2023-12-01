@@ -53,6 +53,12 @@ def parseArgs(argv):
     )
 
     apars.add_argument(
+        "--fasta_contains_decoys",
+        help="Set this flag if your fasta file already contains decoy protein sequences.",
+        action="store_true",
+    )
+
+    apars.add_argument(
         "--protein_groups",
         default=None,
         metavar="PG",
@@ -94,8 +100,9 @@ def main(argv):
     protein_groups = ProteinGroups.from_mq_protein_groups_file(args.protein_groups)
     protein_groups.create_index()
 
+    db = "target" if args.fasta_contains_decoys else "concat"
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
-        args.fasta, parse_id=digest.parse_until_first_space
+        args.fasta, db=db, parse_id=digest.parse_until_first_space
     )
 
     # create a fresh ProteinGroupResults object for combined_protein.tsv

@@ -126,8 +126,8 @@ class ProteinGroupResults:
     headers: List[str]
     protein_group_results: List[ProteinGroupResult]
     experiments: List[str]
-    num_tmt_channels: Optional[int] = None
-    num_silac_channels: Optional[int] = None
+    num_tmt_channels: int = -1
+    num_silac_channels: int = -1
 
     def __init__(self, protein_group_results: List[ProteinGroupResult] = None):
         """
@@ -136,6 +136,7 @@ class ProteinGroupResults:
         self.protein_group_results = []
         if protein_group_results is not None:
             self.protein_group_results = protein_group_results
+        self.experiments = []
         self.headers = serializers.PROTEIN_GROUP_HEADERS.copy()
 
     def __iter__(self):

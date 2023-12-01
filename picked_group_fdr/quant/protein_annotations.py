@@ -28,7 +28,7 @@ class ProteinAnnotationsColumns(ProteinGroupColumns):
     def append_columns(
         self,
         protein_group_results: results.ProteinGroupResults,
-        post_err_prob_cutoff,
+        post_err_prob_cutoff: float,
     ):
         logger.info("Adding protein annotations")
         for pgr in protein_group_results:

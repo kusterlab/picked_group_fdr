@@ -39,16 +39,16 @@ class LFQIntensityColumns(ProteinGroupColumns):
         self.stabilizeLargeRatiosLFQ = stabilizeLargeRatiosLFQ
         self.numThreads = numThreads
 
+    def is_valid(self, protein_group_results: results.ProteinGroupResults):
+        return (
+            len(protein_group_results.experiments) > 0
+            and protein_group_results.num_tmt_channels <= 0
+        )
+
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
     ) -> None:
-        if (
-            len(protein_group_results.experiments) <= 1
-            or protein_group_results.num_tmt_channels > 0
-        ):
-            return
-
         silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
         for experiment in protein_group_results.experiments:
             if protein_group_results.num_silac_channels > 0:
@@ -65,15 +65,10 @@ class LFQIntensityColumns(ProteinGroupColumns):
         post_err_prob_cutoff: float,
     ) -> None:
         experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
-        if (
-            len(experiment_to_idx_map) <= 1
-            or protein_group_results.num_tmt_channels > 0
-        ):
-            return
 
         logger.info("Doing quantification: MaxLFQ intensity")
-        num_silac_channels = protein_group_results.num_silac_channels
         silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
+        num_silac_channels = len(silac_channels)
 
         if self.numThreads > 1:
             processingPool = pool.JobPool(

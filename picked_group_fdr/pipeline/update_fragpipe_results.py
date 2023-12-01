@@ -52,6 +52,12 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--fasta_contains_decoys",
+        help="Set this flag if your fasta file already contains decoy protein sequences.",
+        action="store_true",
+    )
+
+    apars.add_argument(
         "--protein_groups",
         default=None,
         metavar="PG",
@@ -94,11 +100,12 @@ def main(argv):
     protein_groups = ProteinGroups.from_mq_protein_groups_file(args.protein_groups)
     protein_groups.create_index()
 
+    db = "target" if args.fasta_contains_decoys else "concat"
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
-        args.fasta, parse_id=digest.parse_until_first_space
+        args.fasta, db=db, parse_id=digest.parse_until_first_space
     )
     protein_sequences = digest.get_protein_sequences(
-        args.fasta, parse_id=digest.parse_until_first_space
+        args.fasta, db=db, parse_id=digest.parse_until_first_space
     )
 
     for fragpipe_psm_file in args.fragpipe_psm:
@@ -306,6 +313,7 @@ def generate_fragpipe_protein_file(
         fasta_file (str): fasta file with all protein sequences
     """
     experiment = "1"
+    protein_group_results.experiments.append(experiment)
     protein_group_results, post_err_probs = add_precursor_quants(
         fragpipe_psm_file,
         protein_group_results,
@@ -323,7 +331,7 @@ def generate_fragpipe_protein_file(
     )
 
     protein_group_results = serializers.append_quant_columns(
-        protein_group_results, columns, [experiment], post_err_probs, psm_fdr_cutoff
+        protein_group_results, columns, post_err_probs, psm_fdr_cutoff
     )
 
     protein_group_results.write(
@@ -507,8 +515,9 @@ def write_fragpipe_combined_protein_file(
     """
     columns = serializers.get_fragpipe_combined_protein_columns(protein_groups, protein_annotations)
 
+    protein_group_results.experiments = experiments
     protein_group_results = serializers.append_quant_columns(
-        protein_group_results, columns, experiments, post_err_probs, psm_fdr_cutoff
+        protein_group_results, columns, post_err_probs, psm_fdr_cutoff
     )
 
     if os.path.isfile(protein_groups_out_file) and not os.path.isfile(

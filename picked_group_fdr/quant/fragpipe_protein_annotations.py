@@ -47,7 +47,7 @@ class FragpipeProteinAnnotationsColumns(ProteinGroupColumns):
     def append_columns(
         self,
         protein_group_results: results.ProteinGroupResults,
-        postErrProbCutoff,
+        post_err_prob_cutoff: float,
     ):
         logger.info("Adding protein annotations")
         for pgr in protein_group_results:

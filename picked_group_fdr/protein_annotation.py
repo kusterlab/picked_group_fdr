@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import os
 
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Callable, Dict, Iterator, Optional, Tuple
 
 from .digest import parse_until_first_space
 from picked_group_fdr import digest
@@ -87,39 +87,39 @@ def parse_fasta_header(fasta_header: str) -> str:
 
 def read_fasta_proteins(
     filePath: str,
-    db="concat",
-    parseId=parse_until_first_space,
-    parseProteinName=parse_protein_name_func,
-    parseGeneName=parse_gene_name_func,
+    db: str ="concat",
+    parse_id: Callable[[str], str] = parse_until_first_space,
+    parse_protein_name: Callable[[str], str] = parse_protein_name_func,
+    parse_gene_name: Callable[[str], str] = parse_gene_name_func,
 ):
     if not os.path.isfile(filePath):
         raise FileNotFoundError(
             f"Could not find fasta file {filePath}. Please make sure you provided a valid fasta file."
         )
 
-    for fasta_header, protein_sequence in digest.readFasta(
-        filePath, db=db, parseId=parse_fasta_header
+    for fasta_header, protein_sequence in digest.read_fasta(
+        filePath, db=db, parse_id=parse_fasta_header
     ):
         yield ProteinAnnotation(
-            id=parseId(fasta_header),
+            id=parse_id(fasta_header),
             fasta_header=fasta_header,
             uniprot_id=parse_uniprot_id(fasta_header),
             entry_name=parse_entry_name(fasta_header),
-            gene_name=parseGeneName(fasta_header),
+            gene_name=parse_gene_name(fasta_header),
             length=len(protein_sequence),
             organism=parse_organism(fasta_header),
-            description=parseProteinName(fasta_header),
+            description=parse_protein_name(fasta_header),
             existence=parse_protein_existence_level(fasta_header),
         )
 
 
-def get_protein_annotations_single(fasta_file: str, parseId):
+def get_protein_annotations_single(fasta_file: str, **kwargs):
     protein_annotations = dict()
 
     if not fasta_file:
         return protein_annotations
 
-    for protein_annotation in read_fasta_proteins(fasta_file, parseId=parseId):
+    for protein_annotation in read_fasta_proteins(fasta_file, **kwargs):
         if protein_annotation.id not in protein_annotations:
             protein_annotations[protein_annotation.id] = protein_annotation
 
@@ -127,16 +127,16 @@ def get_protein_annotations_single(fasta_file: str, parseId):
 
 
 def get_protein_annotations_multiple(
-    fastaFiles: Iterator[str], parse_id
+    fasta_files: Iterator[str], **kwargs
 ) -> Dict[str, Tuple[str, str, str]]:
-    proteinAnnotations = dict()
-    for fastaFile in fastaFiles:
-        proteinAnnotations = {
-            **proteinAnnotations,
-            **get_protein_annotations_single(fastaFile, parse_id),
+    protein_annotations = dict()
+    for fasta_file in fasta_files:
+        protein_annotations = {
+            **protein_annotations,
+            **get_protein_annotations_single(fasta_file, **kwargs),
         }
 
-    return proteinAnnotations
+    return protein_annotations
 
 
 def has_gene_names(

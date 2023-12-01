@@ -223,20 +223,21 @@ def main(argv):
     plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
     plotter.initPlots()
 
-    parseId = digest.parse_until_first_space
+    parse_id = digest.parse_until_first_space
+    db = "target" if args.fasta_contains_decoys else "concat"
     protein_annotations = dict()
     if args.fasta:
         protein_annotations = protein_annotation.get_protein_annotations_multiple(
-            args.fasta, parseId
+            args.fasta, db=db, parse_id=parse_id
         )
         if args.gene_level:
             if protein_annotation.has_gene_names(
                 protein_annotations, min_ratio_with_genes=0.5
             ):
-                parseId = protein_annotation.parse_gene_name_func
+                parse_id = protein_annotation.parse_gene_name_func
                 protein_annotations = (
                     protein_annotation.get_protein_annotations_multiple(
-                        args.fasta, parseId
+                        args.fasta, db=db, parse_id=parse_id
                     )
                 )
             else:
@@ -314,15 +315,14 @@ def main(argv):
         columns = serializers.get_minimal_protein_groups_columns(protein_annotations)
 
         for c in columns:
-            c.append_headers(protein_group_results)
-            c.append_columns(protein_group_results, None)
+            c.append(protein_group_results, None)
 
         if args.do_quant:
             protein_group_results = do_quantification(
                 config["scoreType"],
                 args,
                 protein_group_results,
-                parseId,
+                parse_id,
                 peptide_to_protein_maps,
             )
 
@@ -512,7 +512,8 @@ def do_quantification(
         num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein(
             args.fasta, digestion_params_list
         )
-        protein_sequences = digest.get_protein_sequences(args.fasta, parse_id)
+        db = "target" if args.fasta_contains_decoys else "concat"
+        protein_sequences = digest.get_protein_sequences(args.fasta, db=db, parse_id=parse_id)
     elif args.peptide_protein_map:
         logger.warning("Found peptide_protein_map (instead of fasta input): ")
         logger.warning(

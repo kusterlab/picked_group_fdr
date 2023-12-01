@@ -108,10 +108,7 @@ def append_quant_columns(
         )
 
     for c in columns:
-        c.append_headers(protein_group_results)
-        c.append_columns(
-            protein_group_results, post_err_prob_cutoff
-        )
+        c.append(protein_group_results, post_err_prob_cutoff)
 
     return protein_group_results
 

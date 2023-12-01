@@ -17,14 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_silac_channels(num_silac_channels: int):
-    silac_channels = list()
     if num_silac_channels == 3:
-        silac_channels = ["L", "M", "H"]
+        return ["L", "M", "H"]
     elif num_silac_channels == 2:
-        silac_channels = ["L", "H"]
-    elif num_silac_channels != 0:
-        sys.exit("ERROR: Found a number of SILAC channels not equal to 2 or 3")
-    return silac_channels
+        return ["L", "H"]
+    elif num_silac_channels > 0:
+        raise ValueError("ERROR: Found a number of SILAC channels not equal to 2 or 3")
+    return list()
 
 
 class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
@@ -66,8 +65,8 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
         logger.info("Doing quantification: summed peptide intensity")
         
         experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
-        num_silac_channels = protein_group_results.num_silac_channels
-        silac_channels = get_silac_channels(num_silac_channels)
+        silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
+        num_silac_channels = len(silac_channels)
 
         proteinGroupCounts = np.zeros(
             len(experiment_to_idx_map) * (1 + num_silac_channels), dtype="int"

@@ -119,8 +119,7 @@ def parseArgs():
         metavar="F",
         required=True,
         nargs="+",
-        help="""Fasta file used as input
-                                                    """,
+        help="""Fasta file used as input.""",
     )
 
     apars.add_argument(
@@ -128,8 +127,7 @@ def parseArgs():
         default=None,
         metavar="M",
         required=False,
-        help="""Path to file where to write the prosit input file.
-                                                    """,
+        help="""Path to file where to write the prosit input file.""",
     )
 
     apars.add_argument(
@@ -138,8 +136,7 @@ def parseArgs():
         metavar="M",
         required=False,
         help="""Write mapping from peptides to all its proteins to 
-                                                         the specified file.
-                                                    """,
+                the specified file.""",
     )
 
     apars.add_argument(
@@ -147,10 +144,8 @@ def parseArgs():
         default=None,
         metavar="M",
         required=False,
-        help="""Write number of peptides per protein to the specified 
-                                                         file that meet the iBAQ criteria
-                                                         (6 <= pepLen <= 30, no miscleavages).
-                                                    """,
+        help="""Write number of peptides per protein to the specified file that meet 
+                the iBAQ criteria (6 <= pepLen <= 30, no miscleavages).""",
     )
 
     add_digestion_arguments(apars)
@@ -163,7 +158,7 @@ def parseArgs():
 
 def writeProteinToGeneMap(fastaFile, outputFile):
     writer = csv.writer(open(outputFile, "w"), delimiter="\t")
-    for proteinName, _ in readFastaTide(fastaFile, db="target"):
+    for proteinName, _ in read_fasta_tide(fastaFile, db="target"):
         proteinId = proteinName.split("|")[1]
         geneId = proteinName.split("|")[2].split(" ")[0]
         writer.writerow([proteinId, geneId])
@@ -173,14 +168,14 @@ def parse_until_first_space(fastaId: str) -> str:
     return fastaId.split(" ")[0]
 
 
-def readFastaTide(filePath, db="target", parseId=parse_until_first_space):
-    readFastaMaxQuant(filePath, db, parseId, specialAAs=[], decoyPrefix="decoy_")
+def read_fasta_tide(filePath, db="target", parse_id=parse_until_first_space):
+    read_fasta_maxquant(filePath, db, parse_id, specialAAs=[], decoyPrefix="decoy_")
 
 
-def readFastaMaxQuant(
+def read_fasta_maxquant(
     filePath,
     db="target",
-    parseId=parse_until_first_space,
+    parse_id=parse_until_first_space,
     specialAAs=["K", "R"],
     decoyPrefix="REV__",
 ):
@@ -205,14 +200,14 @@ def readFastaMaxQuant(
                         yield (decoyPrefix + name, revSeq)
 
                 if len(line) > 1:
-                    name, seq = parseId(line[1:]), []
+                    name, seq = parse_id(line[1:]), []
             else:
                 seq.append(line)
 
 
 # from . import digestfast
 # readFasta = digestfast.readFastaMaxQuant
-readFasta = readFastaMaxQuant
+read_fasta = read_fasta_maxquant
 
 
 # swaps the specialAAs with its preceding amino acid, as is done in MaxQuant
@@ -232,15 +227,15 @@ def swapPositions(seq, pos1, pos2):
 
 def getProteinIds(filePath):
     proteinIds = list()
-    for proteinId, _ in readFasta(filePath):
+    for proteinId, _ in read_fasta(filePath):
         proteinIds.append(proteinId)
     return set(proteinIds)
 
 
-def get_protein_sequences(filePaths, parse_id):
+def get_protein_sequences(filePaths, **kwargs):
     proteinSequences = dict()
     for filePath in filePaths:
-        for proteinId, proteinSeq in readFasta(filePath, db="concat", parseId=parse_id):
+        for proteinId, proteinSeq in read_fasta(filePath, **kwargs):
             if (
                 proteinId not in proteinSequences
             ):  # keep only first sequence per identifier
@@ -250,7 +245,7 @@ def get_protein_sequences(filePaths, parse_id):
 
 def filterFastaFile(fastaFile, filteredFastaFile, proteins, **kwargs):
     with open(filteredFastaFile, "w") as f:
-        for prot, seq in readFasta(fastaFile, **kwargs):
+        for prot, seq in read_fasta(fastaFile, **kwargs):
             if prot in proteins:
                 f.write(">" + prot + "\n" + seq + "\n")
                 # f.write('>decoy_' + prot + '\n' + seq[::-1] + '\n')
@@ -268,7 +263,7 @@ def getPeptides(
     miscleavages=0,
     methionineCleavage=True,
 ):
-    for protein, seq in readFasta(fastaFile, db):
+    for protein, seq in read_fasta(fastaFile, db):
         if len(seq) == 0:
             raise ValueError(
                 f"Found an empty sequence for protein id {protein}, please check your fasta file."
@@ -449,7 +444,7 @@ def get_peptide_to_protein_map(
 
     logger.info(f"Parsing fasta file: {Path(fastaFile).name}")
     for proteinIdx, (protein, seq) in enumerate(
-        readFasta(fastaFile, db, parse_od, specialAAs=special_aas)
+        read_fasta(fastaFile, db, parse_od, specialAAs=special_aas)
     ):
         if proteinIdx % 10000 == 0:
             logger.info(f"Digesting protein {proteinIdx}")

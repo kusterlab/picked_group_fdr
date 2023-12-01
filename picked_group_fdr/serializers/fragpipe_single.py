@@ -48,9 +48,7 @@ def get_fragpipe_protein_tsv_columns(
         quant.TopPeptideProbabilityColumns(),
         quant.UniquePeptideCountColumns(),
         quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(
-            silac_channels, num_ibaq_peptides_per_protein
-        ),
+        quant.SummedIntensityAndIbaqColumns(num_ibaq_peptides_per_protein),
         quant.ModificationsColumns(),
         quant.IndistinguishableProteinsColumns(),
     ]

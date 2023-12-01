@@ -25,20 +25,25 @@ class TriqlerIntensityColumns(ProteinGroupColumns):
     def __init__(self, params):
         self.params = params
 
-    def append_headers(self, protein_group_results: results.ProteinGroupResults):
-        if protein_group_results.num_tmt_channels > 0 or protein_group_results.num_silac_channels > 0:
+    def is_valid(self, protein_group_results: results.ProteinGroupResults) -> bool:
+        if (
+            protein_group_results.num_tmt_channels > 0
+            or protein_group_results.num_silac_channels > 0
+        ):
             logger.info(
                 "Skipping quantification with Triqler, TMT and SILAC not yet supported"
             )
-            return
-        
+            return False
+
         numGroups = len(self.params["groups"])
         if numGroups <= 1:
             logger.info(
                 "Skipping quantification with Triqler, less than 2 conditions found in --file_list_file input"
             )
-            return
+            return False
+        return True
 
+    def append_headers(self, protein_group_results: results.ProteinGroupResults):
         for experiment in protein_group_results.experiments:
             protein_group_results.append_header("Triqler Relative Quant " + experiment)
 
@@ -55,14 +60,11 @@ class TriqlerIntensityColumns(ProteinGroupColumns):
                 + str(groupId2)
             )
 
-    def append_columns(self, protein_group_results: results.ProteinGroupResults, post_err_prob_cutoff):
-        if protein_group_results.num_tmt_channels > 0 or protein_group_results.num_silac_channels > 0:
-            return
-        
-        numGroups = len(self.params["groups"])
-        if numGroups <= 1:
-            return
-
+    def append_columns(
+        self,
+        protein_group_results: results.ProteinGroupResults,
+        post_err_prob_cutoff: float,
+    ):
         logger.info("Doing quantification: Triqler relative intensity")
         experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
 

@@ -113,8 +113,7 @@ def test_from_protein_group_keep_all_proteins():
 
     proteinGroupResults = ProteinGroupResults([p])
     for c in columns:
-        c.append_headers(proteinGroupResults)
-        c.append_columns(proteinGroupResults, None)
+        c.append(proteinGroupResults, None)
 
     assert p.proteinIds == "protein1;protein2"
     assert p.majorityProteinIds == "protein1;protein2"

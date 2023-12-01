@@ -33,8 +33,7 @@ def test_performanceLFQ():
         proteinGroupResults.experiments.append(f'file{experiment}')
     
     for c in columns:
-        #c.append_headers(proteinGroupResults)
-        c.append_columns(proteinGroupResults, post_err_prob_cutoff=1.0)
+        c.append(proteinGroupResults, post_err_prob_cutoff=1.0)
     
     end = timer()
     print(f"execution took {'%.1f' % (end - start)} seconds wall clock time")

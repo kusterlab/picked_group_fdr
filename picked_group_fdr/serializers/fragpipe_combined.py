@@ -41,20 +41,14 @@ def get_fragpipe_combined_protein_columns(
         quant.TopPeptideProbabilityColumns(),
         quant.UniquePeptideCountColumns(),
         quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(
-            silac_channels, num_ibaq_peptides_per_protein
-        ),
-        quant.IndistinguishableProteinsColumns(),
-    ]
-
-    columns.append(
+        quant.SummedIntensityAndIbaqColumns(num_ibaq_peptides_per_protein),
         quant.LFQIntensityColumns(
-            silac_channels,
             min_peptide_ratios_lfq,
             stabilize_large_ratios_lfq,
             num_threads,
-        )
-    )
+        ),
+        quant.IndistinguishableProteinsColumns(),
+    ]
 
     return columns
 

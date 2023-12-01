@@ -142,12 +142,13 @@ def main(argv):
         parse_id = protein_annotation.parse_gene_name_func
     elif args.fasta_use_uniprot_id:
         parse_id = protein_annotation.parse_uniprot_id
+    db = "target" if args.fasta_contains_decoys else "concat"
 
     (
         peptide_to_protein_maps,
         num_ibaq_peptides_per_protein,
     ) = get_peptide_to_protein_maps(args)
-    protein_sequences = digest.get_protein_sequences(args.fasta, parse_id)
+    protein_sequences = digest.get_protein_sequences(args.fasta, db=db, parse_id=parse_id)
 
     protein_group_results = maxquant.parse_mq_protein_groups_file(
         args.mq_protein_groups,
@@ -285,13 +286,13 @@ def parse_evidence_files(
         score_type=ProteinScoringStrategy("bestPEP"),
         for_quantification=True,
     ):
-        if protein_group_results.num_tmt_channels is None:
+        if protein_group_results.num_tmt_channels == -1:
             # There are 3 columns per TMT channel:
             #     Reporter intensity corrected,
             #     Reporter intensity
             #     Reporter intensity count
             protein_group_results.num_tmt_channels = int(len(tmt_cols) / 3)
-        if protein_group_results.num_silac_channels is None:
+        if protein_group_results.num_silac_channels == -1:
             protein_group_results.num_silac_channels = len(silac_cols)
 
         # override the parsed experiment and fraction if --file_list_file option is used
