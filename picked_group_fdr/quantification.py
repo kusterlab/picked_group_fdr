@@ -10,12 +10,12 @@ from . import digest
 from . import digestion_params
 from . import protein_annotation
 from . import helpers
-from . import quant
+from . import columns
 from . import picked_group_fdr
 from .parsers import maxquant
 from .parsers import psm
 from .parsers import parsers
-from .quant import protein_annotations
+from .columns import protein_annotations
 from .protein_groups import ProteinGroups
 from .scoring import ProteinScoringStrategy
 
@@ -108,19 +108,19 @@ def parse_args(argv):
     )
 
     apars.add_argument(
-        "--num_threads",
-        default=1,
-        type=int,
-        metavar="T",
-        help="""Maximum number of threads to use.""",
-    )
-
-    apars.add_argument(
         "--lfq_stabilize_large_ratios",
         help="""Apply stabilization of large ratios in LFQ as described
                 in the MaxLFQ paper.""",
         action="store_false",
     )
+
+    apars.add_argument(
+        "--num_threads",
+        default=1,
+        type=int,
+        metavar="T",
+        help="""Maximum number of threads to use.""",
+    )    
 
     digestion_params.add_digestion_arguments(apars)
 
@@ -239,7 +239,7 @@ def do_quantification(
         discard_shared_peptides,
     )
 
-    columns = serializers.get_mq_protein_groups_columns(
+    mq_columns = serializers.get_mq_protein_groups_columns(
         num_ibaq_peptides_per_protein,
         protein_sequences,
         min_peptide_ratios_lfq,
@@ -249,7 +249,7 @@ def do_quantification(
     )
 
     return serializers.append_quant_columns(
-        protein_group_results, columns, post_err_probs, psm_fdr_cutoff
+        protein_group_results, mq_columns, post_err_probs, psm_fdr_cutoff
     )
 
 
@@ -331,7 +331,7 @@ def parse_evidence_files(
             silac_cols = None
 
         for protein_group_idx in protein_group_idxs:
-            precursor_quant = quant.PrecursorQuant(
+            precursor_quant = columns.PrecursorQuant(
                 peptide,
                 charge,
                 experiment,

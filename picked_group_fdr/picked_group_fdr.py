@@ -312,9 +312,11 @@ def main(argv):
             args.keep_all_proteins,
         )
 
-        columns = serializers.get_minimal_protein_groups_columns(protein_annotations)
+        minimal_columns = serializers.get_minimal_protein_groups_columns(
+            protein_annotations
+        )
 
-        for c in columns:
+        for c in minimal_columns:
             c.append(protein_group_results, None)
 
         if args.do_quant:
@@ -502,7 +504,7 @@ def do_quantification(
         logger.warning(
             "Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed"
         )
-        return
+        return protein_group_results
 
     protein_sequences = {}
     if args.fasta:
@@ -513,7 +515,9 @@ def do_quantification(
             args.fasta, digestion_params_list
         )
         db = "target" if args.fasta_contains_decoys else "concat"
-        protein_sequences = digest.get_protein_sequences(args.fasta, db=db, parse_id=parse_id)
+        protein_sequences = digest.get_protein_sequences(
+            args.fasta, db=db, parse_id=parse_id
+        )
     elif args.peptide_protein_map:
         logger.warning("Found peptide_protein_map (instead of fasta input): ")
         logger.warning(
@@ -524,11 +528,11 @@ def do_quantification(
             digest.merge_peptide_to_protein_maps(peptide_to_protein_maps)
         )
     else:
-        sys.exit(
+        raise ValueError(
             "No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags"
         )
 
-    return quantification.do_quantification(
+    protein_group_results = quantification.do_quantification(
         args.mq_evidence,
         protein_group_results,
         protein_sequences,
@@ -538,6 +542,7 @@ def do_quantification(
         min_peptide_ratios_lfq=args.lfq_min_peptide_ratios,
         num_threads=args.num_threads,
     )
+    return protein_group_results
 
 
 def write_protein_groups(

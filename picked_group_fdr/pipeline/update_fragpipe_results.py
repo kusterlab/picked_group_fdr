@@ -10,7 +10,7 @@ from .. import __version__, __copyright__
 from .. import helpers
 from .. import digest
 from .. import protein_annotation
-from .. import quant
+from .. import columns
 from .. import serializers
 from ..picked_group_fdr import ArgumentParserWithLogger
 from ..parsers import maxquant
@@ -326,12 +326,12 @@ def generate_fragpipe_protein_file(
         output_folder, fragpipe_psm_file
     )
 
-    columns = serializers.get_fragpipe_protein_tsv_columns(
+    fragpipe_columns = serializers.get_fragpipe_protein_tsv_columns(
         protein_groups, protein_annotations, protein_sequences
     )
 
     protein_group_results = serializers.append_quant_columns(
-        protein_group_results, columns, post_err_probs, psm_fdr_cutoff
+        protein_group_results, fragpipe_columns, post_err_probs, psm_fdr_cutoff
     )
 
     protein_group_results.write(
@@ -399,7 +399,7 @@ def add_precursor_quants(
             post_err_probs.append((post_err_prob, "", experiment, peptide))
 
         for protein_group_idx in protein_group_idxs:
-            precursor_quant = quant.PrecursorQuant(
+            precursor_quant = columns.PrecursorQuant(
                 peptide=peptide,
                 charge=charge,
                 experiment=experiment,
@@ -513,11 +513,13 @@ def write_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    columns = serializers.get_fragpipe_combined_protein_columns(protein_groups, protein_annotations)
+    fragpipe_columns = serializers.get_fragpipe_combined_protein_columns(
+        protein_groups, protein_annotations
+    )
 
     protein_group_results.experiments = experiments
     protein_group_results = serializers.append_quant_columns(
-        protein_group_results, columns, post_err_probs, psm_fdr_cutoff
+        protein_group_results, fragpipe_columns, post_err_probs, psm_fdr_cutoff
     )
 
     if os.path.isfile(protein_groups_out_file) and not os.path.isfile(
@@ -590,7 +592,7 @@ def update_precursor_quants(
                     ].intensity = intensity
                 else:
                     # match-between-runs hit
-                    precursor_quant = quant.PrecursorQuant(
+                    precursor_quant = columns.PrecursorQuant(
                         peptide=peptide,
                         charge=charge,
                         experiment=experiment,

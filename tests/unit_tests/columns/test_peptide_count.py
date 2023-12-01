@@ -1,6 +1,6 @@
 import numpy as np
 
-from picked_group_fdr.quant.peptide_count import _unique_peptide_counts_per_experiment
+from picked_group_fdr.columns.peptide_count import _unique_peptide_counts_per_experiment
 
 
 class TestUniquePeptideCountsPerExperiment:

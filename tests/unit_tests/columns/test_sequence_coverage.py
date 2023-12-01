@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 
-from picked_group_fdr.quant.sequence_coverage import SequenceCoverageColumns
-from picked_group_fdr.quant.precursor_quant import PrecursorQuant
+from picked_group_fdr.columns.sequence_coverage import SequenceCoverageColumns
+from picked_group_fdr.columns.precursor_quant import PrecursorQuant
 
 
 class TestGetSequenceCoverages:

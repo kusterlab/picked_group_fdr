@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 # for type hints only
-from .. import quant
+from .. import columns
 
 
 def get_mq_protein_groups_columns(
@@ -13,23 +13,22 @@ def get_mq_protein_groups_columns(
     stabilize_large_ratios_lfq: bool,
     num_threads: int,
     params: Dict[str, Any],
-) -> List[quant.ProteinGroupColumns]:
-    columns: List[quant.ProteinGroupColumns] = [
-        quant.UniquePeptideCountColumns(),
-        quant.IdentificationTypeColumns(),
-        quant.SummedIntensityAndIbaqColumns(
+) -> List[columns.ProteinGroupColumns]:
+    return [
+        columns.UniquePeptideCountColumns(),
+        columns.IdentificationTypeColumns(),
+        columns.SummedIntensityAndIbaqColumns(
             num_ibaq_peptides_per_protein
         ),
-        quant.SequenceCoverageColumns(protein_sequences),
-        quant.EvidenceIdsColumns(),
-        quant.LFQIntensityColumns(
+        columns.SequenceCoverageColumns(protein_sequences),
+        columns.EvidenceIdsColumns(),
+        columns.LFQIntensityColumns(
             min_peptide_ratios_lfq,
             stabilize_large_ratios_lfq,
             num_threads,
         ),
-        quant.TMTIntensityColumns(),
-        quant.TriqlerIntensityColumns(params)
+        columns.TMTIntensityColumns(),
+        columns.TriqlerIntensityColumns(params)
     ]
-    return columns
 
 

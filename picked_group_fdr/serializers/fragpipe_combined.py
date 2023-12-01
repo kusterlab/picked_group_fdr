@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 from typing import Dict, List
 
-from .. import quant
+from .. import columns
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 
@@ -31,26 +31,24 @@ def get_fragpipe_combined_protein_columns(
     min_peptide_ratios_lfq: int = 1,
     stabilize_large_ratios_lfq: bool = True,
     num_threads: int = 1,
-) -> List[quant.ProteinGroupColumns]:
+) -> List[columns.ProteinGroupColumns]:
     silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
 
-    columns: List[quant.ProteinGroupColumns] = [
-        quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
-        quant.ProteinProbabilityColumns(),
-        quant.TopPeptideProbabilityColumns(),
-        quant.UniquePeptideCountColumns(),
-        quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(num_ibaq_peptides_per_protein),
-        quant.LFQIntensityColumns(
+    return [
+        columns.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
+        columns.ProteinProbabilityColumns(),
+        columns.TopPeptideProbabilityColumns(),
+        columns.UniquePeptideCountColumns(),
+        columns.SpectralCountColumns(),
+        columns.SummedIntensityAndIbaqColumns(num_ibaq_peptides_per_protein),
+        columns.LFQIntensityColumns(
             min_peptide_ratios_lfq,
             stabilize_large_ratios_lfq,
             num_threads,
         ),
-        quant.IndistinguishableProteinsColumns(),
+        columns.IndistinguishableProteinsColumns(),
     ]
-
-    return columns
 
 
 def get_fragpipe_combined_protein_headers(experiments: List[str]):

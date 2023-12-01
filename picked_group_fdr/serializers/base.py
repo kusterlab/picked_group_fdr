@@ -11,7 +11,7 @@ from .. import helpers
 
 # for type hints only
 from .. import results
-from .. import quant
+from .. import columns
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ PROTEIN_GROUP_HEADERS = [
 
 
 def retain_only_identified_precursors(
-    precursor_list: List[quant.PrecursorQuant], post_err_prob_cutoff
+    precursor_list: List[columns.PrecursorQuant], post_err_prob_cutoff
 ):
     identified_precursors = set()
     for precursor in precursor_list:
@@ -80,7 +80,7 @@ def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float)
 
 def append_quant_columns(
     protein_group_results: results.ProteinGroupResults,
-    columns: List[quant.ProteinGroupColumns],
+    columns_to_add: List[columns.ProteinGroupColumns],
     post_err_probs: List,
     psm_fdr_cutoff: float,
 ):
@@ -107,7 +107,7 @@ def append_quant_columns(
             pgr.precursorQuants, post_err_prob_cutoff
         )
 
-    for c in columns:
+    for c in columns_to_add:
         c.append(protein_group_results, post_err_prob_cutoff)
 
     return protein_group_results

@@ -284,9 +284,9 @@ def _getLogMedianPeptideRatios(
 
     # replace zeroes by NaNs to automatically filter ratios with one missing value
     intensityMatrix[intensityMatrix == 0] = np.nan
-    columns = [(idx, i, intensityMatrix[:, i]) for idx, i in enumerate(valid_columns)]
+    cols = [(idx, i, intensityMatrix[:, i]) for idx, i in enumerate(valid_columns)]
     peptideRatios, experimentPairs = list(), list()
-    for (idx_i, i, col_i), (idx_j, j, col_j) in itertools.combinations(columns, 2):
+    for (idx_i, i, col_i), (idx_j, j, col_j) in itertools.combinations(cols, 2):
         if valid_vals[idx_i, idx_j] < minPeptideRatiosLFQ:
             continue
 

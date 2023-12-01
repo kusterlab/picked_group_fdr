@@ -1,6 +1,6 @@
 import numpy as np
 
-from picked_group_fdr.quant import tmt
+from picked_group_fdr.columns import tmt
 
 
 def test_getTmtIntensities(peptideIntensityListTMT, experimentToIdxMap):

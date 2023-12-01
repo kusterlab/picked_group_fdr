@@ -1,7 +1,7 @@
 import collections
 from typing import Dict, List
 
-from .. import quant
+from .. import columns
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 
@@ -38,19 +38,15 @@ def get_fragpipe_protein_tsv_columns(
     protein_annotations: Dict[str, ProteinAnnotation],
     protein_sequences: Dict[str, str],
 ):
-    silac_channels = []
     num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
-
-    columns: List[quant.ProteinGroupColumns] = [
-        quant.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
-        quant.SequenceCoverageColumns(protein_sequences),
-        quant.ProteinProbabilityColumns(),
-        quant.TopPeptideProbabilityColumns(),
-        quant.UniquePeptideCountColumns(),
-        quant.SpectralCountColumns(),
-        quant.SummedIntensityAndIbaqColumns(num_ibaq_peptides_per_protein),
-        quant.ModificationsColumns(),
-        quant.IndistinguishableProteinsColumns(),
+    return [
+        columns.FragpipeProteinAnnotationsColumns(protein_groups, protein_annotations),
+        columns.SequenceCoverageColumns(protein_sequences),
+        columns.ProteinProbabilityColumns(),
+        columns.TopPeptideProbabilityColumns(),
+        columns.UniquePeptideCountColumns(),
+        columns.SpectralCountColumns(),
+        columns.SummedIntensityAndIbaqColumns(num_ibaq_peptides_per_protein),
+        columns.ModificationsColumns(),
+        columns.IndistinguishableProteinsColumns(),
     ]
-
-    return columns
