@@ -18,6 +18,7 @@ from .parsers import parsers
 from .columns import protein_annotations
 from .protein_groups import ProteinGroups
 from .scoring import ProteinScoringStrategy
+from .precursor_quant import PrecursorQuant
 
 # for type hints only
 from .results import ProteinGroupResults
@@ -239,7 +240,7 @@ def do_quantification(
         discard_shared_peptides,
     )
 
-    mq_columns = writers.get_mq_protein_groups_columns(
+    mq_columns = writers.MaxQuantProteinGroupsWriter(
         num_ibaq_peptides_per_protein,
         protein_sequences,
         min_peptide_ratios_lfq,
@@ -331,7 +332,7 @@ def parse_evidence_files(
             silac_cols = None
 
         for protein_group_idx in protein_group_idxs:
-            precursor_quant = columns.PrecursorQuant(
+            precursor_quant = PrecursorQuant(
                 peptide,
                 charge,
                 experiment,

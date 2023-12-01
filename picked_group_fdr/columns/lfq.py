@@ -19,7 +19,7 @@ from ..utils import multiprocessing_pool as pool
 
 # imports for typing
 from .. import results
-from .precursor_quant import PrecursorQuant
+from ..precursor_quant import PrecursorQuant
 
 
 logger = logging.getLogger(__name__)

@@ -10,7 +10,6 @@ from .. import __version__, __copyright__
 from .. import helpers
 from .. import digest
 from .. import protein_annotation
-from .. import columns
 from .. import writers
 from ..picked_group_fdr import ArgumentParserWithLogger
 from ..parsers import maxquant
@@ -19,6 +18,7 @@ from ..parsers import fragpipe
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
+from ..precursor_quant import PrecursorQuant
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -326,7 +326,7 @@ def generate_fragpipe_protein_file(
         output_folder, fragpipe_psm_file
     )
 
-    fragpipe_columns = writers.get_fragpipe_protein_tsv_columns(
+    fragpipe_columns = writers.FragPipeSingleProteinWriter(
         protein_groups, protein_annotations, protein_sequences
     )
 
@@ -336,8 +336,8 @@ def generate_fragpipe_protein_file(
 
     protein_group_results.write(
         fragpipe_protein_file_out,
-        header_dict=writers.FRAGPIPE_PROTEIN_OUTPUT_DICT,
-        format_extra_columns=writers.fragpipe_format_extra_columns,
+        header_dict=fragpipe_columns.get_header_dict(),
+        format_extra_columns=fragpipe_columns.get_extra_columns_formatter(),
     )
 
 
@@ -399,7 +399,7 @@ def add_precursor_quants(
             post_err_probs.append((post_err_prob, "", experiment, peptide))
 
         for protein_group_idx in protein_group_idxs:
-            precursor_quant = columns.PrecursorQuant(
+            precursor_quant = PrecursorQuant(
                 peptide=peptide,
                 charge=charge,
                 experiment=experiment,
@@ -513,7 +513,7 @@ def write_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    fragpipe_columns = writers.get_fragpipe_combined_protein_columns(
+    fragpipe_columns = writers.FragPipeCombinedProteinWriter(
         protein_groups, protein_annotations
     )
 
@@ -532,8 +532,8 @@ def write_fragpipe_combined_protein_file(
 
     protein_group_results.write(
         protein_groups_out_file,
-        header_dict=writers.get_fragpipe_combined_protein_headers(experiments),
-        format_extra_columns=writers.fragpipe_format_extra_columns,
+        header_dict=fragpipe_columns.get_header_dict(experiments),
+        format_extra_columns=fragpipe_columns.get_extra_columns_formatter(),
     )
 
 
@@ -592,7 +592,7 @@ def update_precursor_quants(
                     ].intensity = intensity
                 else:
                     # match-between-runs hit
-                    precursor_quant = columns.PrecursorQuant(
+                    precursor_quant = PrecursorQuant(
                         peptide=peptide,
                         charge=charge,
                         experiment=experiment,

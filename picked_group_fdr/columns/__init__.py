@@ -1,5 +1,4 @@
 from .base import ProteinGroupColumns
-from .precursor_quant import PrecursorQuant
 from .lfq import LFQIntensityColumns
 from .sum_and_ibaq import SummedIntensityAndIbaqColumns
 from .peptide_count import UniquePeptideCountColumns

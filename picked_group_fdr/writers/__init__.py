@@ -1,11 +1,8 @@
-from .base import append_quant_columns, format_extra_columns, PROTEIN_GROUP_HEADERS
+from .base import append_quant_columns, format_extra_columns, PROTEIN_GROUP_HEADERS, ProteinGroupsWriter
 
-from .minimal import get_minimal_protein_groups_columns
-
-from .maxquant import get_mq_protein_groups_columns
-
-from .fragpipe import fragpipe_format_extra_columns
-from .fragpipe_combined import get_fragpipe_combined_protein_columns, get_fragpipe_combined_protein_headers
-from .fragpipe_single import get_fragpipe_protein_tsv_columns, FRAGPIPE_PROTEIN_OUTPUT_DICT
+from .minimal import MinimalProteinGroupsWriter
+from .maxquant import MaxQuantProteinGroupsWriter
+from .fragpipe_combined import FragPipeCombinedProteinWriter
+from .fragpipe_single import FragPipeSingleProteinWriter
 
 

@@ -4,7 +4,7 @@ import numpy as np
 from timeit import default_timer as timer
 
 from picked_group_fdr.columns.lfq import LFQIntensityColumns
-from picked_group_fdr.columns.precursor_quant import PrecursorQuant
+from picked_group_fdr.precursor_quant import PrecursorQuant
 from picked_group_fdr.results import ProteinGroupResult
 
 

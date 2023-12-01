@@ -6,9 +6,11 @@ from ..protein_annotation import ProteinAnnotation
 from .. import columns
 
 
-def get_minimal_protein_groups_columns(
-    protein_annotations: Dict[str, ProteinAnnotation],
-) -> List[columns.ProteinGroupColumns]:
-    return [
-        columns.ProteinAnnotationsColumns(protein_annotations)
-    ]
+class MinimalProteinGroupsWriter:
+    def __init__(self, protein_annotations: Dict[str, ProteinAnnotation]) -> None:
+        self.protein_annotations = protein_annotations
+
+    def get_columns(self) -> List[columns.ProteinGroupColumns]:
+        return [
+            columns.ProteinAnnotationsColumns(self.protein_annotations)
+        ]

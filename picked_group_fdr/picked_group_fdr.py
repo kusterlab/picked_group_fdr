@@ -7,7 +7,9 @@ from typing import Any, Callable, List, Dict, Union
 
 import numpy as np
 
-from . import __version__, __copyright__
+from picked_group_fdr.writers.base import logger
+
+from . import __version__, __copyright__, methods, results
 from . import digest
 from . import protein_annotation
 from . import helpers
@@ -204,6 +206,26 @@ def parseArgs(argv):
     return args
 
 
+def write_protein_groups(
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups_out: str,
+    config: Dict[str, Any],
+    apply_suffix: bool,
+):
+    if apply_suffix:
+        base, ext = os.path.splitext(protein_groups_out)
+        label = config.get("label", None)
+        if label is None:
+            label = methods.short_description(
+                config["scoreType"], config["grouping"], config["pickedStrategy"], True
+            )
+        else:
+            label = label.lower().replace(" ", "_")
+        protein_groups_out = f"{base}_{label}{ext}"
+    protein_group_results.write(protein_groups_out)
+    logger.info(f"Protein group results have been written to: {protein_groups_out}")
+
+
 def main(argv):
     logger.info(GREETER)
     logger.info(
@@ -312,11 +334,11 @@ def main(argv):
             args.keep_all_proteins,
         )
 
-        minimal_columns = writers.get_minimal_protein_groups_columns(
+        minimal_columns = writers.MinimalProteinGroupsWriter(
             protein_annotations
         )
 
-        for c in minimal_columns:
+        for c in minimal_columns.get_columns():
             c.append(protein_group_results, None)
 
         if args.do_quant:
@@ -543,26 +565,6 @@ def do_quantification(
         num_threads=args.num_threads,
     )
     return protein_group_results
-
-
-def write_protein_groups(
-    protein_group_results: ProteinGroupResults,
-    protein_groups_out: str,
-    config: Dict[str, Any],
-    apply_suffix: bool,
-):
-    if apply_suffix:
-        base, ext = os.path.splitext(protein_groups_out)
-        label = config.get("label", None)
-        if label is None:
-            label = methods.short_description(
-                config["scoreType"], config["grouping"], config["pickedStrategy"], True
-            )
-        else:
-            label = label.lower().replace(" ", "_")
-        protein_groups_out = f"{base}_{label}{ext}"
-    protein_group_results.write(protein_groups_out)
-    logger.info(f"Protein group results have been written to: {protein_groups_out}")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import collections
 import logging
-from typing import List, Union
+from typing import Dict, List, Protocol, Union
 
 import numpy as np
 
@@ -12,6 +12,7 @@ from .. import helpers
 # for type hints only
 from .. import results
 from .. import columns
+from ..precursor_quant import PrecursorQuant
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,19 @@ PROTEIN_GROUP_HEADERS = [
     "Potential contaminant",
 ]
 
+class ProteinGroupsWriter(Protocol):
+    def get_header_dict(self) -> Dict[str, str]:
+        pass
+
+    def get_columns(self)-> List[columns.ProteinGroupColumns]:
+        pass
+
+    def get_extra_columns_formatter(self):
+        return format_extra_columns
+
 
 def retain_only_identified_precursors(
-    precursor_list: List[columns.PrecursorQuant], post_err_prob_cutoff
+    precursor_list: List[PrecursorQuant], post_err_prob_cutoff
 ):
     identified_precursors = set()
     for precursor in precursor_list:
@@ -80,7 +91,7 @@ def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float)
 
 def append_quant_columns(
     protein_group_results: results.ProteinGroupResults,
-    columns_to_add: List[columns.ProteinGroupColumns],
+    writer: ProteinGroupsWriter,
     post_err_probs: List,
     psm_fdr_cutoff: float,
 ):
@@ -107,7 +118,7 @@ def append_quant_columns(
             pgr.precursorQuants, post_err_prob_cutoff
         )
 
-    for c in columns_to_add:
+    for c in writer.get_columns():
         c.append(protein_group_results, post_err_prob_cutoff)
 
     return protein_group_results
@@ -119,3 +130,5 @@ def format_extra_columns(x: Union[str, float]) -> str:
     if np.isnan(x):
         return ""
     return "%.0f" % (x)
+
+

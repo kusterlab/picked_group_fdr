@@ -9,7 +9,7 @@ from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from .precursor_quant import PrecursorQuant
+from ..precursor_quant import PrecursorQuant
 from .. import results
 
 

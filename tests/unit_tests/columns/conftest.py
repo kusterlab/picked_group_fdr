@@ -2,7 +2,7 @@ import pytest
 
 import numpy as np
 
-from picked_group_fdr.columns.precursor_quant import PrecursorQuant
+from picked_group_fdr.precursor_quant import PrecursorQuant
 
 @pytest.fixture
 def experimentToIdxMap():

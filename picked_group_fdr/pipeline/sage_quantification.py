@@ -10,7 +10,6 @@ from .update_fragpipe_results import (
 )
 from .. import __version__, __copyright__
 from .. import helpers
-from .. import columns
 from .. import digest
 from .. import protein_annotation
 from ..parsers import sage
@@ -20,6 +19,7 @@ from ..parsers import maxquant, tsv
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
+from ..precursor_quant import PrecursorQuant
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -155,7 +155,7 @@ def add_precursor_quants(
             post_err_probs.append((post_err_prob, "", experiment, peptide))
 
         for protein_group_idx in protein_group_idxs:
-            precursorQuant = columns.PrecursorQuant(
+            precursorQuant = PrecursorQuant(
                 peptide=peptide,
                 charge=charge,
                 experiment=experiment,
@@ -272,7 +272,7 @@ def update_precursor_quants(
                         ].charge = charge
                 else:
                     # match-between-runs hit
-                    precursorQuant = columns.PrecursorQuant(
+                    precursorQuant = PrecursorQuant(
                         peptide=peptide,
                         charge=charge,
                         experiment=experiment,
