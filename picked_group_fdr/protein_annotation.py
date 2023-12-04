@@ -75,7 +75,7 @@ def parse_uniprot_id(fastaId: str) -> str:
 
 def parse_entry_name(fasta_header: str) -> str:
     protein_id = parse_until_first_space(fasta_header)
-    if "|" in protein_id:
+    if "|" in protein_id and protein_id.count("|") >= 2:
         return protein_id.split("|")[2]
     else:
         return protein_id
