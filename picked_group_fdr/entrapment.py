@@ -7,7 +7,7 @@ from .parsers import parsers
 logger = logging.getLogger(__name__)
 
 
-def markEntrapmentProteins(peptideToProteinMap: Dict, mqProteinGroupsFile: str) -> None:
+def mark_entrapment_proteins(peptideToProteinMap: Dict, mqProteinGroupsFile: str) -> None:
     """
     necessary for simulated datasets with entrapments 
     since the peptide-protein map is made without knowledge of which proteins 
@@ -37,7 +37,7 @@ def markEntrapment(proteins: List[str], entrapmentProteins: Set[str]) -> List[st
     return list(map(lambda protein : protein + "_entrapment" if protein + "_entrapment" in entrapmentProteins else protein, proteins))
 
 
-def isEntrapment(proteinGroup: List[str]) -> bool:
+def is_entrapment(proteinGroup: List[str]) -> bool:
     return len([1 for x in proteinGroup if "_entrapment" in x or "Random_" in x or "REV__" in x or "mimic" in x]) == len(proteinGroup)
     #return len([1 for x in proteinGroup if "Random_" in x or "REV__" in x]) == len(proteinGroup)
 

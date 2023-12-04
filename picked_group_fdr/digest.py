@@ -52,61 +52,61 @@ ENZYME_CLEAVAGE_RULES = {
 
 
 def main(argv):
-    args = parseArgs()
+    args = parse_args()
 
     digestion_params_list = get_digestion_params_list(args)
 
     if args.prosit_input:
-        writer = getTsvWriter(args.prosit_input, delimiter=",")
+        writer = get_tsv_writer(args.prosit_input, delimiter=",")
         writer.writerow(
             "modified_sequence,collision_energy,precursor_charge".split(",")
         )
 
-        prositInputFileWithProteins = args.prosit_input.replace(
+        prosit_input_file_with_proteins = args.prosit_input.replace(
             ".csv", "_with_proteins.csv"
         )
-        writerWithProteins = getTsvWriter(prositInputFileWithProteins, delimiter=",")
-        writerWithProteins.writerow(
+        writer_with_proteins = get_tsv_writer(prosit_input_file_with_proteins, delimiter=",")
+        writer_with_proteins.writerow(
             "modified_sequence,collision_energy,precursor_charge,protein".split(",")
         )
 
         for peptide, proteins in get_peptide_to_protein_map_from_params(
             args.fasta, digestion_params_list
         ).items():
-            if not validPrositPeptide(peptide):
+            if not is_valid_prosit_peptide(peptide):
                 continue
 
             for charge in [2, 3, 4]:
                 writer.writerow([peptide, 30, charge])
-                writerWithProteins.writerow([peptide, 30, charge, proteins[0]])
+                writer_with_proteins.writerow([peptide, 30, charge, proteins[0]])
 
     if args.peptide_protein_map:
         with open(args.peptide_protein_map + ".params.txt", "w") as f:
             f.write(" ".join(sys.argv))
 
-        writer = getTsvWriter(args.peptide_protein_map, delimiter="\t")
+        writer = get_tsv_writer(args.peptide_protein_map, delimiter="\t")
         for peptide, proteins in get_peptide_to_protein_map_from_params(
             args.fasta, digestion_params_list
         ).items():
             writer.writerow([peptide, ";".join(proteins)])
 
     if args.ibaq_map:
-        writer = getTsvWriter(args.ibaq_map, delimiter="\t")
+        writer = get_tsv_writer(args.ibaq_map, delimiter="\t")
 
-        numPeptidesPerProtein = get_num_ibaq_peptides_per_protein(
+        num_peptides_per_protein = get_num_ibaq_peptides_per_protein(
             args.fasta, digestion_params_list
         )
-        for protein, numPeptides in numPeptidesPerProtein.items():
-            writer.writerow([protein, numPeptides])
+        for protein, num_peptides in num_peptides_per_protein.items():
+            writer.writerow([protein, num_peptides])
 
-    # writeProteinToGeneMap(fastaFile, outputFile)
+    # write_protein_to_gene_map(fasta_file, output_file)
 
 
-def validPrositPeptide(peptide):
+def is_valid_prosit_peptide(peptide):
     return len(peptide) <= 30 and "U" not in peptide and "X" not in peptide
 
 
-def parseArgs():
+def parse_args():
     import argparse
 
     apars = argparse.ArgumentParser(
@@ -156,35 +156,37 @@ def parseArgs():
     return args
 
 
-def writeProteinToGeneMap(fastaFile, outputFile):
-    writer = csv.writer(open(outputFile, "w"), delimiter="\t")
-    for proteinName, _ in read_fasta_tide(fastaFile, db="target"):
-        proteinId = proteinName.split("|")[1]
-        geneId = proteinName.split("|")[2].split(" ")[0]
-        writer.writerow([proteinId, geneId])
+def write_protein_to_gene_map(fasta_file: str, output_file: str):
+    writer = csv.writer(open(output_file, "w"), delimiter="\t")
+    for protein_name, _ in read_fasta_tide(fasta_file, db="target"):
+        protein_id = protein_name.split("|")[1]
+        gene_id = protein_name.split("|")[2].split(" ")[0]
+        writer.writerow([protein_id, gene_id])
 
 
-def parse_until_first_space(fastaId: str) -> str:
-    return fastaId.split(" ")[0]
+def parse_until_first_space(fasta_id: str) -> str:
+    return fasta_id.split(" ")[0]
 
 
-def read_fasta_tide(filePath, db="target", parse_id=parse_until_first_space):
-    read_fasta_maxquant(filePath, db, parse_id, specialAAs=[], decoyPrefix="decoy_")
+def read_fasta_tide(
+    file_path: str, db: str = "target", parse_id=parse_until_first_space
+):
+    read_fasta_maxquant(file_path, db, parse_id, special_aas=[], decoy_prefix="decoy_")
 
 
 def read_fasta_maxquant(
-    filePath,
-    db="target",
+    file_path: str,
+    db: str = "target",
     parse_id=parse_until_first_space,
-    specialAAs=["K", "R"],
-    decoyPrefix="REV__",
+    special_aas: List[str] = ["K", "R"],
+    decoy_prefix: str = "REV__",
 ):
     if db not in ["target", "decoy", "concat"]:
         sys.exit("unknown db mode: %s" % db)
 
-    hasSpecialAAs = len(specialAAs) > 0
+    has_special_aas = len(special_aas) > 0
     name, seq = None, []
-    with open(filePath, "r") as fp:
+    with open(file_path, "r") as fp:
         for line in itertools.chain(fp, [">"]):
             line = line.rstrip()
             if line.startswith(">"):
@@ -194,10 +196,10 @@ def read_fasta_maxquant(
                         yield (name, seq)
 
                     if db in ["decoy", "concat"]:
-                        revSeq = seq[::-1]
-                        if hasSpecialAAs:
-                            revSeq = swapSpecialAAs(revSeq, specialAAs)
-                        yield (decoyPrefix + name, revSeq)
+                        rev_seq = seq[::-1]
+                        if has_special_aas:
+                            rev_seq = swap_special_aas(rev_seq, special_aas)
+                        yield (decoy_prefix + name, rev_seq)
 
                 if len(line) > 1:
                     name, seq = parse_id(line[1:]), []
@@ -206,69 +208,73 @@ def read_fasta_maxquant(
 
 
 # from . import digestfast
-# readFasta = digestfast.readFastaMaxQuant
+# read_fasta = digestfast.readFastaMaxQuant
 read_fasta = read_fasta_maxquant
 
 
-# swaps the specialAAs with its preceding amino acid, as is done in MaxQuant
-# e.g. specialAAs = ['R', 'K'] transforms ABCKDEFRK into ABKCDERKF
-def swapSpecialAAs(seq, specialAAs):
+def swap_special_aas(seq: str, special_aas: List[str]):
+    """Swaps the special AAs with its preceding amino acid, as is done in MaxQuant.
+
+    e.g. special_aas = ['R', 'K'] transforms ABCKDEFRK into ABKCDERKF
+    """
     seq = list(seq)
     for i in range(1, len(seq)):
-        if seq[i] in specialAAs:
-            swapPositions(seq, i, i - 1)
+        if seq[i] in special_aas:
+            swap_positions(seq, i, i - 1)
     seq = "".join(seq)
     return seq
 
 
-def swapPositions(seq, pos1, pos2):
+def swap_positions(seq: str, pos1: int, pos2: int):
     seq[pos1], seq[pos2] = seq[pos2], seq[pos1]
 
 
-def getProteinIds(filePath):
-    proteinIds = list()
-    for proteinId, _ in read_fasta(filePath):
-        proteinIds.append(proteinId)
-    return set(proteinIds)
+def get_protein_ids(file_path: str):
+    protein_ids = list()
+    for protein_id, _ in read_fasta(file_path):
+        protein_ids.append(protein_id)
+    return set(protein_ids)
 
 
-def get_protein_sequences(filePaths, **kwargs):
-    proteinSequences = dict()
-    for filePath in filePaths:
-        for proteinId, proteinSeq in read_fasta(filePath, **kwargs):
+def get_protein_sequences(file_paths: List[str], **kwargs):
+    protein_sequences = dict()
+    for file_path in file_paths:
+        for protein_id, protein_sequence in read_fasta(file_path, **kwargs):
             if (
-                proteinId not in proteinSequences
+                protein_id not in protein_sequences
             ):  # keep only first sequence per identifier
-                proteinSequences[proteinId] = proteinSeq
-    return proteinSequences
+                protein_sequences[protein_id] = protein_sequence
+    return protein_sequences
 
 
-def filterFastaFile(fastaFile, filteredFastaFile, proteins, **kwargs):
-    with open(filteredFastaFile, "w") as f:
-        for prot, seq in read_fasta(fastaFile, **kwargs):
+def filter_fasta_file(
+    fasta_file: str, filtered_fasta_file: str, proteins: List[str], **kwargs
+):
+    with open(filtered_fasta_file, "w") as f:
+        for prot, seq in read_fasta(fasta_file, **kwargs):
             if prot in proteins:
                 f.write(">" + prot + "\n" + seq + "\n")
                 # f.write('>decoy_' + prot + '\n' + seq[::-1] + '\n')
 
 
-def getPeptides(
-    fastaFile,
-    db="concat",
-    min_len=6,
-    max_len=50,
-    pre=["K", "R"],
-    not_post=["P"],
-    post=[],
-    digestion="full",
-    miscleavages=0,
-    methionineCleavage=True,
+def get_peptides(
+    fasta_file: str,
+    db: str = "concat",
+    min_len: int = 6,
+    max_len: int = 50,
+    pre: List[str] = ["K", "R"],
+    not_post: List[str] = ["P"],
+    post: List[str] = [],
+    digestion: str = "full",
+    miscleavages: int = 0,
+    methionine_cleavage: bool = True,
 ):
-    for protein, seq in read_fasta(fastaFile, db):
+    for protein, seq in read_fasta(fasta_file, db):
         if len(seq) == 0:
             raise ValueError(
                 f"Found an empty sequence for protein id {protein}, please check your fasta file."
             )
-        for peptide in getDigestedPeptides(
+        for peptide in get_digested_peptides(
             seq,
             min_len,
             max_len,
@@ -276,109 +282,147 @@ def getPeptides(
             not_post,
             digestion,
             miscleavages,
-            methionineCleavage,
+            methionine_cleavage,
         ):
             yield peptide
 
 
 # @profile
-def getDigestedPeptides(
-    seq,
-    min_len=6,
-    max_len=50,
-    pre=["K", "R"],
-    not_post=["P"],
-    post=[],
-    digestion="full",
-    miscleavages=0,
-    methionineCleavage=True,
+def get_digested_peptides(
+    seq: str,
+    min_len: int = 6,
+    max_len: int = 50,
+    pre: List[str] = ["K", "R"],
+    not_post: List[str] = ["P"],
+    post: List[str] = [],
+    digestion: str = "full",
+    miscleavages: int = 0,
+    methionine_cleavage: bool = True,
 ):
     if digestion == "none":
-        yield from nonSpecificDigest(seq, min_len, max_len)
+        yield from non_specific_digest(seq, min_len, max_len)
     elif digestion == "semi":
-        yield from semiSpecificDigest(
-            seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage
+        yield from semi_specific_digest(
+            seq,
+            min_len,
+            max_len,
+            pre,
+            not_post,
+            post,
+            miscleavages,
+            methionine_cleavage,
         )
     else:
-        yield from fullDigest(
-            seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage
+        yield from full_digest(
+            seq,
+            min_len,
+            max_len,
+            pre,
+            not_post,
+            post,
+            miscleavages,
+            methionine_cleavage,
         )
 
 
-def nonSpecificDigest(seq, min_len, max_len):
-    lenS = len(seq)
-    for i in range(lenS + 1):
-        for j in range(i + min_len, min(lenS + 1, i + max_len + 1)):
-            if j <= lenS:
+def non_specific_digest(seq, min_len, max_len):
+    seq_len = len(seq)
+    for i in range(seq_len + 1):
+        for j in range(i + min_len, min(seq_len + 1, i + max_len + 1)):
+            if j <= seq_len:
                 yield seq[i:j]
 
 
-def semiSpecificDigest(
-    seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage
+def semi_specific_digest(
+    seq: str,
+    min_len: int,
+    max_len: int,
+    pre: List[str],
+    not_post: List[str],
+    post: List[str],
+    miscleavages: int,
+    methionine_cleavage: bool,
 ):
-    lenS, starts = len(seq), [0]
-    methionineCleavage = methionineCleavage and seq[0] == "M"
+    seq_len, starts = len(seq), [0]
+    methionine_cleavage = methionine_cleavage and seq[0] == "M"
     length_accepted = lambda x: x >= min_len and x <= max_len
 
-    for i in range(lenS + 1):
-        isCleavageSite = is_enzymatic(
-            seq[min([lenS - 1, i])], seq[min([lenS - 1, i + 1])], pre, not_post, post
+    for i in range(seq_len + 1):
+        is_cleavage_site = is_enzymatic(
+            seq[min([seq_len - 1, i])],
+            seq[min([seq_len - 1, i + 1])],
+            pre,
+            not_post,
+            post,
         )
-        isMethionineCleavageSite = i == 0 and methionineCleavage
-        if i == lenS or isCleavageSite or isMethionineCleavageSite:
+        is_methionine_cleavage_site = i == 0 and methionine_cleavage
+        if i == seq_len or is_cleavage_site or is_methionine_cleavage_site:
             # peptides with enzymatic C-terminal (both enzymatic and non-enzymatic N-terminal)
             start = starts[0]
-            for j in range(start, min([i + 1, lenS])):
-                lenP = min([i, lenS - 1]) - j + 1
-                if length_accepted(lenP):
+            for j in range(start, min([i + 1, seq_len])):
+                pep_len = min([i, seq_len - 1]) - j + 1
+                if length_accepted(pep_len):
                     yield (seq[j : i + 1])
             starts.append(i + 1)
-            methionineCleaved = int(starts[0] == 0 and methionineCleavage)
-            if len(starts) > miscleavages + 1 + methionineCleaved or i == lenS:
-                starts = starts[1 + methionineCleaved :]
+            methionine_cleaved = int(starts[0] == 0 and methionine_cleavage)
+            if len(starts) > miscleavages + 1 + methionine_cleaved or i == seq_len:
+                starts = starts[1 + methionine_cleaved :]
         else:  # peptides with non enzymatic C-terminal
             for start in starts:
-                lenP = i - start + 1
-                if length_accepted(lenP) and i + 1 not in starts:
+                pep_len = i - start + 1
+                if length_accepted(pep_len) and i + 1 not in starts:
                     yield (seq[start : i + 1])
 
 
-def fullDigest(
-    seq, min_len, max_len, pre, not_post, post, miscleavages, methionineCleavage
+def full_digest(
+    seq: str,
+    min_len: int,
+    max_len: int,
+    pre: List[str],
+    not_post: List[str],
+    post: List[str],
+    miscleavages: int,
+    methionine_cleavage: bool,
 ):
-    lenS, starts = len(seq), [0]
-    methionineCleavage = methionineCleavage and seq[0] == "M"
+    seq_len, starts = len(seq), [0]
+    methionine_cleavage = methionine_cleavage and seq[0] == "M"
     length_accepted = lambda x: x >= min_len and x <= max_len
 
-    cleavageSites = [0] if methionineCleavage else []
-    cleavageSites.extend(
+    cleavage_sites = [0] if methionine_cleavage else []
+    cleavage_sites.extend(
         [
             i
-            for i in range(lenS)
-            if is_enzymatic(seq[i], seq[min([lenS - 1, i + 1])], pre, not_post, post)
+            for i in range(seq_len)
+            if is_enzymatic(seq[i], seq[min([seq_len - 1, i + 1])], pre, not_post, post)
         ]
     )
-    cleavageSites.append(lenS)
-    for i in cleavageSites:
+    cleavage_sites.append(seq_len)
+    for i in cleavage_sites:
         for start in starts:
-            lenP = i - start + 1
-            if length_accepted(lenP):
+            pep_len = i - start + 1
+            if length_accepted(pep_len):
                 yield (seq[start : i + 1])
         starts.append(i + 1)
-        methionineCleaved = int(starts[0] == 0 and methionineCleavage)
-        if len(starts) > miscleavages + 1 + methionineCleaved:
-            starts = starts[1 + methionineCleaved :]
+        methionine_cleaved = int(starts[0] == 0 and methionine_cleavage)
+        if len(starts) > miscleavages + 1 + methionine_cleaved:
+            starts = starts[1 + methionine_cleaved :]
 
 
-def getPeptideToProteinMapWithEnzyme(
-    fastaFile, min_len, max_len, enzyme, miscleavages, specialAAs, db
+def get_peptide_to_protein_map_with_enzyme(
+    fasta_file: str,
+    min_len: int,
+    max_len: int,
+    enzyme,
+    miscleavages: int,
+    special_aas: List[str],
+    db: str,
 ):
-    if len(fastaFile) == 0:
+    if len(fasta_file) == 0:
         return dict()
 
     pre, not_post, post = get_cleavage_sites(enzyme)
     return get_peptide_to_protein_map(
-        fastaFile,
+        fasta_file,
         db,
         digestion="full",
         min_len=min_len,
@@ -388,14 +432,14 @@ def getPeptideToProteinMapWithEnzyme(
         post=post,
         miscleavages=miscleavages,
         methionine_cleavage=True,
-        special_aas=specialAAs,
+        special_aas=special_aas,
     )
 
 
 def get_peptide_to_protein_map_from_params(
     fasta_files: List[str], digestion_params_list: List[DigestionParams]
 ):
-    peptideToProteinMap = collections.defaultdict(list)
+    peptide_to_protein_map = collections.defaultdict(list)
     for fasta_file in fasta_files:
         for params in digestion_params_list:
             pre, not_post, post = get_cleavage_sites(params.enzyme)
@@ -412,46 +456,45 @@ def get_peptide_to_protein_map_from_params(
                 methionine_cleavage=params.methionine_cleavage,
                 special_aas=params.special_aas,
             ).items():
-                peptideToProteinMap[peptide].extend(proteins)
-    return peptideToProteinMap
+                peptide_to_protein_map[peptide].extend(proteins)
+    return peptide_to_protein_map
 
 
 def merge_peptide_to_protein_maps(peptide_protein_maps: Iterator[Dict[str, List[str]]]):
-    peptideToProteinMap = collections.defaultdict(list)
+    peptide_to_protein_map = collections.defaultdict(list)
     for peptide_protein_map in peptide_protein_maps:
         for peptide, proteins in peptide_protein_map.items():
-            peptideToProteinMap[peptide].extend(proteins)
-    return peptideToProteinMap
+            peptide_to_protein_map[peptide].extend(proteins)
+    return peptide_to_protein_map
 
 
 def get_peptide_to_protein_map(
-    fastaFile,
-    db="concat",
-    min_len=6,
-    max_len=52,
-    pre=["K", "R"],
-    not_post=["P"],
-    post=[],
-    digestion="full",
-    miscleavages=2,
-    methionine_cleavage=True,
-    use_hash_key=False,
-    special_aas=["K", "R"],
-    parse_od=parse_until_first_space,
+    fasta_file: str,
+    db: str = "concat",
+    min_len: int = 6,
+    max_len: int = 52,
+    pre: List[str] = ["K", "R"],
+    not_post: List[str] = ["P"],
+    post: List[str] = [],
+    digestion: str = "full",
+    miscleavages: int = 2,
+    methionine_cleavage: bool = True,
+    use_hash_key: bool = False,
+    special_aas: List[str] = ["K", "R"],
+    parse_id=parse_until_first_space,
 ):
-    peptideToProteinMap = collections.defaultdict(list)
-    proteinToSeqMap = dict()
+    peptide_to_protein_map = collections.defaultdict(list)
+    protein_to_seq_map = dict()
 
-    logger.info(f"Parsing fasta file: {Path(fastaFile).name}")
-    for proteinIdx, (protein, seq) in enumerate(
-        read_fasta(fastaFile, db, parse_od, specialAAs=special_aas)
+    logger.info(f"Parsing fasta file: {Path(fasta_file).name}")
+    for protein_idx, (protein, seq) in enumerate(
+        read_fasta(fasta_file, db, parse_id, special_aas=special_aas)
     ):
-        if proteinIdx % 10000 == 0:
-            logger.info(f"Digesting protein {proteinIdx}")
-        seenPeptides = set()
-        proteinToSeqMap[protein] = seq
-        # for peptide in digestfast.getDigestedPeptides(seq, min_len, max_len, pre, not_post, digestion, miscleavages, methionineCleavage):
-        for peptide in getDigestedPeptides(
+        if protein_idx % 10000 == 0:
+            logger.info(f"Digesting protein {protein_idx}")
+        seen_peptides = set()
+        protein_to_seq_map[protein] = seq
+        for peptide in get_digested_peptides(
             seq,
             min_len,
             max_len,
@@ -464,71 +507,73 @@ def get_peptide_to_protein_map(
         ):
             peptide = peptide
             if use_hash_key:
-                hashKey = peptide[:6]
+                hash_key = peptide[:6]
             else:
-                hashKey = peptide
-            if hashKey not in seenPeptides:
-                seenPeptides.add(hashKey)
-                peptideToProteinMap[hashKey].append(protein)
+                hash_key = peptide
+            if hash_key not in seen_peptides:
+                seen_peptides.add(hash_key)
+                peptide_to_protein_map[hash_key].append(protein)
 
     if use_hash_key:
-        return (peptideToProteinMap, proteinToSeqMap)
+        return (peptide_to_protein_map, protein_to_seq_map)
     else:
-        return peptideToProteinMap
+        return peptide_to_protein_map
 
 
-def get_peptide_to_protein_map_from_file(peptideToProteinMapFile, useHashKey=False):
-    if useHashKey:
+def get_peptide_to_protein_map_from_file(
+    peptide_to_protein_map_file, use_hash_key=False
+):
+    if use_hash_key:
         logger.info("Hash key not supported yet, continuing without hash key...")
-        useHashKey = False
-    peptideToProteinMap = collections.defaultdict(list)
-    reader = getTsvReader(peptideToProteinMapFile)
+        use_hash_key = False
+    peptide_to_protein_map = collections.defaultdict(list)
+    reader = get_tsv_reader(peptide_to_protein_map_file)
     for i, row in enumerate(reader):
         if (i + 1) % 1000000 == 0:
             logger.info(f"Processing peptide {i+1}")
 
         peptide, proteins = row[0], row[1].split(";")
-        if useHashKey:
-            sys.exit("Hash key not supported yet...")
-            hashKey = peptide[:6]
+        if use_hash_key:
+            raise NotImplementedError("Hash key not supported yet...")
+            hash_key = peptide[:6]
         else:
-            hashKey = peptide
+            hash_key = peptide
         for protein in proteins:
-            peptideToProteinMap[hashKey].append(protein)
-    return peptideToProteinMap
+            peptide_to_protein_map[hash_key].append(protein)
+    return peptide_to_protein_map
 
 
-def get_proteins(peptideToProteinMap, peptide):
+def get_proteins(peptide_to_protein_map, peptide):
     peptide = peptide  # .replace("I", "L")
-    if len(peptideToProteinMap) == 2:
-        hashKey = peptide[:6]
+    if len(peptide_to_protein_map) == 2:
+        hash_key = peptide[:6]
         proteins = list()
-        if hashKey in peptideToProteinMap[0]:
-            for protein in peptideToProteinMap[0][hashKey]:
+        if hash_key in peptide_to_protein_map[0]:
+            for protein in peptide_to_protein_map[0][hash_key]:
                 # TODO: This does not work correctly for full or partial digestion, since we might find the peptide with the wrong number of enzymatic terminals
-                if peptide in peptideToProteinMap[1][protein]:
+                if peptide in peptide_to_protein_map[1][protein]:
                     proteins.append(protein)
             proteins = sorted(proteins)
         # else:
         #    logger.warning("Could not find peptide " + peptide + " in fasta database")
         return proteins
     else:
-        return peptideToProteinMap.get(peptide, [])
+        return peptide_to_protein_map.get(peptide, [])
 
 
-def getAllProteins(peptideToProteinMap):
-    seenProteins = set()
-    if len(peptideToProteinMap) == 2:
-        for _, proteins in peptideToProteinMap[0].items():
+def get_all_proteins(peptide_to_protein_map):
+    seen_proteins = set()
+    if len(peptide_to_protein_map) == 2:
+        for _, proteins in peptide_to_protein_map[0].items():
             for protein in proteins:
-                if protein not in seenProteins:
-                    seenProteins.append(protein)
+                if protein not in seen_proteins:
+                    seen_proteins.append(protein)
     else:
-        for _, proteins in peptideToProteinMap.items():
+        for _, proteins in peptide_to_protein_map.items():
             for protein in proteins:
-                if protein not in seenProteins:
-                    seenProteins.append(protein)
-    return list(seenProteins)
+                if protein not in seen_proteins:
+                    seen_proteins.append(protein)
+    return list(seen_proteins)
 
 
 def get_ibaq_peptide_to_protein_map(
@@ -555,13 +600,13 @@ def get_num_ibaq_peptides_per_protein(
     return get_num_peptides_per_protein(peptide_to_protein_map_ibaq)
 
 
-def get_num_peptides_per_protein(peptideToProteinMap) -> Dict[str, int]:
-    numPeptidesPerProtein = collections.defaultdict(int)
-    for peptide, proteins in peptideToProteinMap.items():
+def get_num_peptides_per_protein(peptide_to_protein_map) -> Dict[str, int]:
+    num_peptides_per_protein = collections.defaultdict(int)
+    for _, proteins in peptide_to_protein_map.items():
         for protein in proteins:
-            numPeptidesPerProtein[protein] += 1
+            num_peptides_per_protein[protein] += 1
 
-    return numPeptidesPerProtein
+    return num_peptides_per_protein
 
 
 def get_cleavage_sites(enzyme):
@@ -575,13 +620,18 @@ def get_cleavage_sites(enzyme):
 
 
 def is_enzymatic_advanced(
-    aa1, aa2, pre=["K", "R"], not_post=["P"], post=[], methionineCleavage=True
+    aa1: str,
+    aa2: str,
+    pre: List[str] = ["K", "R"],
+    not_post: List[str] = ["P"],
+    post: List[str] = [],
+    methionine_cleavage: bool = True,
 ):
     return (
         aa1 == "-"
         or aa2 == "-"
         or is_enzymatic(aa1, aa2, pre, not_post, post)
-        or (methionineCleavage and aa1 == "M")
+        or (methionine_cleavage and aa1 == "M")
     )
 
 
@@ -596,7 +646,7 @@ def has_miscleavage(seq, pre=["K", "R"], not_post=["P"], post=[]):
     return False
 
 
-def getTsvReader(filename, delimiter="\t"):
+def get_tsv_reader(filename, delimiter="\t"):
     # Python 3
     if sys.version_info[0] >= 3:
         return csv.reader(open(filename, "r", newline=""), delimiter=delimiter)
@@ -605,7 +655,7 @@ def getTsvReader(filename, delimiter="\t"):
         return csv.reader(open(filename, "rb"), delimiter=delimiter)
 
 
-def getTsvWriter(filename, delimiter="\t"):
+def get_tsv_writer(filename, delimiter="\t"):
     # Python 3
     if sys.version_info[0] >= 3:
         return csv.writer(open(filename, "w", newline=""), delimiter=delimiter)

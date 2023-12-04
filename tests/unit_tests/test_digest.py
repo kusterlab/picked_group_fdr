@@ -4,7 +4,7 @@ import picked_group_fdr.digest as digest
 def test_swapSpecialAAs():
     seq = "ABCKDEFRRR"
     specialAAs = ["K", "R"]
-    assert digest.swapSpecialAAs(seq, specialAAs) == "ABKCDERRRF"
+    assert digest.swap_special_aas(seq, specialAAs) == "ABKCDERRRF"
 
 
 def test_hasMiscleavage_true():
@@ -22,7 +22,7 @@ class TestNonSpecificDigest:
         seq = "ABCDEFGH"
         min_len = 6
         max_len = 30
-        assert set(digest.nonSpecificDigest(seq, min_len, max_len)) == set(
+        assert set(digest.non_specific_digest(seq, min_len, max_len)) == set(
             ["ABCDEF", "BCDEFG", "CDEFGH", "ABCDEFG", "BCDEFGH", "ABCDEFGH"]
         )
 
@@ -30,7 +30,7 @@ class TestNonSpecificDigest:
         seq = "ABCDEFGH"
         min_len = 6
         max_len = 7
-        assert set(digest.nonSpecificDigest(seq, min_len, max_len)) == set(
+        assert set(digest.non_specific_digest(seq, min_len, max_len)) == set(
             ["ABCDEF", "BCDEFG", "CDEFGH", "ABCDEFG", "BCDEFGH"]
         )
 
@@ -46,7 +46,7 @@ class TestSemiSpecificDigest:
         miscleavages = 2
         methionineCleavage = True
         assert set(
-            digest.semiSpecificDigest(
+            digest.semi_specific_digest(
                 seq,
                 min_len,
                 max_len,
@@ -68,7 +68,7 @@ class TestSemiSpecificDigest:
         miscleavages = 2
         methionineCleavage = True
         assert set(
-            digest.semiSpecificDigest(
+            digest.semi_specific_digest(
                 seq,
                 min_len,
                 max_len,
@@ -103,7 +103,7 @@ class TestSemiSpecificDigest:
         miscleavages = 1
         methionineCleavage = True
         assert set(
-            digest.semiSpecificDigest(
+            digest.semi_specific_digest(
                 seq,
                 min_len,
                 max_len,
@@ -138,7 +138,7 @@ class TestSemiSpecificDigest:
         miscleavages = 2
         methionineCleavage = True
         assert set(
-            digest.semiSpecificDigest(
+            digest.semi_specific_digest(
                 seq,
                 min_len,
                 max_len,
@@ -160,7 +160,7 @@ class TestSemiSpecificDigest:
         miscleavages = 0
         methionineCleavage = True
         assert set(
-            digest.semiSpecificDigest(
+            digest.semi_specific_digest(
                 seq,
                 min_len,
                 max_len,
@@ -182,7 +182,7 @@ class TestSemiSpecificDigest:
         miscleavages = 1
         methionineCleavage = True
         assert set(
-            digest.semiSpecificDigest(
+            digest.semi_specific_digest(
                 seq,
                 min_len,
                 max_len,
@@ -216,7 +216,7 @@ class TestSemiSpecificDigest:
         miscleavages = 0
         methionineCleavage = True
         assert set(
-            digest.semiSpecificDigest(
+            digest.semi_specific_digest(
                 seq,
                 min_len,
                 max_len,
@@ -250,7 +250,7 @@ class TestFullDigest:
         miscleavages = 2
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,
@@ -272,7 +272,7 @@ class TestFullDigest:
         miscleavages = 2
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,
@@ -295,7 +295,7 @@ class TestFullDigest:
         miscleavages = 1
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,
@@ -317,7 +317,7 @@ class TestFullDigest:
         miscleavages = 2
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,
@@ -339,7 +339,7 @@ class TestFullDigest:
         miscleavages = 0
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,
@@ -361,7 +361,7 @@ class TestFullDigest:
         miscleavages = 1
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,
@@ -383,7 +383,7 @@ class TestFullDigest:
         miscleavages = 0
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,
@@ -405,7 +405,7 @@ class TestFullDigest:
         miscleavages = 0
         methionineCleavage = True
         assert set(
-            digest.fullDigest(
+            digest.full_digest(
                 seq,
                 min_len,
                 max_len,

@@ -8,11 +8,11 @@ def test_mark_entrapment(proteins, entrapment_proteins):
 
 
 def test_is_entrapment_false():
-  assert entrapment.isEntrapment(['proteinA_entrapment', 'proteinB', 'proteinC_entrapment']) == False
+  assert entrapment.is_entrapment(['proteinA_entrapment', 'proteinB', 'proteinC_entrapment']) == False
 
 
 def test_is_entrapment_true():
-  assert entrapment.isEntrapment(['proteinA_entrapment', 'REV__proteinB', 'proteinC_entrapment']) == True
+  assert entrapment.is_entrapment(['proteinA_entrapment', 'REV__proteinB', 'proteinC_entrapment']) == True
 
 
 @pytest.fixture

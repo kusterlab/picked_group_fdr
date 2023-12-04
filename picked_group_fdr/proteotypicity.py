@@ -10,7 +10,7 @@ from .results import ProteinGroupResult
 logger = logging.getLogger(__name__)
 
 
-def getPeptideToProteotypicityFromFile(peptideToProteotypicityFile):
+def get_peptide_to_proteotypicity_from_file(peptideToProteotypicityFile):
     logger.info("Reading peptide to proteotypicity map")
     peptideToProteotypicityMap = dict()
     proteinToMaxProteotypicityMap = collections.defaultdict(lambda : -1000)
@@ -55,7 +55,7 @@ def getProteotypicities(peptideToProteotypicityMap, peptideScorePairs, scoreCuto
     return sorted([(peptideToProteotypicityMap.get(peptide, 0.0), peptide) for peptide in uniquePeptides], reverse = True)
 
 
-def calculateProteotypicityScores(proteinGroups, proteinGroupPeptideInfos, peptideToProteotypicityMap, scoreType, scoreCutoff):
+def calculate_proteotypicity_scores(proteinGroups, proteinGroupPeptideInfos, peptideToProteotypicityMap, scoreType, scoreCutoff):
     logger.info("Computing proteotypicity scores")
     
     ptWriter = tsv.get_tsv_writer("protein_percolator_input.tab")
@@ -80,5 +80,5 @@ def calculateProteotypicityScores(proteinGroups, proteinGroupPeptideInfos, pepti
         targetDecoyLabel = -1 if helpers.is_decoy(proteinGroup) else 1
         ptWriter.writerow([";".join(proteinGroup), targetDecoyLabel, # metadata
                                              proteinScore, proteotypicityRatio, numUniquePeptides, numInsilicoPeptides, maxObservedProteotypicity, maxProteinProteotypicity, proteotypicityDiff, # features
-                                             "-.APEPTIDE.-", entrapment.isEntrapment(proteinGroup)] + proteotypicities) # fill peptide and proteins columns with useful metadata
+                                             "-.APEPTIDE.-", entrapment.is_entrapment(proteinGroup)] + proteotypicities) # fill peptide and proteins columns with useful metadata
 

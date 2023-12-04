@@ -138,5 +138,5 @@ class ProteinGroups:
     def print(self, minSize: int = 0):    
         for pg in self.protein_groups:
             if len(pg) >= minSize:
-                logger.info(f'{";".join(pg)} {"entrapmentGroup" if entrapment.isEntrapment(pg) else ""} {"decoyGroup" if helpers.is_decoy(pg) else ""}')
+                logger.info(f'{";".join(pg)} {"entrapmentGroup" if entrapment.is_entrapment(pg) else ""} {"decoyGroup" if helpers.is_decoy(pg) else ""}')
 

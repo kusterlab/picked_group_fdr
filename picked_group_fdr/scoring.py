@@ -156,8 +156,8 @@ class MultPEPScore(ProteinScore):
             numTargets = (-proteinScoreTuples[:,2] + 1)[sortIdxs].cumsum()
             
             fdrs = np.divide(numDecoys+1, numTargets+1)
-            qvals = fdr.fdrsToQvals(fdrs)
-            numIdentifiedTargets = fdr.countBelowThreshold(qvals, 0.01, proteinScoreTuples[:,2][sortIdxs])
+            qvals = fdr.fdrs_to_qvals(fdrs)
+            numIdentifiedTargets = fdr.count_below_threshold(qvals, 0.01, proteinScoreTuples[:,2][sortIdxs])
             if numIdentifiedTargets > mostIdentifiedTargets[0]:
                 mostIdentifiedTargets = (numIdentifiedTargets, div)
         return mostIdentifiedTargets
@@ -412,7 +412,7 @@ class ProteinScoringStrategy:
     def collect_peptide_scores_per_protein(self,
             proteinGroups: ProteinGroups, 
             peptideInfoList: PeptideInfoList, 
-            suppressMissingProteinWarning: bool = False) -> ProteinGroupPeptideInfos:
+            suppress_missing_protein_warning: bool = False) -> ProteinGroupPeptideInfos:
         """Groups peptides with associated scores by protein
         
         :param proteinGroups: ProteinGroups object
@@ -433,7 +433,7 @@ class ProteinScoringStrategy:
             proteins = self.filter_proteins(proteins) # filtering for razor peptide approach
             
             proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)
-            if len(proteinGroupIdxs) == 0 and not suppressMissingProteinWarning:
+            if len(proteinGroupIdxs) == 0 and not suppress_missing_protein_warning:
                 raise Exception(f"Could not find any of the proteins {proteins} in the ProteinGroups object, check if the identifier format is the same. \
                                   1st protein group in ProteinGroups object: {proteinGroups.protein_groups[0]}")
             

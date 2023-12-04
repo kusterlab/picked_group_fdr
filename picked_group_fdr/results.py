@@ -218,7 +218,7 @@ class ProteinGroupResults:
         for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(
             protein_groups, proteinGroupPeptideInfos, proteinScores, reportedQvals
         ):
-            if helpers.isObsolete(proteinGroup):
+            if helpers.is_obsolete(proteinGroup):
                 continue
             pgr = ProteinGroupResult.from_protein_group(
                 proteinGroup,

@@ -239,7 +239,7 @@ def calculatePostErrProbCutoff(sortedPostErrorProbs, fdrCutoff):
         fdrs.append(fps / tps)
         peps.append(postErrProb)
     
-    qvals = fdr.fdrsToQvals(fdrs)
+    qvals = fdr.fdrs_to_qvals(fdrs)
     if qvals[-1] <= fdrCutoff:
         postErrorProbCutoff = peps[-1]
     else:

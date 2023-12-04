@@ -13,25 +13,25 @@ class NoPlotter:
     def __init__(self):
         pass
     
-    def initPlots(self):
+    def init_plots(self):
         pass
     
-    def decoratePlots(self):
+    def decorate_plots(self):
         pass
         
-    def savePlots(self):
+    def save_plots(self):
         pass
     
     def show(self):
         pass
     
-    def set_series_label_base(self, figureLabel):
+    def set_series_label_base(self, figure_label):
         pass
     
-    def set_series_label(self, scoreType, groupingStrategy, pickedStrategy, rescue_step):
+    def set_series_label(self, score_type, grouping_strategy, picked_strategy, rescue_step):
         pass
     
-    def plotQvalCalibrationAndPerformance(self, reportedQvals, observedQvals, absentRatio = 1.0):
+    def plot_qval_calibration_and_performance(self, reported_qvals, observed_qvals, absent_ratio = 1.0):
         pass
 
 
@@ -53,14 +53,14 @@ class Plotter:
         self.label = ""
     
     def _updateMaxProt(self, reportedQvals):
-        self.maxProt = max([self.maxProt, fdr.countBelowThreshold(reportedQvals, self.maxPlottedQval)])
+        self.maxProt = max([self.maxProt, fdr.count_below_threshold(reportedQvals, self.maxPlottedQval)])
         
-    def initPlots(self):
+    def init_plots(self):
         self.plt.figure(1, figsize=(8,6))
         self.plt.figure(2, figsize=(8,6))
         self.plt.figure(3, figsize=(8,6))
     
-    def decoratePlots(self):
+    def decorate_plots(self):
         increments = 200 if self.maxProt < 2000 else 1000
         maxProt = int(self.maxProt / increments + 1) * increments
         
@@ -123,7 +123,7 @@ class Plotter:
         
         self.plt.tight_layout()
 
-    def savePlots(self):
+    def save_plots(self):
         if self.figure_base_fn:
             logger.info(f"Saving calibration plot: {self.figure_base_fn}-calibration.png")
             self.plt.figure(1)
@@ -144,22 +144,20 @@ class Plotter:
         if self.plot_figures:
             self.plt.show()
     
-    def plotQvalCalibrationAndPerformance(self, reportedQvals, observedQvals, absentRatio = 1.0):
+    def plot_qval_calibration_and_performance(self, reported_qvals, observed_qvals, absent_ratio = 1.0):
         self.plt.figure(1)
         #self.plt.subplot(2,2,1, label = 'calibration')
-        self.plt.plot(absentRatio*np.array(reportedQvals), np.array(observedQvals), '-', label = self.label)
-        
-        #self.plt.hist([decoyScores, entrapmentScores, poolScores], bins = np.arange(0, 400, 10), label = ['decoy', 'entrapment', 'pool'])
+        self.plt.plot(absent_ratio*np.array(reported_qvals), np.array(observed_qvals), '-', label = self.label)
         
         self.plt.figure(2)
         #self.plt.subplot(2,2,2, label = 'performance entrapment')
-        self.plt.plot(observedQvals, range(len(reportedQvals)), '-', label = self.label)
+        self.plt.plot(observed_qvals, range(len(reported_qvals)), '-', label = self.label)
         
         self.plt.figure(3)
         #self.plt.subplot(2,2,3, label = 'performance')
-        self.plt.plot(reportedQvals, range(len(reportedQvals)), '-', label = self.label)
+        self.plt.plot(reported_qvals, range(len(reported_qvals)), '-', label = self.label)
         
-        self._updateMaxProt(reportedQvals)
+        self._updateMaxProt(reported_qvals)
 
     def _right_align_legend(self, legend):    
         # get the width of your widest label, since every label will need 
@@ -170,12 +168,12 @@ class Plotter:
                 t.set_ha('right') # ha is alias for horizontalalignment
                 t.set_position((shift,0))
     
-    def set_series_label_base(self, figureLabel):
-        self.label_base = figureLabel
+    def set_series_label_base(self, figure_label):
+        self.label_base = figure_label
     
-    def set_series_label(self, scoreType, groupingStrategy, pickedStrategy, rescue_step):
+    def set_series_label(self, score_type, grouping_strategy, picked_strategy, rescue_step):
         label = self.label_base + " " if self.label_base else ""
-        short_desc = methods.short_description(scoreType, groupingStrategy, pickedStrategy, rescue_step, sep=",")
+        short_desc = methods.short_description(score_type, grouping_strategy, picked_strategy, rescue_step, sep=",")
         label += f'({short_desc})'
         self.label = label
 

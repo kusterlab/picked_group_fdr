@@ -88,7 +88,7 @@ def main(argv):
         for fasta in args.fasta:
             for digestion_params in digestion_params_list:
                 peptideToProteinMaps.append(
-                    digest.getPeptideToProteinMapWithEnzyme(
+                    digest.get_peptide_to_protein_map_with_enzyme(
                         fasta,
                         digestion_params.min_length,
                         digestion_params.max_length,

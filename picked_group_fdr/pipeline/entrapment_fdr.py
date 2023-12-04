@@ -18,7 +18,7 @@ logger = logging.getLogger(__package__ + "." + __file__)
 
 # python -m picked_group_fdr.pipeline.entrapment_fdr \
 # --protein_groups_files proteinGroups.txt --plot_figures
-def parseArgs(argv):
+def parse_args(argv):
     import argparse
 
     apars = ArgumentParserWithLogger(
@@ -126,7 +126,7 @@ def main(argv):
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
     )
 
-    args = parseArgs(argv)
+    args = parse_args(argv)
 
     if args.protein_groups_files:
         num_input_files = len(args.protein_groups_files)
@@ -155,7 +155,7 @@ def main(argv):
         args.is_decoy_file = [False] * num_input_files
 
     plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
-    plotter.initPlots()
+    plotter.init_plots()
 
     unique_labels = sorted(set(args.plot_labels))
     for label in unique_labels:
@@ -170,7 +170,7 @@ def main(argv):
                     if l == label
                 ]
             )
-            proteinGroups, proteinScores = zip(
+            protein_groups, protein_scores = zip(
                 *list(
                     parsers.parse_protein_groups_file_multiple(
                         protein_group_files,
@@ -181,15 +181,15 @@ def main(argv):
                 )
             )
 
-            scoreGroupTuples = list(zip(proteinGroups, proteinScores))
-            np.random.shuffle(scoreGroupTuples)
-            scoreGroupTuples = sorted(
-                scoreGroupTuples, key=lambda x: x[1], reverse=True
+            score_group_tuples = list(zip(protein_groups, protein_scores))
+            np.random.shuffle(score_group_tuples)
+            score_group_tuples = sorted(
+                score_group_tuples, key=lambda x: x[1], reverse=True
             )
-            proteinGroups, proteinScores = zip(*scoreGroupTuples)
+            protein_groups, protein_scores = zip(*score_group_tuples)
 
-            reportedQvals, observedQvals = fdr.calculateProteinFDRs(
-                proteinGroups, proteinScores
+            reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(
+                protein_groups, protein_scores
             )
         elif args.peptides_files:
             peptide_files, is_decoy_file = zip(
@@ -201,7 +201,7 @@ def main(argv):
                     if l == label
                 ]
             )
-            peptides, proteins, _, peptideScores = zip(
+            peptides, proteins, _, peptide_scores = zip(
                 *list(
                     parsers.parse_peptides_files_multiple(
                         peptide_files,
@@ -213,23 +213,23 @@ def main(argv):
                 )
             )
 
-            scoreGroupTuples = list(zip(peptideScores, peptides, proteins))
-            np.random.shuffle(scoreGroupTuples)
-            scoreGroupTuples = sorted(
-                scoreGroupTuples, key=lambda x: x[0], reverse=True
+            score_group_tuples = list(zip(peptide_scores, peptides, proteins))
+            np.random.shuffle(score_group_tuples)
+            score_group_tuples = sorted(
+                score_group_tuples, key=lambda x: x[0], reverse=True
             )
 
-            reportedQvals, observedQvals = fdr.calculatePeptideFDRs(
-                scoreGroupTuples, scoreType=BestAndromedaScore()
+            reported_qvals, observed_qvals = fdr.calculate_peptide_fdrs(
+                score_group_tuples, score_type=BestAndromedaScore()
             )
 
         plotter.label = label
-        plotter.plotQvalCalibrationAndPerformance(
-            reportedQvals, observedQvals, absentRatio=args.absent_ratio
+        plotter.plot_qval_calibration_and_performance(
+            reported_qvals, observed_qvals, absent_ratio=args.absent_ratio
         )
 
-    plotter.decoratePlots()
-    plotter.savePlots()
+    plotter.decorate_plots()
+    plotter.save_plots()
     plotter.show()
 
 
