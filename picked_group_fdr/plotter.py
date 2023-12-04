@@ -36,8 +36,8 @@ class NoPlotter:
 
 
 class Plotter:
-    maxProt: float
-    maxPlottedQval: float
+    max_prot: float
+    max_plotted_qval: float
     figure_base_fn: str
     plot_figures: bool
     label: str
@@ -46,14 +46,14 @@ class Plotter:
     import matplotlib.pyplot as plt
     
     def __init__(self, figure_base_fn, plot_figures):
-        self.maxPlottedQval = 0.1 # 0.02
-        self.maxProt = 0
+        self.max_plotted_qval = 0.1 # 0.02
+        self.max_prot = 0
         self.figure_base_fn = figure_base_fn
         self.plot_figures = plot_figures
         self.label = ""
     
-    def _updateMaxProt(self, reportedQvals):
-        self.maxProt = max([self.maxProt, fdr.count_below_threshold(reportedQvals, self.maxPlottedQval)])
+    def _updateMaxProt(self, reported_qvals):
+        self.max_prot = max([self.max_prot, fdr.count_below_threshold(reported_qvals, self.max_plotted_qval)])
         
     def init_plots(self):
         self.plt.figure(1, figsize=(8,6))
@@ -61,8 +61,8 @@ class Plotter:
         self.plt.figure(3, figsize=(8,6))
     
     def decorate_plots(self):
-        increments = 200 if self.maxProt < 2000 else 1000
-        maxProt = int(self.maxProt / increments + 1) * increments
+        increments = 200 if self.max_prot < 2000 else 1000
+        max_prot = int(self.max_prot / increments + 1) * increments
         
         # calibration
         self.plt.figure(1)
@@ -73,8 +73,8 @@ class Plotter:
         self.plt.xlabel("Decoy q-value", fontsize = 14)
         self.plt.ylabel("Entrapment q-value", fontsize = 14)
         
-        self.plt.xlim([0,self.maxPlottedQval])
-        self.plt.ylim([0,self.maxPlottedQval])
+        self.plt.xlim([0,self.max_plotted_qval])
+        self.plt.ylim([0,self.max_plotted_qval])
         legend = self.plt.legend(fontsize = 14)
         self._right_align_legend(legend)
         
@@ -88,12 +88,12 @@ class Plotter:
         # performance entrapment
         self.plt.figure(2)
         #self.plt.subplot(2,2,2, label = 'performance entrapment')
-        self.plt.plot([0.01, 0.01], [0, maxProt], 'k--', alpha = 0.5, linewidth = 1)
+        self.plt.plot([0.01, 0.01], [0, max_prot], 'k--', alpha = 0.5, linewidth = 1)
         self.plt.xlabel("Entrapment q-value", fontsize = 14)
         self.plt.ylabel("# proteins / protein groups", fontsize = 14)
         
-        self.plt.xlim([0, self.maxPlottedQval])
-        self.plt.ylim([0, maxProt])
+        self.plt.xlim([0, self.max_plotted_qval])
+        self.plt.ylim([0, max_prot])
         legend = self.plt.legend(fontsize = 14)
         self._right_align_legend(legend)
         
@@ -107,12 +107,12 @@ class Plotter:
         # performance decoy
         self.plt.figure(3)
         #self.plt.subplot(2,2,3, label = 'performance')
-        self.plt.plot([0.01, 0.01], [0, maxProt], 'k--', alpha = 0.5, linewidth = 1)
+        self.plt.plot([0.01, 0.01], [0, max_prot], 'k--', alpha = 0.5, linewidth = 1)
         self.plt.xlabel("Decoy q-value", fontsize = 14)
         self.plt.ylabel("# proteins / protein groups", fontsize = 14)
         
-        self.plt.xlim([0, self.maxPlottedQval])
-        self.plt.ylim([0, maxProt])
+        self.plt.xlim([0, self.max_plotted_qval])
+        self.plt.ylim([0, max_prot])
         legend = self.plt.legend(fontsize = 14)
         self._right_align_legend(legend)
         

@@ -42,69 +42,71 @@ class ProteinGroupResult:
     @classmethod
     def from_protein_group(
         cls,
-        proteinGroup,
-        peptideScores,
-        reportedFdr,
-        proteinScore,
-        scoreCutoff,
+        protein_group,
+        peptide_scores,
+        reported_fdr,
+        protein_score,
+        score_cutoff,
         keep_all_proteins,
     ):
-        numUniquePeptidesPerProtein = cls._get_peptide_counts(
-            peptideScores, scoreCutoff
+        num_unique_peptides_per_protein = cls._get_peptide_counts(
+            peptide_scores, score_cutoff
         )
-        peptideCountsUnique = [numUniquePeptidesPerProtein[p] for p in proteinGroup]
-        if sum(peptideCountsUnique) == 0 and not keep_all_proteins:
+        peptide_counts_unique = [
+            num_unique_peptides_per_protein[p] for p in protein_group
+        ]
+        if sum(peptide_counts_unique) == 0 and not keep_all_proteins:
             return None
 
-        proteinGroup, peptideCountsUnique = zip(
+        protein_group, peptide_counts_unique = zip(
             *[
                 (p, num_peptides)
-                for p, num_peptides in zip(proteinGroup, peptideCountsUnique)
+                for p, num_peptides in zip(protein_group, peptide_counts_unique)
                 if num_peptides > 0 or keep_all_proteins
             ]
         )
 
-        bestPeptide = sorted([(p[0], p[1]) for p in peptideScores])[0][1]
-        majorityProteinIds = ";".join(
+        best_peptide = sorted([(p[0], p[1]) for p in peptide_scores])[0][1]
+        majority_protein_ids = ";".join(
             [
                 p
-                for p, num_peptides in zip(proteinGroup, peptideCountsUnique)
-                if num_peptides >= max(peptideCountsUnique) / 2
+                for p, num_peptides in zip(protein_group, peptide_counts_unique)
+                if num_peptides >= max(peptide_counts_unique) / 2
             ]
         )
-        numberOfProteins = len(proteinGroup)
+        number_of_proteins = len(protein_group)
 
-        peptideCountsUnique = ";".join(map(str, peptideCountsUnique))
-        proteinIds = ";".join(proteinGroup)
+        peptide_counts_unique = ";".join(map(str, peptide_counts_unique))
+        protein_ids = ";".join(protein_group)
 
-        qValue = reportedFdr
-        score = proteinScore
-        reverse = "+" if helpers.is_decoy(proteinGroup) else ""
-        potentialContaminant = "+" if helpers.is_contaminant(proteinGroup) else ""
+        qval = reported_fdr
+        score = protein_score
+        reverse = "+" if helpers.is_decoy(protein_group) else ""
+        potential_contaminant = "+" if helpers.is_contaminant(protein_group) else ""
         return cls(
-            proteinIds,
-            majorityProteinIds,
-            peptideCountsUnique,
-            bestPeptide,
-            numberOfProteins,
-            qValue,
+            protein_ids,
+            majority_protein_ids,
+            peptide_counts_unique,
+            best_peptide,
+            number_of_proteins,
+            qval,
             score,
             reverse,
-            potentialContaminant,
+            potential_contaminant,
         )
 
     @staticmethod
-    def _get_peptide_counts(scorePeptidePairs, scoreCutoff):
-        proteinPeptideCount = collections.defaultdict(int)
-        seenPeptides = set()
-        for PEP, peptide, proteins in sorted(scorePeptidePairs):
-            if PEP > scoreCutoff:
+    def _get_peptide_counts(score_peptide_pairs, score_cutoff):
+        protein_peptide_count = collections.defaultdict(int)
+        seen_peptides = set()
+        for post_err_prob, peptide, proteins in sorted(score_peptide_pairs):
+            if post_err_prob > score_cutoff:
                 break
-            if peptide not in seenPeptides:
-                seenPeptides.add(peptide)
+            if peptide not in seen_peptides:
+                seen_peptides.add(peptide)
                 for protein in proteins:
-                    proteinPeptideCount[protein] += 1
-        return proteinPeptideCount
+                    protein_peptide_count[protein] += 1
+        return protein_peptide_count
 
     def to_list(self, format_extra_columns=None):
         if format_extra_columns is None:
@@ -208,24 +210,24 @@ class ProteinGroupResults:
     def from_protein_groups(
         cls,
         protein_groups: ProteinGroups,
-        proteinGroupPeptideInfos: ProteinGroupPeptideInfos,
-        proteinScores: List[float],
-        reportedQvals: List[float],
-        scoreCutoff: float,
+        protein_group_peptide_infos: ProteinGroupPeptideInfos,
+        protein_scores: List[float],
+        reported_qvals: List[float],
+        score_cutoff: float,
         keep_all_proteins: bool,
     ) -> ProteinGroupResults:
         protein_group_results = list()
-        for proteinGroup, peptideScores, proteinScore, reportedFdr in zip(
-            protein_groups, proteinGroupPeptideInfos, proteinScores, reportedQvals
+        for protein_group, peptide_scores, protein_score, reported_fdr in zip(
+            protein_groups, protein_group_peptide_infos, protein_scores, reported_qvals
         ):
-            if helpers.is_obsolete(proteinGroup):
+            if helpers.is_obsolete(protein_group):
                 continue
             pgr = ProteinGroupResult.from_protein_group(
-                proteinGroup,
-                peptideScores,
-                reportedFdr,
-                proteinScore,
-                scoreCutoff,
+                protein_group,
+                peptide_scores,
+                reported_fdr,
+                protein_score,
+                score_cutoff,
                 keep_all_proteins,
             )
             if (

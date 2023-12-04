@@ -54,7 +54,7 @@ class ProteinScore(ABC):
     def short_description(self):
         pass
     
-    def optimize_hyperparameters(self, proteinGroups, proteinGroupPeptideInfos):
+    def optimize_hyperparameters(self, protein_groups, protein_group_peptide_infos):
         pass
 
 
@@ -80,15 +80,15 @@ class MQProteinScore(ProteinScore):
         return 'multiplication of'
         
     def get_protein_scores_from_file(self):
-        proteinGroupPeptideInfos = list()
-        for proteinGroup, proteinScore in parsers.parse_protein_groups_file_single(self.mq_protein_groups_file):
-            proteinGroupPeptideInfos.append([(proteinScore, "NA", proteinGroup)])
-        return proteinGroupPeptideInfos
+        protein_group_peptide_infos = list()
+        for protein_group, protein_score in parsers.parse_protein_groups_file_single(self.mq_protein_groups_file):
+            protein_group_peptide_infos.append([(protein_score, "NA", protein_group)])
+        return protein_group_peptide_infos
 
 
 class BestAndromedaScore(ProteinScore):
-    def calculate_score(self, scorePeptidePairs):
-        return max([y[0] for y in scorePeptidePairs]) if len(scorePeptidePairs) > 0 else -100.0
+    def calculate_score(self, score_peptide_pairs):
+        return max([y[0] for y in score_peptide_pairs]) if len(score_peptide_pairs) > 0 else -100.0
     
     def can_do_protein_group_rescue(self):
         return False
@@ -104,9 +104,9 @@ class BestAndromedaScore(ProteinScore):
 
 
 class BestPEPScore(ProteinScore):
-    def calculate_score(self, scorePeptidePairs):
+    def calculate_score(self, score_peptide_pairs):
         #return max([-1*y[0] for y in scorePeptidePairs]) if len(scorePeptidePairs) > 0 else -100.0
-        return max([-1*np.log10(y[0] + np.nextafter(0,1)) for y in scorePeptidePairs]) if len(scorePeptidePairs) > 0 else -100.0
+        return max([-1*np.log10(y[0] + np.nextafter(0,1)) for y in score_peptide_pairs]) if len(score_peptide_pairs) > 0 else -100.0
     
     def can_do_protein_group_rescue(self):
         return True
@@ -130,53 +130,53 @@ class MultPEPScore(ProteinScore):
     def __init__(self):
         self.div = 1.0
     
-    def optimize_hyperparameters(self, proteinGroups, proteinGroupPeptideInfos):
-        proteinScoreTuples = list()
-        for proteinGroup, proteinGroupScoreList in zip(proteinGroups, proteinGroupPeptideInfos):
-            multPEP, numPeptides = self._get_score_and_num_peptides(proteinGroupScoreList)
-            if numPeptides > 0 and not np.isnan(multPEP):
-                proteinScoreTuples.append([multPEP, numPeptides, helpers.is_decoy(proteinGroup)])
+    def optimize_hyperparameters(self, protein_groups, protein_group_peptide_infos):
+        protein_score_tuples = list()
+        for protein_group, protein_group_score_list in zip(protein_groups, protein_group_peptide_infos):
+            mult_pep, num_peptides = self._get_score_and_num_peptides(protein_group_score_list)
+            if num_peptides > 0 and not np.isnan(mult_pep):
+                protein_score_tuples.append([mult_pep, num_peptides, helpers.is_decoy(protein_group)])
         
-        proteinScoreTuples = np.array(proteinScoreTuples)
+        protein_score_tuples = np.array(protein_score_tuples)
         min_range, max_range = 0.1, 1.0
         for step_size in [1e-1, 1e-2, 1e-3, 1e-4]:
-            numIdentifiedTargets, div = self._get_optimal_div(proteinScoreTuples, np.arange(min_range, max_range, step_size))
+            num_identified_targets, div = self._get_optimal_div(protein_score_tuples, np.arange(min_range, max_range, step_size))
             min_range, max_range = div - step_size*0.9, div + step_size*0.9
         
         self.div = div
-        logger.info(f"Optimal division factor for multPEP score: {self.div:.4f} (#targets = {numIdentifiedTargets})")
+        logger.info(f"Optimal division factor for multPEP score: {self.div:.4f} (#targets = {num_identified_targets})")
     
-    def _get_optimal_div(self, proteinScoreTuples, div_range: np.array):    
-        mostIdentifiedTargets = (-np.inf, 1.0)
+    def _get_optimal_div(self, protein_score_tuples, div_range: np.array):    
+        most_identified_targets = (-np.inf, 1.0)
         for div in div_range:
-            proteinScores = proteinScoreTuples[:,0] + proteinScoreTuples[:,1] * np.log10(div)
+            protein_scores = protein_score_tuples[:,0] + protein_score_tuples[:,1] * np.log10(div)
             
-            sortIdxs = np.argsort(proteinScores)[::-1]
-            numDecoys = proteinScoreTuples[:,2][sortIdxs].cumsum()
-            numTargets = (-proteinScoreTuples[:,2] + 1)[sortIdxs].cumsum()
+            sorted_idxs = np.argsort(protein_scores)[::-1]
+            num_decoys = protein_score_tuples[:,2][sorted_idxs].cumsum()
+            num_targets = (-protein_score_tuples[:,2] + 1)[sorted_idxs].cumsum()
             
-            fdrs = np.divide(numDecoys+1, numTargets+1)
+            fdrs = np.divide(num_decoys+1, num_targets+1)
             qvals = fdr.fdrs_to_qvals(fdrs)
-            numIdentifiedTargets = fdr.count_below_threshold(qvals, 0.01, proteinScoreTuples[:,2][sortIdxs])
-            if numIdentifiedTargets > mostIdentifiedTargets[0]:
-                mostIdentifiedTargets = (numIdentifiedTargets, div)
-        return mostIdentifiedTargets
+            num_identified_targets = fdr.count_below_threshold(qvals, 0.01, protein_score_tuples[:,2][sorted_idxs])
+            if num_identified_targets > most_identified_targets[0]:
+                most_identified_targets = (num_identified_targets, div)
+        return most_identified_targets
 
-    def calculate_score(self, scorePeptidePairs):
-        multPEP, numPeptides = self._get_score_and_num_peptides(scorePeptidePairs)
-        multPEP += np.log10(self.div) * numPeptides
-        if numPeptides == 0 or np.isnan(multPEP):
-            multPEP = -100.0
-        return multPEP
+    def calculate_score(self, score_peptide_pairs):
+        mult_pep, num_peptides = self._get_score_and_num_peptides(score_peptide_pairs)
+        mult_pep += np.log10(self.div) * num_peptides
+        if num_peptides == 0 or np.isnan(mult_pep):
+            mult_pep = -100.0
+        return mult_pep
     
-    def _get_score_and_num_peptides(self, scorePeptidePairs):
-        multPEP = 0.0
-        seenPeptides = set()
-        for PEP, peptide, _ in sorted(scorePeptidePairs):
-            if peptide not in seenPeptides:
-                seenPeptides.add(peptide)
-                multPEP -= np.log10(PEP + np.nextafter(0,1))
-        return multPEP, len(seenPeptides)
+    def _get_score_and_num_peptides(self, score_peptide_pairs):
+        mult_pep = 0.0
+        seen_peptides = set()
+        for PEP, peptide, _ in sorted(score_peptide_pairs):
+            if peptide not in seen_peptides:
+                seen_peptides.add(peptide)
+                mult_pep -= np.log10(PEP + np.nextafter(0,1))
+        return mult_pep, len(seen_peptides)
         
     def can_do_protein_group_rescue(self):
         return True
@@ -333,7 +333,7 @@ class ProteinScoringStrategy:
         self.peptide_qval_cutoff = peptide_qval_cutoff
         
         if "Perc" in score_description:
-            # Add "remap" to the scoreType if the fasta database used for protein grouping is different from the one used by Percolator
+            # Add "remap" to the score_type if the fasta database used for protein grouping is different from the one used by Percolator
             if "remap" in score_description:
                 self.score_origin = PercolatorInputRemapped()
             else:
@@ -357,11 +357,11 @@ class ProteinScoringStrategy:
     def can_do_quantification(self) -> bool:
         return self.score_origin.can_do_quantification()
     
-    def optimize_hyperparameters(self, proteinGroups, proteinGroupPeptideInfos) -> float:
-        return self.protein_score.optimize_hyperparameters(proteinGroups, proteinGroupPeptideInfos)
+    def optimize_hyperparameters(self, protein_groups, protein_group_peptide_infos) -> float:
+        return self.protein_score.optimize_hyperparameters(protein_groups, protein_group_peptide_infos)
     
-    def calculate_score(self, scorePeptidePairs) -> float:
-        return self.protein_score.calculate_score(scorePeptidePairs)
+    def calculate_score(self, score_peptide_pairs) -> float:
+        return self.protein_score.calculate_score(score_peptide_pairs)
     
     def get_score_column(self) -> str:
         return self.protein_score.get_score_column(self.score_origin.short_description() == 'p')
@@ -388,12 +388,12 @@ class ProteinScoringStrategy:
             return proteins
     
     def set_peptide_counts_per_protein(self, 
-            peptideInfoList: PeptideInfoList) -> None:
+            peptide_info_list: PeptideInfoList) -> None:
         if self.use_razor:
-            observedPeptides = ObservedPeptides()
-            observedPeptides.create(peptideInfoList)
-            self.peptide_counts_per_protein = observedPeptides.get_peptide_counts_per_protein()
-            self.best_peptide_score_per_protein = observedPeptides.get_best_peptide_score_per_protein()
+            observed_peptides = ObservedPeptides()
+            observed_peptides.create(peptide_info_list)
+            self.peptide_counts_per_protein = observed_peptides.get_peptide_counts_per_protein()
+            self.best_peptide_score_per_protein = observed_peptides.get_best_peptide_score_per_protein()
             
     def _retain_protein_with_most_observed_peptides(self, proteins: List[str]) -> List[str]:
         """Retains only the protein with the most observed peptides. 
@@ -401,24 +401,24 @@ class ProteinScoringStrategy:
         otherwise by the md5 hash of the protein identifier. The latter
         ensures that we randomly select a protein, but that this happens
         consistently across different peptides."""
-        numPeptidesPerProteinPairs = [(self.peptide_counts_per_protein.get(protein, 0), 
+        num_peptides_per_protein_pairs = [(self.peptide_counts_per_protein.get(protein, 0), 
                                        -1*self.best_peptide_score_per_protein.get(protein, 1.0),
                                        hashlib.md5(protein.encode('utf-8')).hexdigest(),
                                        protein) for protein in proteins]
-        pairWithMostObservedPeptides = sorted(numPeptidesPerProteinPairs, reverse = True)[0]
-        proteinWithMostObservedPeptides = pairWithMostObservedPeptides[-1]
-        return [proteinWithMostObservedPeptides]
+        pair_with_most_observed_peptides = sorted(num_peptides_per_protein_pairs, reverse = True)[0]
+        protein_with_most_observed_peptides = pair_with_most_observed_peptides[-1]
+        return [protein_with_most_observed_peptides]
     
     def collect_peptide_scores_per_protein(self,
-            proteinGroups: ProteinGroups, 
-            peptideInfoList: PeptideInfoList, 
+            protein_groups: ProteinGroups, 
+            peptide_info_list: PeptideInfoList, 
             suppress_missing_protein_warning: bool = False) -> ProteinGroupPeptideInfos:
         """Groups peptides with associated scores by protein
         
-        :param proteinGroups: ProteinGroups object
-        :param peptideInfoList: Dict of peptide -> (score, proteins)
-        :param suppressMissingProteinWarning: suppresses the warning for missing proteins
-            in the proteinGroups object. This is set during the rescuing grouping procedure
+        :param protein_groups: ProteinGroups object
+        :param peptide_info_list: Dict of peptide -> (score, proteins)
+        :param suppress_missing_protein_warning: suppresses the warning for missing proteins
+            in the proteiprotein_groupsnGroups object. This is set during the rescuing grouping procedure
             since some protein groups will have been filtered out in the rescuing step.
         :returns: lists of (score, peptide, proteins) tuples per protein group
         """
@@ -426,42 +426,42 @@ class ProteinScoringStrategy:
             return self.protein_score.get_protein_scores_from_file()
         
         logger.info("Assigning peptides to protein groups")
-        sharedPeptides, uniquePeptides = 0, 0
-        proteinGroupPeptideInfos = [list() for _ in range(len(proteinGroups))]
-        postErrProbs = list()
-        for peptide, (score, proteins) in peptideInfoList.items():
+        shared_peptides, unique_peptides = 0, 0
+        protein_group_peptide_infos = [list() for _ in range(len(protein_groups))]
+        post_err_probs = list()
+        for peptide, (score, proteins) in peptide_info_list.items():
             proteins = self.filter_proteins(proteins) # filtering for razor peptide approach
             
-            proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)
-            if len(proteinGroupIdxs) == 0 and not suppress_missing_protein_warning:
+            protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
+            if len(protein_group_idxs) == 0 and not suppress_missing_protein_warning:
                 raise Exception(f"Could not find any of the proteins {proteins} in the ProteinGroups object, check if the identifier format is the same. \
-                                  1st protein group in ProteinGroups object: {proteinGroups.protein_groups[0]}")
+                                  1st protein group in ProteinGroups object: {protein_groups.protein_groups[0]}")
             
-            if not self.use_shared_peptides and helpers.is_shared_peptide(proteinGroupIdxs): # ignore shared peptides
-                sharedPeptides += 1
+            if not self.use_shared_peptides and helpers.is_shared_peptide(protein_group_idxs): # ignore shared peptides
+                shared_peptides += 1
                 continue
             
-            uniquePeptides += 1
-            for proteinGroupIdx in proteinGroupIdxs:
-                proteinGroupPeptideInfos[proteinGroupIdx].append((score, peptide, proteins))
+            unique_peptides += 1
+            for protein_group_idx in protein_group_idxs:
+                protein_group_peptide_infos[protein_group_idx].append((score, peptide, proteins))
             
             if not helpers.is_decoy(proteins) and not helpers.is_mbr(score):
-                postErrProbs.append(score)
+                post_err_probs.append(score)
         
-        self.peptide_score_cutoff = fdr.calc_post_err_prob_cutoff(postErrProbs, self.peptide_qval_cutoff)
-        logger.info(f"#Precursors: Shared peptides = {sharedPeptides}; Unique peptides = {uniquePeptides}")
-        return proteinGroupPeptideInfos
+        self.peptide_score_cutoff = fdr.calc_post_err_prob_cutoff(post_err_probs, self.peptide_qval_cutoff)
+        logger.info(f"#Precursors: Shared peptides = {shared_peptides}; Unique peptides = {unique_peptides}")
+        return protein_group_peptide_infos
     
 
-def compareRazorPeptides(mqEvidenceFile, peptideToProteinMap, proteinGroups, scoreType):
+def compare_razor_peptides(mq_evidence_file, peptide_to_protein_map, protein_groups, score_type):
     """Compares the chosen protein by MaxQuant according to the razor peptide rule with our implementation of the razor peptide rule"""
-    scoreType = ProteinScoringStrategy("multPEP razor")
-    for peptideRow in psm.parse_evidence_file_single(mqEvidenceFile, score_type = scoreType):
-        peptide, tmp_proteins, _, _ = peptideRow
+    score_type = ProteinScoringStrategy("multPEP razor")
+    for peptide_row in psm.parse_evidence_file_single(mq_evidence_file, score_type = score_type):
+        peptide, tmp_proteins, _, _ = peptide_row
         
-        proteins = digest.getProteins(peptideToProteinMap, helpers.clean_peptide(peptide))
+        proteins = digest.get_proteins(peptide_to_protein_map, helpers.clean_peptide(peptide))
         
-        leadingProteins = proteinGroups.get_leading_proteins(proteins)
-        if len(leadingProteins) > 1:
-            predictedRazor = scoreType.filter_proteins(proteins) # filtering for razor peptide approach
-            logger.debug(f"{tmp_proteins[0] == predictedRazor[0]} {tmp_proteins[0]} {predictedRazor[0]}")
+        leading_proteins = protein_groups.get_leading_proteins(proteins)
+        if len(leading_proteins) > 1:
+            predicted_razor = score_type.filter_proteins(proteins) # filtering for razor peptide approach
+            logger.debug(f"{tmp_proteins[0] == predicted_razor[0]} {tmp_proteins[0]} {predicted_razor[0]}")

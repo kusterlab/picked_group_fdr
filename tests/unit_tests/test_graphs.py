@@ -10,9 +10,9 @@ class TestConnectedProteinGraphs:
   def test_splitConnectedComponent_noCutPossible(self):
     G = nx.Graph()
     
-    G.add_node('proteinA', nodeType = "protein")
-    G.add_node('proteinB', nodeType = "protein")
-    G.add_node('proteinC', nodeType = "protein")
+    G.add_node('proteinA', node_type = "protein")
+    G.add_node('proteinB', node_type = "protein")
+    G.add_node('proteinC', node_type = "protein")
     
     G.add_edge('proteinA', 'peptide:proteinA;proteinB')
     G.add_edge('proteinB', 'peptide:proteinA;proteinB')
@@ -21,8 +21,8 @@ class TestConnectedProteinGraphs:
     G.add_edge('proteinB', 'peptide:proteinB;proteinC')
     G.add_edge('proteinC', 'peptide:proteinB;proteinC')
     
-    proteins = [x for x,y in G.nodes(data=True) if 'nodeType' in y and y['nodeType'] == "protein"]
-    peptides = [x for x,y in G.nodes(data=True) if 'nodeType' not in y]
+    proteins = [x for x,y in G.nodes(data=True) if 'node_type' in y and y['node_type'] == "protein"]
+    peptides = [x for x,y in G.nodes(data=True) if 'node_type' not in y]
     
     connectedProteinGraphs = graphs.ConnectedProteinGraphs([])
     assert connectedProteinGraphs._split_single_connected_component(G, proteins, peptides) == list()
@@ -30,10 +30,10 @@ class TestConnectedProteinGraphs:
   def test_splitConnectedComponent_oneCutPossible(self):
     G = nx.Graph()
     
-    G.add_node('proteinA', nodeType = "protein")
-    G.add_node('proteinB', nodeType = "protein")
-    G.add_node('proteinC', nodeType = "protein")
-    G.add_node('proteinD', nodeType = "protein")
+    G.add_node('proteinA', node_type = "protein")
+    G.add_node('proteinB', node_type = "protein")
+    G.add_node('proteinC', node_type = "protein")
+    G.add_node('proteinD', node_type = "protein")
     
     G.add_edge('proteinA', 'peptide:proteinA;proteinB')
     G.add_edge('proteinB', 'peptide:proteinA;proteinB')
@@ -44,8 +44,8 @@ class TestConnectedProteinGraphs:
     G.add_edge('proteinB', 'peptide:proteinB;proteinC')
     G.add_edge('proteinC', 'peptide:proteinB;proteinC')
     
-    proteins = [x for x,y in G.nodes(data=True) if 'nodeType' in y and y['nodeType'] == "protein"]
-    peptides = [x for x,y in G.nodes(data=True) if 'nodeType' not in y]
+    proteins = [x for x,y in G.nodes(data=True) if 'node_type' in y and y['node_type'] == "protein"]
+    peptides = [x for x,y in G.nodes(data=True) if 'node_type' not in y]
     
     connectedProteinGraphs = graphs.ConnectedProteinGraphs([])
     assert set([";".join(sorted(connectedProteinGraphs._get_protein_nodes(x))) for x in connectedProteinGraphs._split_single_connected_component(G, proteins, peptides)]) == {'proteinA;proteinB', 'proteinC;proteinD'}
@@ -53,10 +53,10 @@ class TestConnectedProteinGraphs:
   def test_decouple_connected_proteins_oneCutPossible(self):
     G = nx.Graph()
     
-    G.add_node('proteinA', nodeType = "protein")
-    G.add_node('proteinB', nodeType = "protein")
-    G.add_node('proteinC', nodeType = "protein")
-    G.add_node('proteinD', nodeType = "protein")
+    G.add_node('proteinA', node_type = "protein")
+    G.add_node('proteinB', node_type = "protein")
+    G.add_node('proteinC', node_type = "protein")
+    G.add_node('proteinD', node_type = "protein")
     
     G.add_edge('proteinA', 'peptide:proteinA;proteinB')
     G.add_edge('proteinB', 'peptide:proteinA;proteinB')
@@ -67,8 +67,8 @@ class TestConnectedProteinGraphs:
     G.add_edge('proteinB', 'peptide:proteinB;proteinC')
     G.add_edge('proteinC', 'peptide:proteinB;proteinC')
     
-    proteins = [x for x,y in G.nodes(data=True) if 'nodeType' in y and y['nodeType'] == "protein"]
-    peptides = [x for x,y in G.nodes(data=True) if 'nodeType' not in y]
+    proteins = [x for x,y in G.nodes(data=True) if 'node_type' in y and y['node_type'] == "protein"]
+    peptides = [x for x,y in G.nodes(data=True) if 'node_type' not in y]
     
     proteinGroups = protein_groups.ProteinGroups([['proteinA', 'proteinE'], ['proteinB'], ['proteinC'], ['proteinD', 'proteinF']])
     proteinGroups.create_index()
@@ -84,10 +84,10 @@ class TestPeptideProteinGraph:
   def test_getConnectedComponents(self):
     G = nx.Graph()
     
-    G.add_node('proteinA', nodeType = "protein")
-    G.add_node('proteinB', nodeType = "protein")
-    G.add_node('proteinC', nodeType = "protein")
-    G.add_node('proteinD', nodeType = "protein")
+    G.add_node('proteinA', node_type = "protein")
+    G.add_node('proteinB', node_type = "protein")
+    G.add_node('proteinC', node_type = "protein")
+    G.add_node('proteinD', node_type = "protein")
     
     G.add_edge('proteinA', 'peptide:proteinA;proteinB')
     G.add_edge('proteinB', 'peptide:proteinA;proteinB')

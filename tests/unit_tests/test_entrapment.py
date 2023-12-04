@@ -4,7 +4,7 @@ import picked_group_fdr.entrapment as entrapment
 
 
 def test_mark_entrapment(proteins, entrapment_proteins):
-  assert entrapment.markEntrapment(proteins, entrapment_proteins) == ['proteinA_entrapment', 'proteinB', 'proteinC_entrapment']
+  assert entrapment.mark_entrapment(proteins, entrapment_proteins) == ['proteinA_entrapment', 'proteinB', 'proteinC_entrapment']
 
 
 def test_is_entrapment_false():

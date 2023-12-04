@@ -22,17 +22,17 @@ class ObservedPeptides:
         self.peptide_to_score_dict = dict()
 
     def create(self, 
-            peptideInfoList: PeptideInfoList,
-            proteinGroups: ProteinGroups = None) -> None:
+            peptide_info_list: PeptideInfoList,
+            protein_groups: ProteinGroups = None) -> None:
         """Populates two dictionaries, the first mapping peptides to proteins and the
         second mapping proteins to peptides
         
         :param peptideInfoList: dictionary of peptide -> (score, proteins)
         """
-        for peptide, (score, proteins) in peptideInfoList.items():
-            if proteinGroups:
-                proteinGroupIdxs = proteinGroups.get_protein_group_idxs(proteins)            
-                if helpers.is_shared_peptide(proteinGroupIdxs):
+        for peptide, (score, proteins) in peptide_info_list.items():
+            if protein_groups:
+                protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)            
+                if helpers.is_shared_peptide(protein_group_idxs):
                     continue
 
             self.peptide_to_proteins_dict[peptide] = proteins
@@ -62,8 +62,8 @@ class ObservedPeptides:
         """Generating protein groups from a dictionary of observed_peptide -> protein"""
         logger.info("Generating protein groups from observed peptides")
         
-        proteinGroups = ProteinGroups.from_observed_peptide_map(self.protein_to_peptides_dict)
-        proteinGroups.create_index()
+        protein_groups = ProteinGroups.from_observed_peptide_map(self.protein_to_peptides_dict)
+        protein_groups.create_index()
         
         for protein, peptides in self.protein_to_peptides_dict.items():
             superset_proteins = self._get_superset_proteins(peptides)
@@ -71,28 +71,28 @@ class ObservedPeptides:
             # add to the protein with the most peptides out of the proteins that this protein is a subset of
             superset_proteins = sorted(superset_proteins, key = lambda x : len(self.protein_to_peptides_dict[x]), reverse = True)
             for superset_protein in superset_proteins:
-                if len(proteinGroups.get_protein_group(superset_protein, check_idx_valid = False)) > 0 and protein != superset_protein:
-                    proteinGroups.merge_groups(superset_protein, protein)
+                if len(protein_groups.get_protein_group(superset_protein, check_idx_valid = False)) > 0 and protein != superset_protein:
+                    protein_groups.merge_groups(superset_protein, protein)
                     break
         
-        proteinGroups.remove_empty_groups()
+        protein_groups.remove_empty_groups()
         
-        return proteinGroups
+        return protein_groups
 
     def _get_superset_proteins(self, peptides: List[str]) -> List[str]:
         """Get all proteins whose set of peptides forms a (non-strict) superset of the peptides for this protein"""
-        candidateProteins = self.get_proteins(peptides[0])
+        candidate_proteins = self.get_proteins(peptides[0])
         for peptide in peptides[1:]:
             proteins = set(self.get_proteins(peptide))
-            candidateProteins = [p for p in candidateProteins if p in proteins] # this is 15% faster than set.intersection()
+            candidate_proteins = [p for p in candidate_proteins if p in proteins] # this is 15% faster than set.intersection()
             
             # if there is only 1 protein candidate left, the only protein that forms a 
             # superset is the protein itself. No need to look further, so break and return.
-            if len(candidateProteins) == 1:
+            if len(candidate_proteins) == 1:
                 break
-        return candidateProteins
+        return candidate_proteins
 
-    def get_connected_proteins(self, proteinGroups, exclude_identified_proteins = True):
+    def get_connected_proteins(self, protein_groups, exclude_identified_proteins = True):
         """ Combines protein groups for which no identified peptide is left after
         the removal of shared peptides. 
         
@@ -131,24 +131,24 @@ class ObservedPeptides:
         :returns: updated list of protein groups where connected components are added
             as protein groups
         """
-        identifiedProteinGroupIdxs = set()
+        identified_protein_group_idxs = set()
         if exclude_identified_proteins:
-            identifiedProteinGroupIdxs = self._get_protein_group_idxs_with_unique_peptides(proteinGroups)
+            identified_protein_group_idxs = self._get_protein_group_idxs_with_unique_peptides(protein_groups)
         
-        bipartiteGraph = graphs.PeptideProteinGraph()
-        bipartiteGraph.create_graph(
-                proteinGroups, identifiedProteinGroupIdxs, self)
+        bipartite_graph = graphs.PeptideProteinGraph()
+        bipartite_graph.create_graph(
+                protein_groups, identified_protein_group_idxs, self)
         
-        subgraphs = bipartiteGraph.get_connected_components()
+        subgraphs = bipartite_graph.get_connected_components()
         return graphs.ConnectedProteinGraphs(subgraphs)
 
-    def _get_protein_group_idxs_with_unique_peptides(self, proteinGroups: ProteinGroups) -> Set[int]:
+    def _get_protein_group_idxs_with_unique_peptides(self, protein_groups: ProteinGroups) -> Set[int]:
         """
         returns protein group idxs of protein groups with >=1 unique peptide(s)
         """
-        identifiedProteinGroupIdxs = set()
+        identified_protein_group_idxs = set()
         for _, proteins in self.peptide_to_proteins_dict.items():
-            proteinGroupIdxsForPeptide = proteinGroups.get_protein_group_idxs(proteins)
-            if not helpers.is_shared_peptide(proteinGroupIdxsForPeptide):
-                identifiedProteinGroupIdxs.add(list(proteinGroupIdxsForPeptide)[0])
-        return identifiedProteinGroupIdxs
+            protein_group_idxs_for_peptide = protein_groups.get_protein_group_idxs(proteins)
+            if not helpers.is_shared_peptide(protein_group_idxs_for_peptide):
+                identified_protein_group_idxs.add(list(protein_group_idxs_for_peptide)[0])
+        return identified_protein_group_idxs

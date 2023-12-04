@@ -24,30 +24,30 @@ class PeptideProteinGraph:
     def __init__(self):
         self.G = nx.Graph()
         
-    def create_graph(self, proteinGroups, identifiedProteinGroupIdxs,
-                                     observedPeptideProteinMaps):
+    def create_graph(self, protein_groups, identified_protein_group_idxs,
+                                     observed_peptide_protein_maps):
         """Creates the bipartite graph.
         
-        :param proteinGroups: ProteinGrouping object
-        :param identifiedProteinGroupIdxs: set of protein group idxs that have a
+        :param protein_groups: ProteinGrouping object
+        :param identified_protein_group_idxs: set of protein group idxs that have a
             unique peptide already
-        :param observedProteinPeptideMaps: dictionary of protein => observed peptides 
+        :param observed_peptide_protein_maps: dictionary of protein => observed peptides 
             below the PSM-level cutoff
         :returns: updated list of protein groups where connected components are added
             as protein groups
         """
-        for idx, pg in enumerate(proteinGroups):
+        for idx, pg in enumerate(protein_groups):
             # no need to add protein groups to graph that already have a unique peptide
-            if idx in identifiedProteinGroupIdxs:
+            if idx in identified_protein_group_idxs:
                 continue
             
             protein = pg[0]
-            self.G.add_node(protein, nodeType = "protein")
-            for peptide in observedPeptideProteinMaps.get_peptides(protein):
-                proteinsForPeptide = observedPeptideProteinMaps.get_proteins(peptide)
-                leadingProteins = proteinGroups.get_leading_proteins(proteinsForPeptide)
+            self.G.add_node(protein, node_type = "protein")
+            for peptide in observed_peptide_protein_maps.get_peptides(protein):
+                proteins_for_peptide = observed_peptide_protein_maps.get_proteins(peptide)
+                leading_proteins = protein_groups.get_leading_proteins(proteins_for_peptide)
                 # add_edge creates nodes for the pseudo peptides automatically
-                self.G.add_edge(protein, "peptide:" + ";".join(sorted(leadingProteins)))
+                self.G.add_edge(protein, "peptide:" + ";".join(sorted(leading_proteins)))
     
     def get_connected_components(self):
         subgraphs = collections.deque()
@@ -56,8 +56,8 @@ class PeptideProteinGraph:
         return subgraphs
     
     def print_summary(self):
-        numProteins = len([x for x,y in self.G.nodes(data=True) if 'nodeType' in y and y['nodeType'] == "protein"])
-        logger.info(f"#Proteins: {numProteins}, #Nodes: {len(self.G)}, #Edges: {self.G.number_of_edges()}")
+        num_proteins = len([x for x,y in self.G.nodes(data=True) if 'node_type' in y and y['node_type'] == "protein"])
+        logger.info(f"#Proteins: {num_proteins}, #Nodes: {len(self.G)}, #Edges: {self.G.number_of_edges()}")
 
 
 class ConnectedProteinGraphs:
@@ -66,42 +66,42 @@ class ConnectedProteinGraphs:
     def __init__(self, subgraphs):
         self.subgraphs = subgraphs
     
-    def decouple_connected_proteins(self, proteinGroups):
+    def decouple_connected_proteins(self, protein_groups):
         while len(self.subgraphs) > 0:
             c = self.subgraphs.popleft()
             proteins = self._get_protein_nodes(c)
             peptides = self._get_peptide_nodes(c)
             
-            subgraphsLocal = []
+            subgraphs_local = []
             if len(proteins) > 1:
-                subgraphsLocal = self._split_single_connected_component(c, proteins, peptides)
+                subgraphs_local = self._split_single_connected_component(c, proteins, peptides)
             
-            if len(subgraphsLocal) == 0:
+            if len(subgraphs_local) == 0:
                 # the connected component couldn't be split into multiple connected components by removing peptides
-                leadingProtein = proteins[0]
+                leading_protein = proteins[0]
                 for protein in proteins[1:]:
-                    proteinGroups.merge_groups(leadingProtein, protein)
+                    protein_groups.merge_groups(leading_protein, protein)
             else:
-                for subgraph in subgraphsLocal:
+                for subgraph in subgraphs_local:
                     self.subgraphs.append(subgraph)
         
-        proteinGroups.remove_empty_groups()
+        protein_groups.remove_empty_groups()
         
-        return proteinGroups
+        return protein_groups
     
-    def get_connected_proteins(self, proteinGroups):
+    def get_connected_proteins(self, protein_groups):
         while len(self.subgraphs) > 0:
             c = self.subgraphs.popleft()
             proteins = self._get_protein_nodes(c)
             peptides = self._get_peptide_nodes(c)
             
-            leadingProtein = proteins[0]
+            leading_protein = proteins[0]
             for protein in proteins[1:]:
-                proteinGroups.merge_groups(leadingProtein, protein)
+                protein_groups.merge_groups(leading_protein, protein)
             
-        proteinGroups.remove_empty_groups()
+        protein_groups.remove_empty_groups()
         
-        return proteinGroups
+        return protein_groups
 
     # adapted from https://stackoverflow.com/questions/47146755/networkx-find-all-minimal-cuts-consisting-of-only-nodes-from-one-set-in-a-bipar
     def _split_single_connected_component(self, G, A, B):    
@@ -118,11 +118,11 @@ class ConnectedProteinGraphs:
         for s, t in itertools.combinations(A,2):
             cut = minimum_st_node_cut(G, s, t, auxiliary=H, residual=R)
             if len(cut) < cur_min and set(cut).issubset(B) and cut not in seen:
-                subGraphs = self._get_subgraphs_after_cut(G, cut)
+                sub_graphs = self._get_subgraphs_after_cut(G, cut)
                 # check if each component after the cut has at least 2 proteins
-                disconnectedComponents = list(filter(lambda x : len(x) == 1, subGraphs))
-                if len(disconnectedComponents) == 0:
-                    best_cut = subGraphs
+                disconnected_components = list(filter(lambda x : len(x) == 1, sub_graphs))
+                if len(disconnected_components) == 0:
+                    best_cut = sub_graphs
                     if len(cut) == 1:
                         break
                     seen.append(cut)
@@ -130,10 +130,10 @@ class ConnectedProteinGraphs:
         return best_cut
 
     def _get_protein_nodes(self, G):
-        return [x for x,y in G.nodes(data=True) if 'nodeType' in y and y['nodeType'] == "protein"]
+        return [x for x,y in G.nodes(data=True) if 'node_type' in y and y['node_type'] == "protein"]
 
     def _get_peptide_nodes(self, G):
-        return [x for x,y in G.nodes(data=True) if 'nodeType' not in y or y['nodeType'] != "protein"]
+        return [x for x,y in G.nodes(data=True) if 'node_type' not in y or y['node_type'] != "protein"]
 
     def _get_subgraphs_after_cut(self, G, cut):
         G2 = G.copy()

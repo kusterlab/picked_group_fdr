@@ -65,12 +65,12 @@ def parse_gene_name_func(fasta_header: str) -> Optional[str]:
     return None
 
 
-def parse_uniprot_id(fastaId: str) -> str:
-    proteinId = parse_until_first_space(fastaId)
-    if "|" in proteinId:
-        return proteinId.split("|")[1]
+def parse_uniprot_id(fasta_id: str) -> str:
+    protein_id = parse_until_first_space(fasta_id)
+    if "|" in protein_id:
+        return protein_id.split("|")[1]
     else:
-        return proteinId
+        return protein_id
 
 
 def parse_entry_name(fasta_header: str) -> str:
@@ -86,19 +86,19 @@ def parse_fasta_header(fasta_header: str) -> str:
 
 
 def read_fasta_proteins(
-    filePath: str,
+    file_path: str,
     db: str ="concat",
     parse_id: Callable[[str], str] = parse_until_first_space,
     parse_protein_name: Callable[[str], str] = parse_protein_name_func,
     parse_gene_name: Callable[[str], str] = parse_gene_name_func,
 ):
-    if not os.path.isfile(filePath):
+    if not os.path.isfile(file_path):
         raise FileNotFoundError(
-            f"Could not find fasta file {filePath}. Please make sure you provided a valid fasta file."
+            f"Could not find fasta file {file_path}. Please make sure you provided a valid fasta file."
         )
 
     for fasta_header, protein_sequence in digest.read_fasta(
-        filePath, db=db, parse_id=parse_fasta_header
+        file_path, db=db, parse_id=parse_fasta_header
     ):
         yield ProteinAnnotation(
             id=parse_id(fasta_header),
