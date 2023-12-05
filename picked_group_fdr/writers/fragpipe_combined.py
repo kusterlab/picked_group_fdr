@@ -24,6 +24,8 @@ FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT = {
     "Organism": "Organism",
     "Protein Existence": "Protein Existence",
     "Description": "Protein Description",
+    "Protein Probability": "Protein Probability",
+    "Top Peptide Probability": "Top Peptide Probability",
     "Combined Total Peptides": "Combined Total Peptides",
     "Combined Spectral Count": "Combined Spectral Count",
     "Combined Unique Spectral Count": "Combined Spectral Count",
