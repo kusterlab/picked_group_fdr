@@ -11,6 +11,7 @@ from .. import digest
 from .. import protein_annotation
 from .. import writers
 from ..picked_group_fdr import ArgumentParserWithLogger
+from ..quantification import add_quant_arguments
 from ..parsers import maxquant
 from ..parsers import tsv
 from ..parsers import fragpipe
@@ -51,12 +52,6 @@ def parse_args(argv):
     )
 
     apars.add_argument(
-        "--fasta_contains_decoys",
-        help="Set this flag if your fasta file already contains decoy protein sequences.",
-        action="store_true",
-    )
-
-    apars.add_argument(
         "--protein_groups",
         default=None,
         metavar="PG",
@@ -81,6 +76,9 @@ def parse_args(argv):
                 original psm.tsv and protein.tsv are overwritten, keeping copies
                 of the original files as psm.original.tsv and protein.original.tsv.""",
     )
+
+    add_quant_arguments(apars)
+    digest.add_digestion_arguments(apars)
 
     # ------------------------------------------------
     args = apars.parse_args(argv)
@@ -138,6 +136,8 @@ def main(argv):
             protein_annotations,
             args.output_folder,
         )
+    
+    logger.info(f"Protein group results have been written to: {args.output_folder}")
 
 
 def update_fragpipe_psm_file(
@@ -380,7 +380,9 @@ def generate_fragpipe_combined_protein_file(
         combined_ion_file,
         protein_groups,
         protein_group_results,
-        discard_shared_peptides,
+        peptide_to_protein_maps=None,
+        file_list_file=None,
+        discard_shared_peptides=discard_shared_peptides,
     )
 
     if output_folder is None:
@@ -455,6 +457,8 @@ def write_fragpipe_combined_protein_file(
         )
 
     fragpipe_writer.write(protein_group_results, protein_groups_out_file)
+
+    logger.info(f"Protein group results have been written to: {protein_groups_out_file}")
 
 
 if __name__ == "__main__":

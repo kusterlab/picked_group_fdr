@@ -1,20 +1,18 @@
 import sys
 import os
 import logging
-from typing import Dict, List, Optional
 
-from .update_fragpipe_results import (
-    write_fragpipe_combined_protein_file,
-)
+
+
 from .. import __version__, __copyright__
 from .. import digest
+from .. import writers
 from .. import protein_annotation
 from ..picked_group_fdr import ArgumentParserWithLogger
+from ..quantification import add_quant_arguments
 from ..parsers import maxquant
 from ..quant.sage import add_precursor_quants_multiple
-from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
-from ..results import ProteinGroupResults
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -42,15 +40,9 @@ def parseArgs(argv):
         metavar="F",
         nargs="+",
         required=True,
-        help="""Fasta file(s) to create mapping from peptides to proteins.
+        help="""Fasta file(s) for protein annotations (gene names, etc.).
                 This should not contain the decoy sequences, unless you set the 
                 --fasta_contains_decoys flag.""",
-    )
-
-    apars.add_argument(
-        "--fasta_contains_decoys",
-        help="Set this flag if your fasta file already contains decoy protein sequences.",
-        action="store_true",
     )
 
     apars.add_argument(
@@ -72,11 +64,22 @@ def parseArgs(argv):
     )
 
     apars.add_argument(
-        "--output_folder",
-        default="./",
-        metavar="DIR",
-        help="""Path to output folder. Folder is created if it does not exist yet.""",
+        "--protein_groups_out",
+        default="./combined_protein.tsv",
+        metavar="PG",
+        help="""Protein groups output file.""",
     )
+
+    apars.add_argument(
+        "--output_format",
+        default="maxquant",
+        metavar="PG",
+        help="""Protein groups output format. Options are "maxquant" (proteinGroups.txt 
+                format) and "fragpipe" (combined_protein.tsv format).""",
+    )
+
+    add_quant_arguments(apars)
+    digest.add_digestion_arguments(apars)
 
     # ------------------------------------------------
     args = apars.parse_args(argv)
@@ -92,56 +95,46 @@ def main(argv):
 
     args = parseArgs(argv)
 
-    protein_groups = ProteinGroups.from_mq_protein_groups_file(args.protein_groups)
-    protein_groups.create_index()
-
     db = "target" if args.fasta_contains_decoys else "concat"
+    parse_id = digest.parse_until_first_space
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
-        args.fasta, db=db, parse_id=digest.parse_until_first_space
+        args.fasta, db=db, parse_id=parse_id
     )
 
-    # create a fresh ProteinGroupResults object for combined_protein.tsv
     protein_group_results = maxquant.parse_mq_protein_groups_file(args.protein_groups)
-    generate_fragpipe_combined_protein_file(
+
+    discard_shared_peptides = True
+    psm_fdr_cutoff = 0.01
+    peptide_to_protein_maps = dict()
+
+    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
+    protein_groups.create_index()
+
+    protein_group_results, post_err_probs = add_precursor_quants_multiple(
         args.sage_results,
         args.sage_lfq_tsv,
         protein_groups,
         protein_group_results,
-        protein_annotations,
-        args.output_folder,
+        peptide_to_protein_maps=None,
+        file_list_file=None,
+        discard_shared_peptides=discard_shared_peptides,
     )
 
-
-def generate_fragpipe_combined_protein_file(
-    sage_results_files: List[str],
-    combined_ion_file: str,
-    protein_groups: ProteinGroups,
-    protein_group_results: ProteinGroupResults,
-    protein_annotations: Dict[str, ProteinAnnotation],
-    output_folder: Optional[str] = None,
-    psm_fdr_cutoff: float = 0.01,
-    discard_shared_peptides: bool = True,
-):
-    """Generate protein group results in FragPipe's combined_protein.tsv format."""
-
-    protein_group_results, post_err_probs = add_precursor_quants_multiple(
-        sage_results_files,
-        combined_ion_file,
-        protein_groups,
+    protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,
-        discard_shared_peptides,
-    )
-
-    fragpipe_combined_protein_file_out = f"{output_folder}/combined_protein.tsv"
-
-    write_fragpipe_combined_protein_file(
-        fragpipe_combined_protein_file_out,
-        protein_groups,
-        protein_group_results,
+        args,
         protein_annotations,
-        post_err_probs,
-        psm_fdr_cutoff,
+        parse_id,
+        peptide_to_protein_maps,
     )
+
+    protein_group_results = protein_groups_writer.append_quant_columns(
+        protein_group_results, post_err_probs, psm_fdr_cutoff
+    )
+
+    protein_groups_writer.write(protein_group_results, args.protein_groups_out)
+
+    logger.info(f"Protein group results have been written to: {args.protein_groups_out}")
 
 
 if __name__ == "__main__":

@@ -143,3 +143,5 @@ def format_extra_columns(x: Union[str, float]) -> str:
     if np.isnan(x):
         return ""
     return "%.0f" % (x)
+
+

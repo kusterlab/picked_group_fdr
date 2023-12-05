@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import logging
+from typing import Optional
 
 import numpy as np
 
 from . import tsv
-
-# for type hints only
-from .. import scoring
+from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +66,11 @@ def parse_sage_results_file(
     reader,
     headers,
     get_proteins,
-    score_type: scoring.ProteinScoringStrategy,
+    score_type: Optional[scoring_strategy.ProteinScoringStrategy],
     for_quantification: bool = False,
 ):
+    use_post_err_prob = score_type is None or score_type.get_score_column() == "pep"
+
     pept_col = tsv.get_column_index(headers, "peptide")
     charge_col = tsv.get_column_index(headers, "charge")
     score_col = tsv.get_column_index(headers, "sage_discriminant_score")
@@ -77,7 +78,7 @@ def parse_sage_results_file(
     post_err_prob_col = tsv.get_column_index(headers, "posterior_error")
     protein_col = tsv.get_column_index(headers, "proteins")
 
-    if score_type.get_score_column() == "pep":
+    if use_post_err_prob:
         score_col = post_err_prob_col
 
     logger.info("Parsing Sage results.sage.tsv file")
@@ -89,7 +90,7 @@ def parse_sage_results_file(
         charge = int(row[charge_col])
         experiment = row[experiment_col]
         score = float(row[score_col])
-        if score_type.get_score_column() == "pep":
+        if use_post_err_prob:
             # sage's posterior_error column is log10(PEP) transformed
             score = np.power(10, score)
 

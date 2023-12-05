@@ -12,7 +12,7 @@ from .tsv import (
 )
 
 # for type hints only
-from .. import scoring
+from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def get_percolator_column_idxs(headers):
 
 
 def parse_percolator_out_file(
-    reader, headers, get_proteins, score_type: scoring.ProteinScoringStrategy, **kwargs
+    reader, headers, get_proteins, score_type: scoring_strategy.ProteinScoringStrategy, **kwargs
 ):
     (
         _,

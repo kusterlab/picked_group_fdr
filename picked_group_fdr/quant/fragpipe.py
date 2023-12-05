@@ -145,9 +145,11 @@ def update_precursor_quants(
 
 def add_precursor_quants_multiple(
     fragpipe_psm_files: List[str],
-    combined_ion_file: str,
+    combined_ion_file: List[str],
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
+    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    file_list_file: str,
     discard_shared_peptides: bool,
 ):
     post_err_probs_combined = []

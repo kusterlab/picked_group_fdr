@@ -5,7 +5,7 @@ import logging
 from . import tsv
 
 # for type hints only
-from .. import scoring
+from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_fragpipe_psm_file(
-    reader, headers, get_proteins, score_type: scoring.ProteinScoringStrategy, **kwargs
+    reader, headers, get_proteins, score_type: scoring_strategy.ProteinScoringStrategy, **kwargs
 ):
     pept_col = tsv.get_column_index(headers, "Peptide")
     score_col = tsv.get_column_index(

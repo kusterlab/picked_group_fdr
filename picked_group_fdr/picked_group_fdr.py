@@ -7,6 +7,8 @@ from typing import Any, Callable, List, Dict, Union
 
 import numpy as np
 
+from picked_group_fdr.protein_groups import ProteinGroups
+
 from . import __version__, __copyright__
 from . import digest
 from . import protein_annotation
@@ -17,18 +19,17 @@ from . import methods
 from . import fdr
 from . import results
 from . import writers
+from . import quantification
 from .quant import maxquant as mq_quant
 from .digestion_params import add_digestion_arguments, get_digestion_params_list
-from .parsers import psm, parsers
-from .columns.triqler import init_triqler_params
+from .parsers import psm
 from .grouping import PseudoGeneGrouping
-from .protein_groups import ProteinGroups
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
 from .peptide_info import PeptideInfoList
 
 # for type hints only
-from .scoring import ProteinScoringStrategy
+from .scoring_strategy import ProteinScoringStrategy
 from .grouping import ProteinGroupingStrategy
 from .competition import ProteinCompetitionStrategy
 from .plotter import Plotter, NoPlotter
@@ -76,12 +77,28 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--combined_ion",
+        default=None,
+        metavar="I",
+        help="""Path to combined_ion.tsv produced by IonQuant/FragPipe. This enables
+                quantification of protein groups by PickedGroupFDR.""",
+    )
+
+    apars.add_argument(
         "--sage_results",
         default=None,
         metavar="PSM",
         nargs="+",
         help="""Sage results.sage.tsv output file(s); alternative for 
                 --mq_evidence.""",
+    )
+
+    apars.add_argument(
+        "--sage_lfq_tsv",
+        default=None,
+        metavar="I",
+        help="""Path to lfq.tsv produced by Sage. This enables
+                quantification of protein groups by PickedGroupFDR.""",
     )
 
     apars.add_argument(
@@ -95,7 +112,8 @@ def parse_args(argv):
         "--output_format",
         default="maxquant",
         metavar="PG",
-        help="""Protein groups output format. Options are "maxquant" (proteinGroups.txt format) and "fragpipe" (combined_protein.tsv format).""",
+        help="""Protein groups output format. Options are "maxquant" (proteinGroups.txt 
+                format) and "fragpipe" (combined_protein.tsv format).""",
     )
 
     apars.add_argument(
@@ -171,38 +189,6 @@ def parse_args(argv):
     )
 
     apars.add_argument(
-        "--lfq_min_peptide_ratios",
-        default=2,
-        type=int,
-        metavar="M",
-        help="""Minimum number of common peptides between two samples
-                to qualify for calculating a peptide ratio in LFQ.""",
-    )
-
-    apars.add_argument(
-        "--lfq_stabilize_large_ratios",
-        help="""Apply stabilization of large ratios in LFQ as described
-                in the MaxLFQ paper.""",
-        action="store_false",
-    )
-
-    apars.add_argument(
-        "--num_threads",
-        default=1,
-        type=int,
-        metavar="T",
-        help="""Maximum number of threads to use. Currently only speeds up the MaxLFQ part.""",
-    )
-
-    apars.add_argument(
-        "--file_list_file",
-        metavar="L",
-        help="""Tab separated file with lines of the format (third and fourth 
-                columns are optional): raw_file <tab> condition <tab> experiment 
-                <tab> fraction.""",
-    )
-
-    apars.add_argument(
         "--figure_base_fn",
         default=None,
         metavar="F",
@@ -214,6 +200,8 @@ def parse_args(argv):
     )
 
     add_digestion_arguments(apars)
+
+    quantification.add_quant_arguments(apars)
 
     # ------------------------------------------------
     args = apars.parse_args(argv)
@@ -550,55 +538,30 @@ def do_quantification(
 ):
     if not score_type.can_do_quantification():
         logger.warning(
-            "Skipping quantification. Cannot do quantification from percolator output file; MQ evidence file input needed"
+            "Skipping quantification: need input file with precursor quantifications."
         )
         return protein_group_results
 
-    protein_sequences = {}
-    if args.fasta:
-        db = "target" if args.fasta_contains_decoys else "concat"
-        protein_sequences = digest.get_protein_sequences(
-            args.fasta, db=db, parse_id=parse_id
-        )
-
-    num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein_from_args(
-        args, peptide_to_protein_maps
-    )
-
     logger.info("Preparing for quantification")
 
-    params = init_triqler_params()
-    if args.file_list_file:
-        _, _, params = parsers.parse_file_list(args.file_list_file, params)
+    protein_groups_writer = writers.get_protein_groups_output_writer(
+        protein_group_results,
+        args,
+        protein_annotations,
+        parse_id,
+        peptide_to_protein_maps,
+    )
 
     discard_shared_peptides = True
 
-    if args.output_format == "fragpipe":
-        protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
-        protein_groups.create_index()
-        protein_groups_writer = writers.FragPipeCombinedProteinWriter(
-            protein_groups,
-            protein_annotations,
-            args.lfq_min_peptide_ratios,
-            args.lfq_stabilize_large_ratios,
-            args.num_threads,
-        )
-    elif args.output_format == "maxquant":
-        protein_groups_writer = writers.MaxQuantProteinGroupsWriter(
-            num_ibaq_peptides_per_protein,
-            protein_annotations,
-            protein_sequences,
-            args.lfq_min_peptide_ratios,
-            args.lfq_stabilize_large_ratios,
-            args.num_threads,
-            params,
-        )
-    else:
-        raise ValueError(f"Unknown output format: {args.output_format}.")
-
-    protein_group_results, post_err_probs = mq_quant.parse_evidence_files(
+    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
+    protein_groups.create_index()
+    
+    protein_group_results, post_err_probs = score_type.get_quantification_parser()(
+        score_type.get_evidence_file(args),
+        score_type.get_quantification_file(args),
+        protein_groups,
         protein_group_results,
-        args.mq_evidence,
         peptide_to_protein_maps,
         args.file_list_file,
         discard_shared_peptides,

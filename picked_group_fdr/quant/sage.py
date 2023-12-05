@@ -8,7 +8,6 @@ from ..parsers import sage, tsv
 from ..precursor_quant import PrecursorQuant
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
-from ..scoring import ProteinScoringStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,6 @@ def add_precursor_quants(
     headers = next(reader)
 
     get_proteins = lambda peptide, proteins: proteins
-    score_type = ProteinScoringStrategy("Sage bestPEP")
 
     post_err_probs = []
     for (
@@ -34,7 +32,7 @@ def add_precursor_quants(
         post_err_prob,
         charge,
     ) in sage.parse_sage_results_file(
-        reader, headers, get_proteins, score_type, for_quantification=True
+        reader, headers, get_proteins, score_type=None, for_quantification=True
     ):
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
@@ -147,10 +145,12 @@ def update_precursor_quants(
 
 def add_precursor_quants_multiple(
     sage_results_files: List[str],
-    combined_ion_file: str,
+    sage_lfq_tsv: str,
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
-    discard_shared_peptides: bool = True,
+    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    file_list_file: str,
+    discard_shared_peptides: bool
 ):
     post_err_probs_combined = []
     for sage_results_file in sage_results_files:
@@ -165,7 +165,7 @@ def add_precursor_quants_multiple(
     protein_group_results = update_precursor_quants(
         protein_group_results,
         protein_groups,
-        combined_ion_file,
+        sage_lfq_tsv,
         discard_shared_peptides,
     )
     return protein_group_results, post_err_probs_combined

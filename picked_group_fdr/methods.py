@@ -2,7 +2,7 @@ import os
 import toml
 
 from .competition import ProteinCompetitionStrategyFactory
-from .scoring import ProteinScoringStrategy
+from .scoring_strategy import ProteinScoringStrategy
 from .grouping import ProteinGroupingStrategyFactory
 
 

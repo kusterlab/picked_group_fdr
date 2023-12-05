@@ -8,7 +8,6 @@ from . import digestion_params
 from . import protein_annotation
 from . import picked_group_fdr
 from .parsers import maxquant
-from .parsers import parsers
 from .quant import maxquant as mq_quant
 from .columns import protein_annotations as pa
 from .columns.triqler import init_triqler_params
@@ -78,14 +77,23 @@ def parse_args(argv):
         action="store_true",
     )
 
+    digestion_params.add_digestion_arguments(apars)
+
+    add_quant_arguments(apars)
+
+    # ------------------------------------------------
+    args = apars.parse_args(argv)
+
+    return args
+
+
+def add_quant_arguments(apars):
     apars.add_argument(
-        "--file_list_file",
-        metavar="L",
-        help="""Tab separated file with lines of the format (third and 
-                fourth columns are optional): raw_file <tab> condition 
-                <tab> experiment <tab> fraction.
-                """,
-        required=False,
+        "--psm_fdr_cutoff",
+        default=0.01,
+        metavar="C",
+        type=float,
+        help="PSM-level FDR threshold used for filtering PSMs for quantification.",
     )
 
     apars.add_argument(
@@ -94,8 +102,7 @@ def parse_args(argv):
         type=int,
         metavar="M",
         help="""Minimum number of common peptides between two samples
-                to qualify for calculating a peptide ratio in LFQ
-                """,
+                to qualify for calculating a peptide ratio in LFQ.""",
     )
 
     apars.add_argument(
@@ -110,15 +117,16 @@ def parse_args(argv):
         default=1,
         type=int,
         metavar="T",
-        help="""Maximum number of threads to use.""",
+        help="""Maximum number of threads to use. Currently only speeds up the MaxLFQ part.""",
     )
 
-    digestion_params.add_digestion_arguments(apars)
-
-    # ------------------------------------------------
-    args = apars.parse_args(argv)
-
-    return args
+    apars.add_argument(
+        "--file_list_file",
+        metavar="L",
+        help="""Tab separated file with lines of the format (third and fourth 
+                columns are optional): raw_file <tab> condition <tab> experiment 
+                <tab> fraction.""",
+    )
 
 
 def main(argv):
@@ -152,33 +160,27 @@ def main(argv):
         additional_headers=pa.MQ_PROTEIN_ANNOTATION_HEADERS,
     )
 
-    stabilize_large_ratios_lfq = True
-    discard_shared_peptides = True
-    psm_fdr_cutoff = 0.01
-    params = init_triqler_params()
-    if args.file_list_file:
-        _, _, params = parsers.parse_file_list(args.file_list_file, params)
-
+    params = init_triqler_params(args.file_list_file)
     protein_groups_writer = writers.MaxQuantProteinGroupsWriter(
         num_ibaq_peptides_per_protein,
         protein_annotations,
         protein_sequences,
         args.lfq_min_peptide_ratios,
-        stabilize_large_ratios_lfq,
+        args.lfq_stabilize_large_ratios,
         args.num_threads,
         params,
     )
 
-    protein_group_results, post_err_probs = mq_quant.parse_evidence_files(
+    protein_group_results, post_err_probs = mq_quant.add_precursor_quants(
         protein_group_results,
         args.mq_evidence,
         peptide_to_protein_maps,
         args.file_list_file,
-        discard_shared_peptides,
+        discard_shared_peptides=True,
     )
 
     protein_group_results = protein_groups_writer.append_quant_columns(
-        protein_group_results, post_err_probs, psm_fdr_cutoff
+        protein_group_results, post_err_probs, args.psm_fdr_cutoff
     )
 
     protein_group_results.write(args.protein_groups_out)

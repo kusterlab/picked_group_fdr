@@ -13,7 +13,7 @@ from .. import results
 from .. import writers
 
 # for type hints only
-from .. import scoring
+from .. import scoring_strategy
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def parse_mq_evidence_file(
     reader,
     headers,
     get_proteins,
-    score_type: scoring.ProteinScoringStrategy,
+    score_type: scoring_strategy.ProteinScoringStrategy,
     for_quantification: bool = False,
     **kwargs,
 ):

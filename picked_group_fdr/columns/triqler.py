@@ -13,6 +13,7 @@ import triqler.qvality
 import triqler.triqler
 
 from .. import helpers
+from ..parsers import parsers
 from .base import ProteinGroupColumns
 
 # for type hints only
@@ -214,7 +215,7 @@ class TriqlerIntensityColumns(ProteinGroupColumns):
         return quantRows
 
 
-def init_triqler_params():
+def init_triqler_params(file_list_file):
     params = dict()
     # TODO: make these parameters configurable from the command line
     params["decoyPattern"] = "REV__"
@@ -225,4 +226,7 @@ def init_triqler_params():
     params["foldChangeEval"] = 0.8
     params["returnPosteriors"] = False
     params["minSamples"] = 5
+    if file_list_file:
+        _, _, params = parsers.parse_file_list(file_list_file, params)
+
     return params

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 import logging
 
 from .. import digest
 from .. import helpers
-from .. import scoring
+from .. import scoring_strategy
 
 from . import tsv
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def get_peptide_to_protein_mapper(
     peptide_to_protein_map: Dict[str, List[str]],
-    score_type: scoring.ProteinScoringStrategy,
+    score_type: scoring_strategy.ProteinScoringStrategy,
     suppress_missing_peptide_warning: bool,
 ) -> Callable[[str, List[str]], List[str]]:
     """Returns a function that updates the list of proteins for a peptide.
@@ -58,10 +58,13 @@ def get_peptide_to_protein_mapper(
 def parse_evidence_file_single(
     evidence_file: str,
     peptide_to_protein_map: Dict,
-    score_type: scoring.ProteinScoringStrategy,
+    score_type: Optional[scoring_strategy.ProteinScoringStrategy],
     for_quantification: bool = False,
     suppress_missing_peptide_warning: bool = False,
 ):
+    if score_type is None:
+        score_type = scoring_strategy.ProteinScoringStrategy("bestPEP")
+
     delimiter = tsv.get_delimiter(evidence_file)
     reader = tsv.get_tsv_reader(evidence_file, delimiter)
     headers = next(reader)
@@ -78,7 +81,7 @@ def parse_evidence_file_single(
 def parse_evidence_file_multiple(
     evidence_files: List[str],
     peptide_to_protein_maps: List[Dict],
-    score_type: scoring.ProteinScoringStrategy,
+    score_type: scoring_strategy.ProteinScoringStrategy,
     for_quantification: bool = False,
     suppress_missing_peptide_warning: bool = False,
 ):

@@ -239,6 +239,9 @@ def get_protein_ids(file_path: str):
 
 
 def get_protein_sequences(file_paths: List[str], **kwargs):
+    if file_paths is None:
+        return dict()
+    
     protein_sequences = dict()
     for file_path in file_paths:
         for protein_id, protein_sequence in read_fasta(file_path, **kwargs):

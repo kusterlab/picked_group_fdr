@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
@@ -5,8 +7,11 @@ import numpy as np
 
 from .protein_groups import ProteinGroups
 from .results import ProteinGroupResult
-from .scoring import ProteinScoringStrategy, ProteinGroupPeptideInfos
 from . import helpers
+
+# for type hints only
+from . import scoring_strategy
+from . import peptide_info
 
 
 def ProteinCompetitionStrategyFactory(method="picked_group"):
@@ -52,8 +57,8 @@ class ProteinCompetitionStrategy(ABC):
     def do_competition(
         self,
         protein_groups: ProteinGroups,
-        protein_group_peptide_infos: ProteinGroupPeptideInfos,
-        score_type: ProteinScoringStrategy,
+        protein_group_peptide_infos: peptide_info.ProteinGroupPeptideInfos,
+        score_type: scoring_strategy.ProteinScoringStrategy,
     ) -> Tuple[ProteinGroups, List, List[float]]:
         protein_scores = map(score_type.calculate_score, protein_group_peptide_infos)
         is_obsolete = map(helpers.is_obsolete, protein_groups)

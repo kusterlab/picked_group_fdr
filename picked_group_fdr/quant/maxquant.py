@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np
 
@@ -8,15 +8,16 @@ from ..parsers import psm
 from ..precursor_quant import PrecursorQuant
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
-from ..scoring import ProteinScoringStrategy
 from ..parsers import parsers
 
 logger = logging.getLogger(__name__)
 
 
-def parse_evidence_files(
-    protein_group_results: ProteinGroupResults,
+def add_precursor_quants(
     mq_evidence_files: List[str],
+    mq_quantification_files: List[str],
+    protein_groups: ProteinGroups,
+    protein_group_results: ProteinGroupResults,
     peptide_to_protein_maps: List[Dict[str, List[str]]],
     file_list_file: str,
     discard_shared_peptides: bool,
@@ -28,10 +29,7 @@ def parse_evidence_files(
             protein_group_results.experiments,
             file_mapping,
             _,
-        ) = parsers.parse_file_list(file_list_file, params)
-
-    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
-    protein_groups.create_index()
+        ) = parsers.parse_file_list(file_list_file, params)    
 
     post_err_probs = list()
     shared_peptide_precursors, unique_peptide_precursors = 0, 0
@@ -53,7 +51,7 @@ def parse_evidence_files(
     ) in psm.parse_evidence_file_multiple(
         mq_evidence_files,
         peptide_to_protein_maps=peptide_to_protein_maps,
-        score_type=ProteinScoringStrategy("bestPEP"),
+        score_type=None,
         for_quantification=True,
     ):
         if protein_group_results.num_tmt_channels == -1:
