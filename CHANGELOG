@@ -1,8 +1,9 @@
-v0.6.0-prerelease
+v0.6.0
 - Added support for FragPipe and Sage for LFQ data
 - Support input files with byte order mark (#9)
 - Added tool for entrapment FDR calculation and plotting
 - Gui build fix (#8)
+- Major code refactoring (camelCase to snake_case, new classes, better submodules)
 
 v0.5.0
 - Added support for proteases that cleave before an amino acid, e.g. Asp-N, Lys-N
