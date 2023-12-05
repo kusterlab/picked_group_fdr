@@ -15,6 +15,7 @@ from .. import results
 
 def get_protein_groups_output_writer(
     protein_group_results: results.ProteinGroupResults,
+    output_format: str,
     args: argparse.Namespace,
     protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
     parse_id: Callable,

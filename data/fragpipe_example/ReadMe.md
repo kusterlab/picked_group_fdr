@@ -15,14 +15,13 @@ To run this example, follow these steps:
 
 **Running PickedGroupFDR**
 
-2. Run the following command (for alternative options see `run_picked_group_fdr.sh`):
+2. Run the following command (for alternatives see `run_picked_group_fdr.sh`):
    ```
    python3 -u -m picked_group_fdr \
       --fasta ./iprg2016_with_labels.fasta \
       --fragpipe_psm ./fragpipe/*/psm.tsv \
       --combined_ion ./fragpipe/combined_ion.tsv \
       --protein_groups_out ./results_from_combined_ion/combined_protein.tsv \
-      --output_format fragpipe \
       --do_quant \
       --lfq_min_peptide_ratios 1 \
       --methods fragpipe
@@ -47,13 +46,48 @@ A quantified protein group result in FragPipe format will be available at `resul
    ```
    This sets the FDR to 100% on all levels, which allows PickedGroupFDR to achieve increased sensitivity over the regular FragPipe results.
 
+
+### Option 2a: reuse IonQuant results
+
 **Running PickedGroupFDR**
 
-5. Run the `run_picked_group_fdr.sh` script. This runs the `picked_group_fdr` and `picked_group_fdr.pipeline.update_fragpipe_results` modules.
+5. Run the following command (for alternatives see `run_picked_group_fdr.sh`):
+   ```
+   python3 -u -m picked_group_fdr \
+      --fasta ./iprg2016_with_labels.fasta \
+      --fragpipe_psm ./fragpipe/*/psm.tsv \
+      --combined_ion ./fragpipe/combined_ion.tsv \
+      --protein_groups_out ./results_from_combined_ion/combined_protein.tsv \
+      --do_quant \
+      --lfq_min_peptide_ratios 1 \
+      --methods fragpipe
+   ```
+
+A quantified protein group result in FragPipe format will be available at `results_from_combined_ion/combined_protein.tsv`.
+
+
+### Option 2b: requantify with IonQuant
+
+**Running PickedGroupFDR**
+
+5. Run the following commands:
+   ```
+   python3 -u -m picked_group_fdr \
+      --fasta ./iprg2016_with_labels.fasta \
+      --fragpipe_psm ./fragpipe/*/psm.tsv \
+      --protein_groups_out ./results/proteinGroups.txt \
+      --methods fragpipe
+   
+   python3 -u -m picked_group_fdr.pipeline.update_fragpipe_results \
+      --fasta ./iprg2016_with_labels.fasta \
+      --fragpipe_psm ./fragpipe/*/psm.tsv \
+      --protein_groups ./results/proteinGroups.txt \
+      --output_folder ./results
+   ```
 
 This will produce a protein grouping result similar to MaxQuant's proteinGroups.txt format at `results/proteinGroups.txt`, as well as updated `psm.tsv` and `protein.tsv` file for each experiment in the `results` folder.
 
-**Running IonQuant (optional)**
+**Running IonQuant**
 
 6. Run the `run_ionquant.sh` script with the path to the FragPipe software directory as the first argument:
    ```

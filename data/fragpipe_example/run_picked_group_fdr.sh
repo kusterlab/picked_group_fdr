@@ -17,7 +17,6 @@ python3 -u -m picked_group_fdr \
     --fragpipe_psm ${fragpipe_psm_files} \
     --combined_ion ./combined_ion.tsv \
     --protein_groups_out ${RESULT_DIR}/combined_protein.tsv \
-    --output_format fragpipe \
     --do_quant \
     --lfq_min_peptide_ratios 1 \
     --methods fragpipe

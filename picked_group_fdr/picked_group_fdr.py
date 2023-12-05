@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 import os
 import logging
@@ -110,9 +111,11 @@ def parse_args(argv):
 
     apars.add_argument(
         "--output_format",
-        default="maxquant",
+        default="auto",
         metavar="PG",
-        help="""Protein groups output format. Options are "maxquant" (proteinGroups.txt 
+        help="""Protein groups output format. Options are "auto", "maxquant" and 
+                "fragpipe". "auto": decide based on input file format, will default to 
+                "maxquant" if no suitable format is known; "maxquant" (proteinGroups.txt
                 format) and "fragpipe" (combined_protein.tsv format).""",
     )
 
@@ -226,6 +229,9 @@ def write_protein_groups(
         else:
             label = label.lower().replace(" ", "_")
         protein_groups_out = f"{base}_{label}{ext}"
+    
+    Path(protein_groups_out).parent.mkdir(parents=True, exist_ok=True)
+
     protein_groups_writer.write(protein_group_results, protein_groups_out)
     logger.info(f"Protein group results have been written to: {protein_groups_out}")
 
@@ -544,8 +550,13 @@ def do_quantification(
 
     logger.info("Preparing for quantification")
 
+    score_origin = score_type.score_origin.long_description().lower()
+    if args.output_format == "auto" and score_origin in ["maxquant", "fragpipe"]:
+        args.output_format = score_origin
+
     protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,
+        args.output_format,
         args,
         protein_annotations,
         parse_id,
