@@ -11,15 +11,24 @@ To run this example, follow these steps:
 
 **Download FragPipe result files**
 
-1. Download the `fragpipe.zip` file from this folder. It contains the necessary FragPipe results files needed to run this example. For the FragPipe settings used to generate these files, see step 4 in Option 2.
+1. Download und unzip the `fragpipe.zip` file from this folder. It contains the necessary FragPipe results files needed to run this example. For the FragPipe settings used to generate these files, see step 4 in Option 2.
 
 **Running PickedGroupFDR**
 
-2. Run the `run_picked_group_fdr.sh` script. This runs the `picked_group_fdr` and `picked_group_fdr.pipeline.update_fragpipe_results` modules.
+2. Run the following command (for alternative options see `run_picked_group_fdr.sh`):
+   ```
+   python3 -u -m picked_group_fdr \
+      --fasta ./iprg2016_with_labels.fasta \
+      --fragpipe_psm ./fragpipe/*/psm.tsv \
+      --combined_ion ./fragpipe/combined_ion.tsv \
+      --protein_groups_out ./results_from_combined_ion/combined_protein.tsv \
+      --output_format fragpipe \
+      --do_quant \
+      --lfq_min_peptide_ratios 1 \
+      --methods fragpipe
+   ```
 
 A quantified protein group result in FragPipe format will be available at `results_from_combined_ion/combined_protein.tsv`.
-
-As additional files, it will produce a protein grouping result similar to MaxQuant's proteinGroups.txt format at `results/proteinGroups.txt`, as well as updated `psm.tsv` and `protein.tsv` file for each experiment.
 
 
 ## Option 2: run FragPipe yourself

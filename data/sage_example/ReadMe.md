@@ -11,15 +11,24 @@ To run this example, follow these steps:
 
 **Download Sage result files**
 
-1. Download the `sage.zip` file from this folder. It contains the necessary Sage results files needed to run this example. For the settings used to generate these files, see step 3 in Option 2.
+1. Download and unzip the `sage.zip` file from this folder. It contains the necessary Sage results files needed to run this example. For the settings used to generate these files, see step 3 in Option 2.
 
 **Running PickedGroupFDR**
 
-2. Run the `run_picked_group_fdr.sh` script. This runs the `picked_group_fdr` and `picked_group_fdr.pipeline.sage_quantification` modules.
+2. Run the following command (for alternative options see `run_picked_group_fdr.sh`):
+   ```
+   python3 -u -m picked_group_fdr \
+      --fasta ./sage/iprg2016_with_labels.fasta \
+      --sage_results ./sage/results.sage.tsv \
+      --sage_lfq_tsv ./sage/lfq.tsv \
+      --protein_groups_out ./results/combined_protein.tsv \
+      --output_format fragpipe \
+      --do_quant \
+      --lfq_min_peptide_ratios 1 \
+      --methods sage
+   ```
 
-A quantified protein group result in FragPipe format will be available at `results/combined_protein.tsv`.
-
-As an additional file, it will produce a protein grouping result similar to MaxQuant's proteinGroups.txt format at `results/proteinGroups.txt` without quantification information.
+A quantified protein group result in FragPipe format will be available at `results/combined_protein.tsv`. It is also possible to generate an output file in MaxQuant's `proteinGroups.txt` format using the `--output_format maxquant` flag.
 
 
 ## Option 2: run Sage yourself
@@ -38,8 +47,17 @@ As an additional file, it will produce a protein grouping result similar to MaxQ
 
 **Running PickedGroupFDR**
 
-4. Run the `run_picked_group_fdr.sh` script. This runs the `picked_group_fdr` and `picked_group_fdr.pipeline.sage_quantification` modules.
+4. Run the following command (for alternative options see `run_picked_group_fdr.sh`):
+   ```
+   python3 -u -m picked_group_fdr \
+      --fasta ./sage/iprg2016_with_labels.fasta \
+      --sage_results ./sage/results.sage.tsv \
+      --sage_lfq_tsv ./sage/lfq.tsv \
+      --protein_groups_out ./results/combined_protein.tsv \
+      --output_format fragpipe \
+      --do_quant \
+      --lfq_min_peptide_ratios 1 \
+      --methods sage
+   ```
 
-A quantified protein group result in FragPipe format will be available at `results/combined_protein.tsv`.
-
-As an additional file, it will produce a protein grouping result similar to MaxQuant's proteinGroups.txt format at `results/proteinGroups.txt` without quantification information.
+A quantified protein group result in FragPipe format will be available at `results/combined_protein.tsv`. It is also possible to generate an output file in MaxQuant's `proteinGroups.txt` format using the `--output_format maxquant` flag.
