@@ -2,9 +2,8 @@ from pathlib import Path
 import sys
 import os
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-import numpy as np
 
 from .. import __version__, __copyright__
 from .. import helpers
@@ -15,10 +14,10 @@ from ..picked_group_fdr import ArgumentParserWithLogger
 from ..parsers import maxquant
 from ..parsers import tsv
 from ..parsers import fragpipe
+from ..quant.fragpipe import add_precursor_quants, add_precursor_quants_multiple
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
-from ..precursor_quant import PrecursorQuant
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -109,7 +108,7 @@ def main(argv):
     )
 
     for fragpipe_psm_file in args.fragpipe_psm:
-        fragpipe_psm_file_out = update_fragpipe_psm_file_single(
+        fragpipe_psm_file_out = update_fragpipe_psm_file(
             fragpipe_psm_file, protein_groups, protein_annotations, args.output_folder
         )
 
@@ -141,7 +140,7 @@ def main(argv):
         )
 
 
-def update_fragpipe_psm_file_single(
+def update_fragpipe_psm_file(
     fragpipe_psm_file: str,
     protein_groups: ProteinGroups,
     protein_annotations: Dict[str, ProteinAnnotation],
@@ -313,7 +312,6 @@ def generate_fragpipe_protein_file(
         fasta_file (str): fasta file with all protein sequences
     """
     experiment = "1"
-    protein_group_results.experiments.append(experiment)
     protein_group_results, post_err_probs = add_precursor_quants(
         fragpipe_psm_file,
         protein_group_results,
@@ -326,19 +324,15 @@ def generate_fragpipe_protein_file(
         output_folder, fragpipe_psm_file
     )
 
-    fragpipe_columns = writers.FragPipeSingleProteinWriter(
+    fragpipe_writer = writers.FragPipeSingleProteinWriter(
         protein_groups, protein_annotations, protein_sequences
     )
 
-    protein_group_results = writers.append_quant_columns(
-        protein_group_results, fragpipe_columns, post_err_probs, psm_fdr_cutoff
+    protein_group_results = fragpipe_writer.append_quant_columns(
+        protein_group_results, post_err_probs, psm_fdr_cutoff
     )
 
-    protein_group_results.write(
-        fragpipe_protein_file_out,
-        header_dict=fragpipe_columns.get_header_dict(),
-        format_extra_columns=fragpipe_columns.get_extra_columns_formatter(),
-    )
+    fragpipe_writer.write(protein_group_results, fragpipe_protein_file_out)
 
 
 def get_fragpipe_protein_out_path(output_folder, fragpipe_psm_file):
@@ -364,60 +358,6 @@ def get_fragpipe_protein_out_path(output_folder, fragpipe_psm_file):
     return fragpipe_protein_file_out
 
 
-def add_precursor_quants(
-    fragpipe_psm_file: str,
-    protein_group_results: ProteinGroupResults,
-    protein_groups: ProteinGroups,
-    experiment: str,
-    discard_shared_peptides: bool,
-):
-    delimiter = tsv.get_delimiter(fragpipe_psm_file)
-    reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
-    headers = next(reader)
-
-    post_err_probs = []
-    for (
-        peptide,
-        charge,
-        post_err_prob,
-        assigned_mods,
-        observed_mods,
-        proteins,
-    ) in fragpipe.parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
-        protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
-
-        if len(protein_group_idxs) == 0:
-            logger.debug(
-                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-            )
-            continue
-
-        if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
-            continue
-
-        if not helpers.is_decoy(proteins):
-            post_err_probs.append((post_err_prob, "", experiment, peptide))
-
-        for protein_group_idx in protein_group_idxs:
-            precursor_quant = PrecursorQuant(
-                peptide=peptide,
-                charge=charge,
-                experiment=experiment,
-                fraction=-1,
-                intensity=np.nan,
-                post_err_prob=post_err_prob,
-                tmt_intensities=None,  # TODO: add TMT support
-                silac_intensities=None,  # TODO: add SILAC support
-                evidence_id=-1,
-                assigned_mods=assigned_mods,
-                observed_mods=observed_mods,
-            )
-            protein_group_results[protein_group_idx].precursorQuants.append(
-                precursor_quant
-            )
-    return protein_group_results, post_err_probs
-
-
 def generate_fragpipe_combined_protein_file(
     fragpipe_psm_files: List[str],
     combined_ion_file: str,
@@ -434,27 +374,14 @@ def generate_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    experiments = []
-    post_err_probs_combined = []
-    for fragpipe_psm_file in fragpipe_psm_files:
-        experiment = Path(fragpipe_psm_file).parent.name
-        experiments.append(experiment)
-        protein_group_results, post_err_probs = add_precursor_quants(
-            fragpipe_psm_file,
-            protein_group_results,
-            protein_groups,
-            experiment,
-            discard_shared_peptides,
-        )
-        post_err_probs_combined.extend(post_err_probs)
 
-    if combined_ion_file is not None:
-        protein_group_results = update_precursor_quants(
-            protein_group_results,
-            protein_groups,
-            combined_ion_file,
-            discard_shared_peptides,
-        )
+    protein_group_results, post_err_probs = add_precursor_quants_multiple(
+        fragpipe_psm_files,
+        combined_ion_file,
+        protein_groups,
+        protein_group_results,
+        discard_shared_peptides,
+    )
 
     if output_folder is None:
         output_folder = Path(fragpipe_psm_files[0]).parents[1]
@@ -465,7 +392,6 @@ def generate_fragpipe_combined_protein_file(
         protein_groups,
         protein_group_results,
         protein_annotations,
-        experiments,
         post_err_probs,
         psm_fdr_cutoff,
     )
@@ -476,7 +402,6 @@ def write_fragpipe_combined_protein_file(
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, ProteinAnnotation],
-    experiments: List[str],
     post_err_probs: List,
     psm_fdr_cutoff: float = 0.01,
 ):
@@ -513,13 +438,12 @@ def write_fragpipe_combined_protein_file(
         fragpipe_psm_file (str): file in Fragpipe's psm.tsv format
         fasta_file (str): fasta file with all protein sequences
     """
-    fragpipe_columns = writers.FragPipeCombinedProteinWriter(
+    fragpipe_writer = writers.FragPipeCombinedProteinWriter(
         protein_groups, protein_annotations
     )
 
-    protein_group_results.experiments = experiments
-    protein_group_results = writers.append_quant_columns(
-        protein_group_results, fragpipe_columns, post_err_probs, psm_fdr_cutoff
+    protein_group_results = fragpipe_writer.append_quant_columns(
+        protein_group_results, post_err_probs, psm_fdr_cutoff
     )
 
     if os.path.isfile(protein_groups_out_file) and not os.path.isfile(
@@ -530,85 +454,7 @@ def write_fragpipe_combined_protein_file(
             protein_groups_out_file.replace(".tsv", ".original.tsv"),
         )
 
-    protein_group_results.write(
-        protein_groups_out_file,
-        header_dict=fragpipe_columns.get_header_dict(experiments),
-        format_extra_columns=fragpipe_columns.get_extra_columns_formatter(),
-    )
-
-
-def update_precursor_quants(
-    protein_group_results: ProteinGroupResults,
-    protein_groups: ProteinGroups,
-    combined_ion_file: str,
-    discard_shared_peptides: bool,
-):
-    delimiter = tsv.get_delimiter(combined_ion_file)
-    reader = tsv.get_tsv_reader(combined_ion_file, delimiter)
-    headers = next(reader)
-
-    for (
-        peptide,
-        charge,
-        assigned_mods,
-        proteins,
-        intensities,
-    ) in fragpipe.parse_fragpipe_combined_ion_file(reader, headers):
-        protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
-
-        if len(protein_group_idxs) == 0:
-            logger.debug(
-                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-            )
-            continue
-
-        if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
-            continue
-
-        for protein_group_idx in protein_group_idxs:
-            precursors_to_update: Dict[str, Tuple[float, int]] = {}
-            for pq_idx, pq in enumerate(
-                protein_group_results[protein_group_idx].precursorQuants
-            ):
-                if (
-                    pq.peptide == peptide
-                    and pq.charge == charge
-                    and pq.assigned_mods == assigned_mods
-                ):
-                    if (
-                        pq.post_err_prob
-                        < precursors_to_update.get(pq.experiment, (1.01, np.nan))[0]
-                    ):
-                        precursors_to_update[pq.experiment] = (pq.post_err_prob, pq_idx)
-
-            for experiment, intensity in intensities:
-                if intensity == 0.0:
-                    continue
-
-                if experiment in precursors_to_update:
-                    pq_idx = precursors_to_update[experiment][1]
-                    protein_group_results[protein_group_idx].precursorQuants[
-                        pq_idx
-                    ].intensity = intensity
-                else:
-                    # match-between-runs hit
-                    precursor_quant = PrecursorQuant(
-                        peptide=peptide,
-                        charge=charge,
-                        experiment=experiment,
-                        fraction=-1,
-                        intensity=intensity,
-                        post_err_prob=np.nan,
-                        tmt_intensities=None,  # TODO: add TMT support
-                        silac_intensities=None,  # TODO: add SILAC support
-                        evidence_id=-1,
-                        assigned_mods=assigned_mods,
-                        observed_mods="",
-                    )
-                    protein_group_results[protein_group_idx].precursorQuants.append(
-                        precursor_quant
-                    )
-    return protein_group_results
+    fragpipe_writer.write(protein_group_results, protein_groups_out_file)
 
 
 if __name__ == "__main__":

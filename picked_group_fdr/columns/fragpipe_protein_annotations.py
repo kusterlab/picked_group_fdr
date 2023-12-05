@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict
 import logging
 
 from picked_group_fdr import protein_groups as pg

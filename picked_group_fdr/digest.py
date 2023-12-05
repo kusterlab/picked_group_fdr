@@ -65,7 +65,9 @@ def main(argv):
         prosit_input_file_with_proteins = args.prosit_input.replace(
             ".csv", "_with_proteins.csv"
         )
-        writer_with_proteins = get_tsv_writer(prosit_input_file_with_proteins, delimiter=",")
+        writer_with_proteins = get_tsv_writer(
+            prosit_input_file_with_proteins, delimiter=","
+        )
         writer_with_proteins.writerow(
             "modified_sequence,collision_energy,precursor_charge,protein".split(",")
         )
@@ -589,6 +591,29 @@ def get_ibaq_peptide_to_protein_map(
     return get_peptide_to_protein_map_from_params(
         fasta_files, digestion_params_list_ibaq
     )
+
+
+def get_num_ibaq_peptides_per_protein_from_args(args, peptide_to_protein_maps):
+    digestion_params_list = get_digestion_params_list(args)
+    if args.fasta:
+        logger.info("In silico protein digest for iBAQ")
+        num_ibaq_peptides_per_protein = get_num_ibaq_peptides_per_protein(
+            args.fasta, digestion_params_list
+        )
+    elif args.peptide_protein_map:
+        logger.warning("Found peptide_protein_map (instead of fasta input): ")
+        logger.warning(
+            "- calculating iBAQ values using all peptides in peptide_protein_map."
+        )
+        logger.warning("- cannot compute sequence coverage.")
+        num_ibaq_peptides_per_protein = get_num_peptides_per_protein(
+            merge_peptide_to_protein_maps(peptide_to_protein_maps)
+        )
+    else:
+        raise ValueError(
+            "No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags"
+        )
+    return num_ibaq_peptides_per_protein
 
 
 def get_num_ibaq_peptides_per_protein(

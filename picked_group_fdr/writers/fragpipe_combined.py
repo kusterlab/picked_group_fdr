@@ -3,11 +3,15 @@ from __future__ import annotations
 import collections
 from typing import Dict, List
 
+from .base import ProteinGroupsWriter
 from .. import columns
-from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 
 from .fragpipe import fragpipe_format_extra_columns
+
+# for type hints only
+from .. import results
+from .. import protein_annotation as pa
 
 
 FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT = {
@@ -27,11 +31,11 @@ FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT = {
 }
 
 
-class FragPipeCombinedProteinWriter:
+class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
     def __init__(
         self,
         protein_groups: ProteinGroups,
-        protein_annotations: Dict[str, ProteinAnnotation],
+        protein_annotations: Dict[str, pa.ProteinAnnotation],
         min_peptide_ratios_lfq: int = 1,
         stabilize_large_ratios_lfq: bool = True,
         num_threads: int = 1,
@@ -42,7 +46,7 @@ class FragPipeCombinedProteinWriter:
         self.stabilize_large_ratios_lfq = stabilize_large_ratios_lfq
         self.num_threads = num_threads
 
-    def get_header_dict(self, experiments: List[str]) -> Dict[str, str]:
+    def get_header_dict(self, protein_group_results: results.ProteinGroupResults) -> Dict[str, str]:
         """Adds experiment specific headers.
 
         - <Experiment> Spectral Count
@@ -51,6 +55,7 @@ class FragPipeCombinedProteinWriter:
         - <Experiment> Intensity
         - <Experiment> MaxLFQ Intensity
         """
+        experiments = protein_group_results.experiments
         header_dict = FRAGPIPE_COMBINED_PROTEIN_OUTPUT_DICT.copy()
         for experiment in experiments:
             header_dict[f"{experiment} Spectra Count"] = f"Spectral count {experiment}"

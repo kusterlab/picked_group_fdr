@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import collections
 from typing import Dict, List
 
+from .base import ProteinGroupsWriter
 from .fragpipe import fragpipe_format_extra_columns
 
 from .. import columns
-from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 
+# for type hints only
+from .. import results
+from .. import protein_annotation as pa
 
 FRAGPIPE_PROTEIN_OUTPUT_DICT = {
     "Protein": "Protein",
@@ -35,20 +40,22 @@ FRAGPIPE_PROTEIN_OUTPUT_DICT = {
 }
 
 
-class FragPipeSingleProteinWriter:
+class FragPipeSingleProteinWriter(ProteinGroupsWriter):
     def __init__(
         self,
         protein_groups: ProteinGroups,
-        protein_annotations: Dict[str, ProteinAnnotation],
+        protein_annotations: Dict[str, pa.ProteinAnnotation],
         protein_sequences: Dict[str, str],
     ):
         self.protein_groups = protein_groups
         self.protein_annotations = protein_annotations
         self.protein_sequences = protein_sequences
 
-    def get_header_dict(self) -> Dict[str, str]:
+    def get_header_dict(
+        self, protein_group_results: results.ProteinGroupResults
+    ) -> Dict[str, str]:
         return FRAGPIPE_PROTEIN_OUTPUT_DICT
-    
+
     def get_columns(self) -> List[columns.ProteinGroupColumns]:
         num_ibaq_peptides_per_protein = collections.defaultdict(lambda: 1)
         return [
@@ -64,6 +71,6 @@ class FragPipeSingleProteinWriter:
             columns.ModificationsColumns(),
             columns.IndistinguishableProteinsColumns(),
         ]
-    
+
     def get_extra_columns_formatter(self):
         return fragpipe_format_extra_columns

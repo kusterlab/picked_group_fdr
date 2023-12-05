@@ -7,21 +7,22 @@ from typing import Any, Callable, List, Dict, Union
 
 import numpy as np
 
-from picked_group_fdr.writers.base import logger
-
-from . import __version__, __copyright__, methods, results
+from . import __version__, __copyright__
 from . import digest
 from . import protein_annotation
 from . import helpers
 from . import proteotypicity
-from . import quantification
 from . import entrapment
 from . import methods
 from . import fdr
+from . import results
 from . import writers
+from .quant import maxquant as mq_quant
 from .digestion_params import add_digestion_arguments, get_digestion_params_list
-from .parsers import psm
+from .parsers import psm, parsers
+from .columns.triqler import init_triqler_params
 from .grouping import PseudoGeneGrouping
+from .protein_groups import ProteinGroups
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
 from .peptide_info import PeptideInfoList
@@ -88,6 +89,13 @@ def parse_args(argv):
         default=None,
         metavar="PG",
         help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.""",
+    )
+
+    apars.add_argument(
+        "--output_format",
+        default="maxquant",
+        metavar="PG",
+        help="""Protein groups output format. Options are "maxquant" (proteinGroups.txt format) and "fragpipe" (combined_protein.tsv format).""",
     )
 
     apars.add_argument(
@@ -172,6 +180,13 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--lfq_stabilize_large_ratios",
+        help="""Apply stabilization of large ratios in LFQ as described
+                in the MaxLFQ paper.""",
+        action="store_false",
+    )
+
+    apars.add_argument(
         "--num_threads",
         default=1,
         type=int,
@@ -207,6 +222,7 @@ def parse_args(argv):
 
 
 def write_protein_groups(
+    protein_groups_writer: writers.ProteinGroupsWriter,
     protein_group_results: results.ProteinGroupResults,
     protein_groups_out: str,
     config: Dict[str, Any],
@@ -222,7 +238,7 @@ def write_protein_groups(
         else:
             label = label.lower().replace(" ", "_")
         protein_groups_out = f"{base}_{label}{ext}"
-    protein_group_results.write(protein_groups_out)
+    protein_groups_writer.write(protein_group_results, protein_groups_out)
     logger.info(f"Protein group results have been written to: {protein_groups_out}")
 
 
@@ -334,24 +350,31 @@ def main(argv):
             args.keep_all_proteins,
         )
 
-        minimal_columns = writers.MinimalProteinGroupsWriter(
-            protein_annotations
-        )
+        protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
 
-        for c in minimal_columns.get_columns():
-            c.append(protein_group_results, None)
-
+        post_err_probs = None
+        psm_fdr_cutoff = 0.01
         if args.do_quant:
-            protein_group_results = do_quantification(
+            (
+                protein_group_results,
+                protein_groups_writer,
+                post_err_probs,
+            ) = do_quantification(
                 config["scoreType"],
                 args,
                 protein_group_results,
+                protein_annotations,
                 parse_id,
                 peptide_to_protein_maps,
             )
 
+        protein_groups_writer.append_quant_columns(
+            protein_group_results, post_err_probs, psm_fdr_cutoff
+        )
+
         if args.protein_groups_out:
             write_protein_groups(
+                protein_groups_writer,
                 protein_group_results,
                 args.protein_groups_out,
                 config,
@@ -429,7 +452,9 @@ def get_protein_group_results(
             )
 
         protein_group_peptide_infos = score_type.collect_peptide_scores_per_protein(
-            protein_groups, peptide_info_list, suppress_missing_protein_warning=rescue_step
+            protein_groups,
+            peptide_info_list,
+            suppress_missing_protein_warning=rescue_step,
         )
 
         # find optimal division factor for multPEP score
@@ -519,52 +544,67 @@ def do_quantification(
     score_type: ProteinScoringStrategy,
     args: argparse.Namespace,
     protein_group_results: ProteinGroupResults,
+    protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
     parse_id: Callable,
     peptide_to_protein_maps: List[Dict[str, List[str]]],
 ):
     if not score_type.can_do_quantification():
         logger.warning(
-            "Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed"
+            "Skipping quantification. Cannot do quantification from percolator output file; MQ evidence file input needed"
         )
         return protein_group_results
 
     protein_sequences = {}
     if args.fasta:
-        digestion_params_list = get_digestion_params_list(args)
-
-        logger.info("In silico protein digest for iBAQ")
-        num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein(
-            args.fasta, digestion_params_list
-        )
         db = "target" if args.fasta_contains_decoys else "concat"
         protein_sequences = digest.get_protein_sequences(
             args.fasta, db=db, parse_id=parse_id
         )
-    elif args.peptide_protein_map:
-        logger.warning("Found peptide_protein_map (instead of fasta input): ")
-        logger.warning(
-            "- calculating iBAQ values using all peptides in peptide_protein_map."
+
+    num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein_from_args(
+        args, peptide_to_protein_maps
+    )
+
+    logger.info("Preparing for quantification")
+
+    params = init_triqler_params()
+    if args.file_list_file:
+        _, _, params = parsers.parse_file_list(args.file_list_file, params)
+
+    discard_shared_peptides = True
+
+    if args.output_format == "fragpipe":
+        protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
+        protein_groups.create_index()
+        protein_groups_writer = writers.FragPipeCombinedProteinWriter(
+            protein_groups,
+            protein_annotations,
+            args.lfq_min_peptide_ratios,
+            args.lfq_stabilize_large_ratios,
+            args.num_threads,
         )
-        logger.warning("- cannot compute sequence coverage.")
-        num_ibaq_peptides_per_protein = digest.get_num_peptides_per_protein(
-            digest.merge_peptide_to_protein_maps(peptide_to_protein_maps)
+    elif args.output_format == "maxquant":
+        protein_groups_writer = writers.MaxQuantProteinGroupsWriter(
+            num_ibaq_peptides_per_protein,
+            protein_annotations,
+            protein_sequences,
+            args.lfq_min_peptide_ratios,
+            args.lfq_stabilize_large_ratios,
+            args.num_threads,
+            params,
         )
     else:
-        raise ValueError(
-            "No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags"
-        )
+        raise ValueError(f"Unknown output format: {args.output_format}.")
 
-    protein_group_results = quantification.do_quantification(
-        args.mq_evidence,
+    protein_group_results, post_err_probs = mq_quant.parse_evidence_files(
         protein_group_results,
-        protein_sequences,
+        args.mq_evidence,
         peptide_to_protein_maps,
-        num_ibaq_peptides_per_protein,
         args.file_list_file,
-        min_peptide_ratios_lfq=args.lfq_min_peptide_ratios,
-        num_threads=args.num_threads,
+        discard_shared_peptides,
     )
-    return protein_group_results
+
+    return protein_group_results, protein_groups_writer, post_err_probs
 
 
 if __name__ == "__main__":

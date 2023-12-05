@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Dict
 import logging
 
-from ..protein_annotation import ProteinAnnotation
 from .base import ProteinGroupColumns
 
 # for type hints only
 from .. import results
+from .. import protein_annotation as pa
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ MQ_PROTEIN_ANNOTATION_HEADERS = ["Protein names", "Gene names", "Fasta headers"]
 
 
 class ProteinAnnotationsColumns(ProteinGroupColumns):
-    protein_annotations: Dict[str, ProteinAnnotation]
+    protein_annotations: Dict[str, pa.ProteinAnnotation]
 
     def __init__(self, protein_annotations):
         self.protein_annotations = protein_annotations

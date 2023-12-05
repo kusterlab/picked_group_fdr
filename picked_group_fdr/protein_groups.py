@@ -104,6 +104,9 @@ class ProteinGroups:
     def get_protein_group_idxs(
         self, proteins: List[str], check_idx_valid: bool = True
     ) -> Set[int]:
+        if not self.valid_idx and check_idx_valid:
+            raise Exception("Trying to get group index while index is invalid")
+        
         protein_group_idxs = set()
         for protein in proteins:
             if protein in self.protein_to_group_idx_map:

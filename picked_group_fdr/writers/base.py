@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import collections
 import logging
-from typing import Dict, List, Protocol, Union
+from typing import Dict, List, Union
 
 import numpy as np
 
@@ -28,18 +28,66 @@ PROTEIN_GROUP_HEADERS = [
     "Potential contaminant",
 ]
 
-class ProteinGroupsWriter(Protocol):
-    def get_header_dict(self) -> Dict[str, str]:
-        pass
 
-    def get_columns(self)-> List[columns.ProteinGroupColumns]:
+class ProteinGroupsWriter:
+    def get_header_dict(
+        self, protein_group_results: results.ProteinGroupResults
+    ) -> Dict[str, str]:
+        return {x: x for x in protein_group_results.headers}
+
+    def get_columns(self) -> List[columns.ProteinGroupColumns]:
         pass
 
     def get_extra_columns_formatter(self):
         return format_extra_columns
 
+    def append_quant_columns(
+        self,
+        protein_group_results: results.ProteinGroupResults,
+        post_err_probs: List,
+        psm_fdr_cutoff: float,
+    ):
+        protein_group_results.remove_protein_groups_without_precursors()
 
-def retain_only_identified_precursors(
+        # (1) technically this is a precursor-level FDR and not a PSM-level FDR
+        # (2) in contrast to MaxQuant, we set a global precursor-level FDR
+        #         instead of a per raw file PSM-level FDR
+        post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
+            [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
+        )
+        logger.info(
+            f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
+        )
+
+        _print_num_peptides_at_fdr(post_err_probs, post_err_prob_cutoff)
+
+        logger.info("Filtering for identified precursors")
+        # precursor = (peptide, charge) tuple
+        # this filter also ensures that MBR precursors which were matched to
+        # unidentified precursors are removed
+        for pgr in protein_group_results:
+            pgr.precursorQuants = _retain_only_identified_precursors(
+                pgr.precursorQuants, post_err_prob_cutoff
+            )
+
+        for c in self.get_columns():
+            c.append(protein_group_results, post_err_prob_cutoff)
+
+        return protein_group_results
+
+    def write(
+        self,
+        protein_group_results: results.ProteinGroupResults,
+        protein_groups_out_file: str,
+    ):
+        protein_group_results.write(
+            protein_groups_out_file,
+            header_dict=self.get_header_dict(protein_group_results),
+            format_extra_columns=self.get_extra_columns_formatter(),
+        )
+
+
+def _retain_only_identified_precursors(
     precursor_list: List[PrecursorQuant], post_err_prob_cutoff
 ):
     identified_precursors = set()
@@ -53,7 +101,7 @@ def retain_only_identified_precursors(
     ]
 
 
-def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float):
+def _print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float):
     surviving_mod_peptides = set(
         [x[3] for x in post_err_probs if x[0] <= post_err_prob_cutoff]
     )
@@ -89,46 +137,9 @@ def print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float)
         )
 
 
-def append_quant_columns(
-    protein_group_results: results.ProteinGroupResults,
-    writer: ProteinGroupsWriter,
-    post_err_probs: List,
-    psm_fdr_cutoff: float,
-):
-    protein_group_results.remove_protein_groups_without_precursors()
-
-    # (1) technically this is a precursor-level FDR and not a PSM-level FDR
-    # (2) in contrast to MaxQuant, we set a global precursor-level FDR
-    #         instead of a per raw file PSM-level FDR
-    post_err_prob_cutoff = fdr.calc_post_err_prob_cutoff(
-        [x[0] for x in post_err_probs if not helpers.is_mbr(x[0])], psm_fdr_cutoff
-    )
-    logger.info(
-        f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
-    )
-
-    print_num_peptides_at_fdr(post_err_probs, post_err_prob_cutoff)
-
-    logger.info("Filtering for identified precursors")
-    # precursor = (peptide, charge) tuple
-    # this filter also ensures that MBR precursors which were matched to
-    # unidentified precursors are removed
-    for pgr in protein_group_results:
-        pgr.precursorQuants = retain_only_identified_precursors(
-            pgr.precursorQuants, post_err_prob_cutoff
-        )
-
-    for c in writer.get_columns():
-        c.append(protein_group_results, post_err_prob_cutoff)
-
-    return protein_group_results
-
-
 def format_extra_columns(x: Union[str, float]) -> str:
     if type(x) == str:
         return x
     if np.isnan(x):
         return ""
     return "%.0f" % (x)
-
-

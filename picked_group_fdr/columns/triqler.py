@@ -71,6 +71,7 @@ class TriqlerIntensityColumns(ProteinGroupColumns):
         pickedProteinOutputRows = list()
         proteinGroupResultsTriqler = list()
         decoyScores, targetScores = list(), list()
+        numGroups = len(self.params["groups"])
         for pgr in protein_group_results:
             leadingProtein = pgr.proteinIds.split(";")[0]
             quantRows = self._addPeptideQuantRows(
@@ -211,3 +212,17 @@ class TriqlerIntensityColumns(ProteinGroupColumns):
                 )
 
         return quantRows
+
+
+def init_triqler_params():
+    params = dict()
+    # TODO: make these parameters configurable from the command line
+    params["decoyPattern"] = "REV__"
+    params["groups"] = []
+    params["groupLabels"] = []
+    params["numThreads"] = 4
+    params["warningFilter"] = "ignore"
+    params["foldChangeEval"] = 0.8
+    params["returnPosteriors"] = False
+    params["minSamples"] = 5
+    return params
