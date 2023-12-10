@@ -44,5 +44,6 @@ omit = [
   "picked_group_fdr/pipeline/*", 
   "picked_group_fdr/plotter.py", 
   "*/__init__.py",
-  "*/__main__.py"
+  "*/__main__.py",
+  "*/setup.py"
 ]

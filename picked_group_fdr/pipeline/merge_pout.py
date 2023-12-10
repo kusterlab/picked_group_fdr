@@ -80,27 +80,14 @@ def main(argv):
         )
         return
 
-    peptideToProteinMap = collections.defaultdict(list)
+    peptide_to_protein_map = collections.defaultdict(list)
     if len(args.fasta) > 0:
         digestion_params_list = digest.get_digestion_params_list(args)
+        peptide_to_protein_map = digest.get_peptide_to_protein_map_from_params(
+            args.fasta, digestion_params_list
+        )
 
-        peptideToProteinMaps = list()
-        for fasta in args.fasta:
-            for digestion_params in digestion_params_list:
-                peptideToProteinMaps.append(
-                    digest.get_peptide_to_protein_map_with_enzyme(
-                        fasta,
-                        digestion_params.min_length,
-                        digestion_params.max_length,
-                        digestion_params.enzyme,
-                        digestion_params.cleavages,
-                        digestion_params.special_aas,
-                        db="concat",
-                    )
-                )
-        peptideToProteinMap = digest.merge_peptide_to_protein_maps(peptideToProteinMaps)
-
-    merge_pout(args.perc_results, peptideToProteinMap, args.perc_merged)
+    merge_pout(args.perc_results, peptide_to_protein_map, args.perc_merged)
 
 
 def merge_pout(perc_results, peptideToProteinMap, perc_merged):
@@ -140,8 +127,8 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
             elif percolator.is_native_percolator_file(headers):
                 proteins = row[proteinCol:]
             elif percolator.is_mokapot_file(headers):
-                proteins = row[proteinCol].split('\t')
-            
+                proteins = row[proteinCol].split("\t")
+
             isDecoy = helpers.is_decoy(proteins)
 
             if isDecoy:

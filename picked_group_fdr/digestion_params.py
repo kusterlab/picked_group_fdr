@@ -23,13 +23,13 @@ class DigestionParams:
 
     def __init__(
         self,
-        enzyme,
-        digestion,
-        min_length,
-        max_length,
-        cleavages,
-        special_aas,
-        fasta_contains_decoys,
+        enzyme = ENZYME_DEFAULT,
+        digestion = DIGESTION_DEFAULT,
+        min_length = MIN_PEPLEN_DEFAULT,
+        max_length = MAX_PEPLEN_DEFAULT,
+        cleavages = CLEAVAGES_DEFAULT,
+        special_aas = SPECIAL_AAS_DEFAULT,
+        fasta_contains_decoys = False,
     ):
         self.enzyme = enzyme
 
