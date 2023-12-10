@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 
 class ProteinScoringStrategy:
-    use_proteotypicity: bool
     use_razor: bool
     use_shared_peptides: bool
     protein_score: ProteinScore
@@ -50,7 +49,6 @@ class ProteinScoringStrategy:
             raise NotImplementedError
 
         self.use_razor = "razor" in score_description
-        self.use_proteotypicity = "proteotypicity" in score_description
         self.use_shared_peptides = "with_shared" in score_description
         self.peptide_qval_cutoff = peptide_qval_cutoff
 

@@ -14,7 +14,6 @@ from . import __version__, __copyright__
 from . import digest
 from . import protein_annotation
 from . import helpers
-from . import proteotypicity
 from . import entrapment
 from . import methods
 from . import fdr
@@ -158,13 +157,6 @@ def parse_args(argv):
     )
 
     apars.add_argument(
-        "--peptide_proteotypicity_map",
-        default=None,
-        metavar="M",
-        help="""File with mapping from peptides to proteotypicity.""",
-    )
-
-    apars.add_argument(
         "--keep_all_proteins",
         default=None,
         help="""Keep proteins that do not have peptides below the PSM FDR filter.""",
@@ -284,7 +276,6 @@ def main(argv):
                     config["grouping"] = PseudoGeneGrouping()
 
     peptide_to_protein_maps = list()
-    peptide_to_proteotypicity_map = dict()
     for config in configs:
         method_description_long = methods.long_description(
             config["scoreType"], config["grouping"], config["pickedStrategy"], True
@@ -315,16 +306,6 @@ def main(argv):
                 args.mq_protein_groups,
             )
 
-        if (
-            len(peptide_to_proteotypicity_map) == 0
-            and config["scoreType"].use_proteotypicity
-        ):
-            peptide_to_proteotypicity_map = (
-                proteotypicity.get_peptide_to_proteotypicity_from_file(
-                    args.peptide_proteotypicity_map
-                )
-            )
-
         peptide_info_list = parse_evidence_files(
             evidence_files,
             peptide_to_protein_maps,
@@ -336,7 +317,6 @@ def main(argv):
         protein_group_results = get_protein_group_results(
             peptide_info_list,
             args.mq_protein_groups,
-            peptide_to_proteotypicity_map,
             config["pickedStrategy"],
             config["scoreType"],
             config["grouping"],
@@ -418,7 +398,6 @@ def get_peptide_to_protein_maps(
 def get_protein_group_results(
     peptide_info_list: PeptideInfoList,
     mq_protein_groups_file: str,
-    peptide_to_proteotypicity_map,
     picked_strategy: ProteinCompetitionStrategy,
     score_type: ProteinScoringStrategy,
     grouping_strategy: ProteinGroupingStrategy,
@@ -484,15 +463,6 @@ def get_protein_group_results(
             reported_qvals,
             peptide_score_cutoff,
             keep_all_proteins,
-        )
-
-    if score_type.use_proteotypicity:
-        proteotypicity.calculate_proteotypicity_scores(
-            picked_protein_groups,
-            picked_protein_group_peptide_infos,
-            peptide_to_proteotypicity_map,
-            score_type,
-            peptide_score_cutoff,
         )
 
     plotter.set_series_label(

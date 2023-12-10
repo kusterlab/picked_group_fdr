@@ -38,3 +38,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.extras]
 gui = ["pyqt5"]
+
+[tool.coverage.run]
+omit = [
+  "picked_group_fdr/pipeline/*", 
+  "picked_group_fdr/plotter.py", 
+  "*/__init__.py",
+  "*/__main__.py"
+]
