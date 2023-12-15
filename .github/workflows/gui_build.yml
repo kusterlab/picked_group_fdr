@@ -46,6 +46,9 @@ jobs:
           mamba install -c conda-forge nomkl
           mamba install -c conda-forge numpy scipy pandas networkx pyqt pyinstaller=6.1.0 bottleneck toml threadpoolctl
           mamba install -c bioconda mokapot triqler
+      - name: Collect submodules
+        run: |
+          mamba run python import_lxml.py
       - name: Build exe and compress with UPX
         shell: bash -el {0}
         run: |
