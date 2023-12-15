@@ -1,13 +1,19 @@
 import os
 import toml
 
+from picked_group_fdr import methods
+
 from .competition import ProteinCompetitionStrategyFactory
 from .scoring_strategy import ProteinScoringStrategy
 from .grouping import ProteinGroupingStrategyFactory
 
 
 def get_methods(args):
-    """
+    """Get the picking, grouping and scoring strategy from toml files.
+
+    If no method is specified, use the picked protein group method, which was
+    the most sensitive well-calibrated method in a benchmark of methods.
+
     pickedStrategy: PickedStrategy() = picked FDR
                     ClassicStrategy() = classic FDR
 
@@ -17,19 +23,11 @@ def get_methods(args):
                     NoGrouping() = No protein grouping, each protein is in its own group
                     +Rescued = Rescue protein groups by only considering peptides below 1% protein FDR threshold
     """
-    configs = list()
-
-    ### WELL-CALIBRATED METHODS
-
+    methods = ["picked_protein_group"]
     if args.methods:
-        for method in args.methods.split(","):
-            configs.append(parse_method_toml(method))
-        return configs
+        methods = args.methods.split(",")
 
-    # final method
-    configs.append(parse_method_toml("picked_protein_group"))
-
-    return configs
+    return [parse_method_toml(method) for method in methods]
 
 
 def parse_method_toml(method: str):
@@ -78,3 +76,14 @@ def long_description(
     razor_label = score_type.long_description_razor()
     fdr_label = picked_strategy.long_description()
     return f"{score_label}{sep}{grouping_label}{sep}{razor_label}{sep}{fdr_label}"
+
+
+def get_method_description(config):
+    method_description_long = methods.long_description(
+        config["scoreType"],
+        config["grouping"],
+        config["pickedStrategy"],
+        rescue_step=True,
+    )
+    label = config.get("label", "")
+    return label, method_description_long

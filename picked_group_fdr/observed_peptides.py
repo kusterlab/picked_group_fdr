@@ -63,7 +63,6 @@ class ObservedPeptides:
         logger.info("Generating protein groups from observed peptides")
         
         protein_groups = ProteinGroups.from_observed_peptide_map(self.protein_to_peptides_dict)
-        protein_groups.create_index()
         
         for protein, peptides in self.protein_to_peptides_dict.items():
             superset_proteins = self._get_superset_proteins(peptides)

@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-import os
-
 from typing import Callable, Dict, Iterator, Optional, Tuple
+import os
+import logging
 
-from .digest import parse_until_first_space
 from picked_group_fdr import digest
+
+
+logger = logging.getLogger(__name__)
 
 
 """
@@ -66,7 +68,7 @@ def parse_gene_name_func(fasta_header: str) -> Optional[str]:
 
 
 def parse_uniprot_id(fasta_id: str) -> str:
-    protein_id = parse_until_first_space(fasta_id)
+    protein_id = digest.parse_until_first_space(fasta_id)
     if "|" in protein_id:
         return protein_id.split("|")[1]
     else:
@@ -74,7 +76,7 @@ def parse_uniprot_id(fasta_id: str) -> str:
 
 
 def parse_entry_name(fasta_header: str) -> str:
-    protein_id = parse_until_first_space(fasta_header)
+    protein_id = digest.parse_until_first_space(fasta_header)
     if "|" in protein_id and protein_id.count("|") >= 2:
         return protein_id.split("|")[2]
     else:
@@ -88,7 +90,7 @@ def parse_fasta_header(fasta_header: str) -> str:
 def read_fasta_proteins(
     file_path: str,
     db: str ="concat",
-    parse_id: Callable[[str], str] = parse_until_first_space,
+    parse_id: Callable[[str], str] = digest.parse_until_first_space,
     parse_protein_name: Callable[[str], str] = parse_protein_name_func,
     parse_gene_name: Callable[[str], str] = parse_gene_name_func,
 ):
@@ -148,3 +150,34 @@ def has_gene_names(
         if pa.gene_name is not None and len(pa.gene_name) > 0
     )
     return counts / len(protein_annotations) > min_ratio_with_genes
+
+
+def get_protein_annotations(
+    fasta: str, fasta_contains_decoys: bool, use_gene_level: bool
+):
+    protein_annotations = dict()
+    use_pseudo_genes = False
+    if fasta:
+        db = "target" if fasta_contains_decoys else "concat"
+        protein_annotations = get_protein_annotations_multiple(
+            fasta, db=db, parse_id=digest.parse_until_first_space
+        )
+        if use_gene_level:
+            if has_gene_names(
+                protein_annotations, min_ratio_with_genes=0.5
+            ):
+                protein_annotations = (
+                    get_protein_annotations_multiple(
+                        fasta, db=db, parse_id=parse_gene_name_func
+                    )
+                )
+            else:
+                logger.warning(
+                    (
+                        "Found >50% of proteins without gene names in the "
+                        "fasta file, will infer pseudo-genes based on "
+                        "shared peptides instead."
+                    )
+                )
+                use_pseudo_genes = True
+    return protein_annotations, use_pseudo_genes

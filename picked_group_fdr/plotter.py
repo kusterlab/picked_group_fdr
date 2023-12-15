@@ -181,9 +181,10 @@ class Plotter:
 class PlotterFactory:
     @staticmethod
     def get_plotter(figure_base_fn, plot_figures):
+        plotter = NoPlotter()
         if figure_base_fn or plot_figures:
-            return Plotter(figure_base_fn, plot_figures)
-        else:
-            return NoPlotter()
+            plotter = Plotter(figure_base_fn, plot_figures)            
+        plotter.init_plots()
+        return plotter
 
 

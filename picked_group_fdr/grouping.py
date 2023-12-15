@@ -132,7 +132,6 @@ class MQNativeGrouping(ProteinGroupingStrategy):
         protein_groups = ProteinGroups.from_mq_protein_groups_file(
             mq_protein_groups_file
         )
-        protein_groups.create_index()
         return protein_groups
 
     def short_description(self, rescue_step):

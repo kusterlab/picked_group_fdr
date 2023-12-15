@@ -95,7 +95,6 @@ def main(argv):
     args = parse_args(argv)
 
     protein_groups = ProteinGroups.from_mq_protein_groups_file(args.protein_groups)
-    protein_groups.create_index()
 
     db = "target" if args.fasta_contains_decoys else "concat"
     protein_annotations = protein_annotation.get_protein_annotations_multiple(

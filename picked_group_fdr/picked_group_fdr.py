@@ -4,11 +4,9 @@ import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import Any, Callable, List, Dict, Union
+from typing import Any, List, Dict, Union
 
 import numpy as np
-
-from picked_group_fdr.protein_groups import ProteinGroups
 
 from . import __version__, __copyright__
 from . import digest
@@ -20,9 +18,13 @@ from . import fdr
 from . import results
 from . import writers
 from . import quantification
-from .quant import maxquant as mq_quant
-from .digestion_params import add_digestion_arguments, get_digestion_params_list
+from .digestion_params import (
+    add_digestion_arguments,
+    get_digestion_params_list,
+    DigestionParams,
+)
 from .parsers import psm
+from .protein_groups import ProteinGroups
 from .grouping import PseudoGeneGrouping
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
@@ -204,30 +206,6 @@ def parse_args(argv):
     return args
 
 
-def write_protein_groups(
-    protein_groups_writer: writers.ProteinGroupsWriter,
-    protein_group_results: results.ProteinGroupResults,
-    protein_groups_out: str,
-    config: Dict[str, Any],
-    apply_suffix: bool,
-):
-    if apply_suffix:
-        base, ext = os.path.splitext(protein_groups_out)
-        label = config.get("label", None)
-        if label is None:
-            label = methods.short_description(
-                config["scoreType"], config["grouping"], config["pickedStrategy"], True
-            )
-        else:
-            label = label.lower().replace(" ", "_")
-        protein_groups_out = f"{base}_{label}{ext}"
-    
-    Path(protein_groups_out).parent.mkdir(parents=True, exist_ok=True)
-
-    protein_groups_writer.write(protein_group_results, protein_groups_out)
-    logger.info(f"Protein group results have been written to: {protein_groups_out}")
-
-
 def main(argv):
     logger.info(GREETER)
     logger.info(
@@ -236,51 +214,23 @@ def main(argv):
 
     args = parse_args(argv)
 
+    start = timer()
+
     # set seed for random shuffling of protein groups, see competition.do_competition()
     np.random.seed(1)
 
     configs = methods.get_methods(args)
-    digestion_params_list = get_digestion_params_list(args)
-
-    start = timer()
-
     plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
-    plotter.init_plots()
+    protein_annotations, use_pseudo_genes = protein_annotation.get_protein_annotations(
+        args.fasta, args.fasta_contains_decoys, args.gene_level
+    )
+    if use_pseudo_genes:
+        for config in configs:
+            config["grouping"] = PseudoGeneGrouping()
 
-    parse_id = digest.parse_until_first_space
-    db = "target" if args.fasta_contains_decoys else "concat"
-    protein_annotations = dict()
-    if args.fasta:
-        protein_annotations = protein_annotation.get_protein_annotations_multiple(
-            args.fasta, db=db, parse_id=parse_id
-        )
-        if args.gene_level:
-            if protein_annotation.has_gene_names(
-                protein_annotations, min_ratio_with_genes=0.5
-            ):
-                parse_id = protein_annotation.parse_gene_name_func
-                protein_annotations = (
-                    protein_annotation.get_protein_annotations_multiple(
-                        args.fasta, db=db, parse_id=parse_id
-                    )
-                )
-            else:
-                logger.warning(
-                    (
-                        "Found fewer than 50% of proteins without gene names in the "
-                        "fasta file, will attempt to infer pseudo-genes based on "
-                        "shared peptides instead."
-                    )
-                )
-                for config in configs:
-                    config["grouping"] = PseudoGeneGrouping()
-
-    peptide_to_protein_maps = list()
+    peptide_to_protein_maps = get_peptide_to_protein_maps_if_needed(args, configs)
     for config in configs:
-        method_description_long = methods.long_description(
-            config["scoreType"], config["grouping"], config["pickedStrategy"], True
-        )
-        label = config.get("label", "")
+        label, method_description_long = methods.get_method_description(config)
         logger.info(
             f"Protein group level estimation method: {label} ({method_description_long})"
         )
@@ -294,17 +244,6 @@ def main(argv):
                 )
             )
             continue
-
-        if len(peptide_to_protein_maps) == 0 and (
-            config["grouping"].needs_peptide_to_protein_map()
-            or config["scoreType"].remaps_peptides_to_proteins()
-        ):
-            peptide_to_protein_maps = get_peptide_to_protein_maps(
-                args.fasta,
-                args.peptide_protein_map,
-                digestion_params_list,
-                args.mq_protein_groups,
-            )
 
         peptide_info_list = parse_evidence_files(
             evidence_files,
@@ -325,9 +264,7 @@ def main(argv):
         )
 
         protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
-
         post_err_probs = None
-        psm_fdr_cutoff = 0.01
         if args.do_quant:
             (
                 protein_group_results,
@@ -338,12 +275,12 @@ def main(argv):
                 args,
                 protein_group_results,
                 protein_annotations,
-                parse_id,
+                use_pseudo_genes,
                 peptide_to_protein_maps,
             )
 
         protein_groups_writer.append_quant_columns(
-            protein_group_results, post_err_probs, psm_fdr_cutoff
+            protein_group_results, post_err_probs, args.psm_fdr_cutoff
         )
 
         if args.protein_groups_out:
@@ -365,24 +302,47 @@ def main(argv):
     plotter.show()
 
 
+def get_peptide_to_protein_maps_if_needed(
+    args: argparse.Namespace, configs: Dict[str, Any]
+) -> List[Dict[str, List[str]]]:
+    for config in configs:
+        if (
+            config["grouping"].needs_peptide_to_protein_map()
+            or config["scoreType"].remaps_peptides_to_proteins()
+        ):
+            digestion_params_list = get_digestion_params_list(args)
+            return get_peptide_to_protein_maps(
+                args.fasta,
+                args.peptide_protein_map,
+                digestion_params_list,
+                args.mq_protein_groups,
+            )
+    return list()
+
+
 def get_peptide_to_protein_maps(
-    fasta, peptide_protein_map, digestion_params_list, mq_protein_groups
+    fasta_file: str,
+    peptide_protein_map_file: str,
+    digestion_params_list: List[DigestionParams],
+    mq_protein_groups_file: str,
 ):
     peptide_to_protein_maps = list()
-    if fasta:
+    if fasta_file:
         for digestion_params in digestion_params_list:
             peptide_to_protein_maps.append(
-                digest.get_peptide_to_protein_map_from_params(fasta, [digestion_params])
+                digest.get_peptide_to_protein_map_from_params(
+                    fasta_file, [digestion_params]
+                )
             )
             entrapment.mark_entrapment_proteins(
-                peptide_to_protein_maps[-1], mq_protein_groups
+                peptide_to_protein_maps[-1], mq_protein_groups_file
             )
-    elif peptide_protein_map:
+    elif peptide_protein_map_file:
         logger.info("Loading peptide to protein map")
-        for peptide_protein_map in peptide_protein_map:
+        for peptide_protein_map_file in peptide_protein_map_file:
             peptide_to_protein_maps.append(
                 digest.get_peptide_to_protein_map_from_file(
-                    peptide_protein_map, use_hash_key=False
+                    peptide_protein_map_file, use_hash_key=False
                 )
             )
     else:
@@ -414,7 +374,7 @@ def get_protein_group_results(
     for rescue_step in grouping_strategy.get_rescue_steps():
         if rescue_step:
             if not score_type.can_do_protein_group_rescue():
-                raise Exception(
+                raise NotImplementedError(
                     "Cannot do rescue step for other score types than bestPEP"
                 )
             protein_groups = grouping_strategy.rescue_protein_groups(
@@ -509,7 +469,7 @@ def do_quantification(
     args: argparse.Namespace,
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
-    parse_id: Callable,
+    use_pseudo_genes: bool,
     peptide_to_protein_maps: List[Dict[str, List[str]]],
 ):
     if not score_type.can_do_quantification():
@@ -524,6 +484,10 @@ def do_quantification(
     if args.output_format == "auto" and score_origin in ["maxquant", "fragpipe"]:
         args.output_format = score_origin
 
+    parse_id = digest.parse_until_first_space
+    if args.gene_level and not use_pseudo_genes:
+        parse_id = protein_annotation.parse_gene_name_func
+
     protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,
         args.output_format,
@@ -536,8 +500,7 @@ def do_quantification(
     discard_shared_peptides = True
 
     protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
-    protein_groups.create_index()
-    
+
     protein_group_results, post_err_probs = score_type.get_quantification_parser()(
         score_type.get_evidence_file(args),
         score_type.get_quantification_file(args),
@@ -549,6 +512,30 @@ def do_quantification(
     )
 
     return protein_group_results, protein_groups_writer, post_err_probs
+
+
+def write_protein_groups(
+    protein_groups_writer: writers.ProteinGroupsWriter,
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups_out: str,
+    config: Dict[str, Any],
+    apply_suffix: bool,
+):
+    if apply_suffix:
+        base, ext = os.path.splitext(protein_groups_out)
+        label = config.get("label", None)
+        if label is None:
+            label = methods.short_description(
+                config["scoreType"], config["grouping"], config["pickedStrategy"], True
+            )
+        else:
+            label = label.lower().replace(" ", "_")
+        protein_groups_out = f"{base}_{label}{ext}"
+
+    Path(protein_groups_out).parent.mkdir(parents=True, exist_ok=True)
+
+    protein_groups_writer.write(protein_group_results, protein_groups_out)
+    logger.info(f"Protein group results have been written to: {protein_groups_out}")
 
 
 if __name__ == "__main__":

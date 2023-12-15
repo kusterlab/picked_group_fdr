@@ -26,25 +26,31 @@ class ProteinGroups:
         self.protein_to_group_idx_map = dict()
         self.valid_idx = False
 
-    @classmethod
-    def from_mq_protein_groups_file(cls, mq_protein_groups_file: str):
+    @staticmethod
+    def from_mq_protein_groups_file(mq_protein_groups_file: str):
         protein_groups = [
             protein_group
             for protein_group, _ in parsers.parse_protein_groups_file_single(
                 mq_protein_groups_file
             )
         ]
-        return cls(protein_groups)
+        return ProteinGroups.init_from_list(protein_groups)
 
-    @classmethod
-    def from_observed_peptide_map(cls, protein_to_peptides_dict):
+    @staticmethod
+    def from_observed_peptide_map(protein_to_peptides_dict):
         protein_groups = [[protein] for protein in protein_to_peptides_dict.keys()]
-        return cls(protein_groups)
+        return ProteinGroups.init_from_list(protein_groups)
+
+    @staticmethod
+    def from_protein_group_results(protein_groups_results):
+        protein_groups = [pgr.proteinIds.split(";") for pgr in protein_groups_results]
+        return ProteinGroups.init_from_list(protein_groups)
 
     @classmethod
-    def from_protein_group_results(cls, protein_groups_results):
-        protein_groups = [pgr.proteinIds.split(";") for pgr in protein_groups_results]
-        return cls(protein_groups)
+    def init_from_list(cls, protein_groups):
+        protein_groups = cls(protein_groups)
+        protein_groups.create_index()
+        return protein_groups
 
     def __iter__(self):
         return iter(self.protein_groups)

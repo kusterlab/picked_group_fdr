@@ -155,7 +155,6 @@ def main(argv):
         args.is_decoy_file = [False] * num_input_files
 
     plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
-    plotter.init_plots()
 
     unique_labels = sorted(set(args.plot_labels))
     for label in unique_labels:
