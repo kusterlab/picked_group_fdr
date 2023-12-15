@@ -9,13 +9,12 @@ import numpy as np
 from scipy.sparse.linalg import lsqr
 from scipy.sparse import csr_matrix
 import bottleneck as bn
-
+from job_pool import JobPool
 
 from .. import helpers
 from .base import ProteinGroupColumns
 from .sum_and_ibaq import _get_intensities, get_silac_channels
 from .peptide_count import _unique_peptide_counts_per_experiment
-from ..utils import multiprocessing_pool as pool
 
 # imports for typing
 from .. import results
@@ -71,7 +70,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
         num_silac_channels = len(silac_channels)
 
         if self.numThreads > 1:
-            processingPool = pool.JobPool(
+            processingPool = JobPool(
                 processes=self.numThreads, maxtasksperchild=10
             )
 
