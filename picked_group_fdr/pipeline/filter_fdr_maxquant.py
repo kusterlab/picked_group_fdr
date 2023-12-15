@@ -92,7 +92,7 @@ def main(argv):
 def filterProteinGroupsAtFDR(proteinGroupFiles, outputFile, fdrCutoff):
     for proteinGroupFile in proteinGroupFiles:
         if ".txt" not in proteinGroupFile:
-            sys.exit("ERROR: could not detect file extension .txt in the input file")
+            raise ValueError("ERROR: could not detect file extension .txt in the input file")
         
         logger.info(f"Writing filtered protein groups results to: {outputFile}")
         writer = tsv.get_tsv_writer(outputFile)

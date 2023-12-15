@@ -346,7 +346,7 @@ def get_peptide_to_protein_maps(
                 )
             )
     else:
-        sys.exit(
+        raise ValueError(
             (
                 "No fasta or peptide to protein mapping file detected, please"
                 "specify either the --fasta or --peptide_protein_map flags."
