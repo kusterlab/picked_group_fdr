@@ -370,7 +370,7 @@ def full_digest(
 
 
 def get_peptide_to_protein_map_from_params(
-    fasta_files: List[str], digestion_params_list: List[DigestionParams]
+    fasta_files: List[str], digestion_params_list: List[DigestionParams], **kwargs
 ):
     peptide_to_protein_map = collections.defaultdict(list)
     protein_to_seq_map = dict()
@@ -378,7 +378,7 @@ def get_peptide_to_protein_map_from_params(
         for params in digestion_params_list:
             # TODO: make sure we do not combine use_hash_key=True with use_hash_key=False
             peptide_to_protein_map_tmp = get_peptide_to_protein_map_from_params_single(
-                fasta_file, params
+                fasta_file, params, **kwargs
             )
 
             # TODO: refactor peptide_to_protein_map as a class to get rid of this check
@@ -396,7 +396,7 @@ def get_peptide_to_protein_map_from_params(
 
 
 def get_peptide_to_protein_map_from_params_single(
-    fasta_file: str, params: DigestionParams
+    fasta_file: str, params: DigestionParams, **kwargs
 ):
     pre, not_post, post = get_cleavage_sites(params.enzyme)
     return get_peptide_to_protein_map(
@@ -412,6 +412,7 @@ def get_peptide_to_protein_map_from_params_single(
         methionine_cleavage=params.methionine_cleavage,
         use_hash_key=params.use_hash_key,
         special_aas=params.special_aas,
+        **kwargs,
     )
 
 

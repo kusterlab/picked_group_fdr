@@ -224,11 +224,12 @@ def main(argv):
     protein_annotations, use_pseudo_genes = protein_annotation.get_protein_annotations(
         args.fasta, args.fasta_contains_decoys, args.gene_level
     )
+
     if use_pseudo_genes:
         for config in configs:
             config["grouping"] = PseudoGeneGrouping()
 
-    peptide_to_protein_maps = get_peptide_to_protein_maps_if_needed(args, configs)
+    peptide_to_protein_maps = get_peptide_to_protein_maps_if_needed(args, configs, use_pseudo_genes)
     for config in configs:
         label, method_description_long = methods.get_method_description(config)
         logger.info(
@@ -303,8 +304,12 @@ def main(argv):
 
 
 def get_peptide_to_protein_maps_if_needed(
-    args: argparse.Namespace, configs: Dict[str, Any]
+    args: argparse.Namespace, configs: Dict[str, Any], use_pseudo_genes: bool,
 ) -> List[Dict[str, List[str]]]:
+    parse_id = digest.parse_until_first_space
+    if args.gene_level and not use_pseudo_genes:
+        parse_id = protein_annotation.parse_gene_name_func
+
     for config in configs:
         if (
             config["grouping"].needs_peptide_to_protein_map()
@@ -316,6 +321,7 @@ def get_peptide_to_protein_maps_if_needed(
                 args.peptide_protein_map,
                 digestion_params_list,
                 args.mq_protein_groups,
+                parse_id=parse_id,
             )
     return list()
 
@@ -325,13 +331,14 @@ def get_peptide_to_protein_maps(
     peptide_protein_map_file: str,
     digestion_params_list: List[DigestionParams],
     mq_protein_groups_file: str,
+    **kwargs,
 ):
     peptide_to_protein_maps = list()
     if fasta_file:
         for digestion_params in digestion_params_list:
             peptide_to_protein_maps.append(
                 digest.get_peptide_to_protein_map_from_params(
-                    fasta_file, [digestion_params]
+                    fasta_file, [digestion_params], **kwargs
                 )
             )
             entrapment.mark_entrapment_proteins(
