@@ -29,15 +29,15 @@ ENZYME_CLEAVAGE_RULES = {
         "post": [],
     },
     "elastase": {"pre": ["L", "V", "A", "G"], "not_post": ["P"], "post": []},
-    "clostripain": {"pre": ["R"], "not_post": [""], "post": []},
-    "cyanogen-bromide": {"pre": ["M"], "not_post": [""], "post": []},
-    "iodosobenzoate": {"pre": ["W"], "not_post": [""], "post": []},
-    "proline-endopeptidase": {"pre": ["P"], "not_post": [""], "post": []},
-    "staph-protease": {"pre": ["E"], "not_post": [""], "post": []},
-    "asp-n": {"pre": [""], "not_post": [""], "post": ["D"]},
+    "clostripain": {"pre": ["R"], "not_post": [], "post": []},
+    "cyanogen-bromide": {"pre": ["M"], "not_post": [], "post": []},
+    "iodosobenzoate": {"pre": ["W"], "not_post": [], "post": []},
+    "proline-endopeptidase": {"pre": ["P"], "not_post": [], "post": []},
+    "staph-protease": {"pre": ["E"], "not_post": [], "post": []},
+    "asp-n": {"pre": [], "not_post": [], "post": ["D"]},
     "lys-c": {"pre": ["K"], "not_post": ["P"], "post": []},
-    "lys-cp": {"pre": ["K"], "not_post": [""], "post": []},
-    "lys-n": {"pre": [""], "not_post": [""], "post": ["K"]},
+    "lys-cp": {"pre": ["K"], "not_post": [], "post": []},
+    "lys-n": {"pre": [], "not_post": [], "post": ["K"]},
     "arg-c": {"pre": ["R"], "not_post": ["P"], "post": []},
     "glu-c": {"pre": ["E"], "not_post": ["P"], "post": []},
     "pepsin-a": {"pre": ["F", "L"], "not_post": ["P"], "post": []},
@@ -46,7 +46,7 @@ ENZYME_CLEAVAGE_RULES = {
         "not_post": ["P"],
         "post": [],
     },
-    "lysarginase": {"pre": [""], "not_post": [""], "post": ["K", "R"]},
+    "lysarginase": {"pre": [], "not_post": [], "post": ["K", "R"]},
     "v8-de": {"pre": ["N", "D", "E", "Q"], "not_post": ["P"], "post": []},
 }
 
@@ -347,21 +347,29 @@ def full_digest(
 ):
     seq_len, starts = len(seq), [0]
     methionine_cleavage = methionine_cleavage and seq[0] == "M"
-    length_accepted = lambda x: x >= min_len and x <= max_len
+
+    check_pre = len(pre) > 0
+    check_post = len(post) > 0
 
     cleavage_sites = [0] if methionine_cleavage else []
+    # HACK: inline if statement instead of using is_enzymatic because it is ~20% faster
     cleavage_sites.extend(
         [
             i
             for i in range(seq_len)
-            if is_enzymatic(seq[i], seq[min([seq_len - 1, i + 1])], pre, not_post, post)
+            if (
+                check_pre
+                and seq[i] in pre
+                and not seq[min([seq_len - 1, i + 1])] in not_post
+            )
+            or (check_post and seq[min([seq_len - 1, i + 1])] in post)
         ]
     )
     cleavage_sites.append(seq_len)
     for i in cleavage_sites:
         for start in starts:
             pep_len = i - start + 1
-            if length_accepted(pep_len):
+            if min_len <= pep_len <= max_len:
                 yield (seq[start : i + 1])
         starts.append(i + 1)
         methionine_cleaved = int(starts[0] == 0 and methionine_cleavage)
@@ -383,11 +391,17 @@ def get_peptide_to_protein_map_from_params(
 
             # TODO: refactor peptide_to_protein_map as a class to get rid of this check
             if len(peptide_to_protein_map_tmp) == 2:
-                peptide_to_protein_map_tmp, protein_to_seq_map_tmp = peptide_to_protein_map_tmp
+                (
+                    peptide_to_protein_map_tmp,
+                    protein_to_seq_map_tmp,
+                ) = peptide_to_protein_map_tmp
                 protein_to_seq_map |= protein_to_seq_map_tmp
 
-            for peptide, proteins in peptide_to_protein_map_tmp.items():
-                peptide_to_protein_map[peptide].extend(proteins)
+            if len(peptide_to_protein_map) == 0:
+                peptide_to_protein_map = peptide_to_protein_map_tmp
+            else:
+                for peptide, proteins in peptide_to_protein_map_tmp.items():
+                    peptide_to_protein_map[peptide].extend(proteins)
 
     if len(protein_to_seq_map) > 0:
         return peptide_to_protein_map, protein_to_seq_map
