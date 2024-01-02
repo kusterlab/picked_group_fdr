@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+from typing import Dict, List, Tuple
 
 from . import writers
 from . import digest
@@ -59,9 +60,10 @@ def parse_args(argv):
         "--fasta",
         default=None,
         metavar="F",
-        help="""Fasta file to create mapping from peptides to proteins. This should not
-                contain the decoy sequences, unless you set the --fasta_contains_decoys 
-                flag.""",
+        nargs="+",
+        help="""Fasta file(s) to create mapping from peptides to proteins.
+                This should not contain the decoy sequences, unless you set the 
+                --fasta_contains_decoys flag.""",
     )
 
     apars.add_argument(
@@ -87,7 +89,7 @@ def parse_args(argv):
     return args
 
 
-def add_quant_arguments(apars):
+def add_quant_arguments(apars) -> None:
     apars.add_argument(
         "--psm_fdr_cutoff",
         default=0.01,
@@ -129,7 +131,7 @@ def add_quant_arguments(apars):
     )
 
 
-def main(argv):
+def main(argv) -> None:
     logger.info(
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
     )
@@ -146,7 +148,7 @@ def main(argv):
     (
         peptide_to_protein_maps,
         num_ibaq_peptides_per_protein,
-    ) = get_peptide_to_protein_maps(args)
+    ) = get_peptide_to_protein_maps(args, parse_id=parse_id)
 
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
         args.fasta, db=db, parse_id=parse_id
@@ -190,7 +192,9 @@ def main(argv):
     )
 
 
-def get_peptide_to_protein_maps(args):
+def get_peptide_to_protein_maps(
+    args, **kwargs
+) -> Tuple[List[digest.PeptideToProteinMap], Dict[str, int]]:
     logger.info("Loading peptide to protein map...")
 
     digestion_params_list = digestion_params.get_digestion_params_list(args)
@@ -199,6 +203,7 @@ def get_peptide_to_protein_maps(args):
         args.peptide_protein_map,
         digestion_params_list,
         args.mq_protein_groups,
+        **kwargs,
     )
 
     num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein_from_args(
