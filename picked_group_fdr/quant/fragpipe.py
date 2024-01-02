@@ -10,6 +10,9 @@ from ..precursor_quant import PrecursorQuant
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
 
+# for type hints only
+from .. import digest
+
 logger = logging.getLogger(__name__)
 
 
@@ -148,7 +151,7 @@ def add_precursor_quants_multiple(
     combined_ion_file: List[str],
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
-    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
     file_list_file: str,
     discard_shared_peptides: bool,
 ):

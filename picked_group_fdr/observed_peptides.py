@@ -7,13 +7,15 @@ from . import helpers
 from .protein_groups import ProteinGroups
 from .peptide_info import PeptideInfoList
 
+# for type hints only
+from . import digest
 
 logger = logging.getLogger(__name__)
 
 
 class ObservedPeptides:
-    peptide_to_proteins_dict: Dict[str, List[str]]
-    protein_to_peptides_dict: Dict[str, List[str]]
+    peptide_to_proteins_dict: digest.PeptideToProteinMap
+    protein_to_peptides_dict: digest.PeptideToProteinMap
     peptide_to_score_dict: Dict[str, float]
     
     def __init__(self) -> None:

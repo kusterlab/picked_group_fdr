@@ -19,7 +19,7 @@ def get_protein_groups_output_writer(
     args: argparse.Namespace,
     protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
     parse_id: Callable,
-    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
 ):
     if args.output_format == "fragpipe":
         protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)

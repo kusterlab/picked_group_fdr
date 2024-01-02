@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_peptide_to_protein_mapper(
-    peptide_to_protein_map: Dict[str, List[str]],
+    peptide_to_protein_map: digest.PeptideToProteinMap,
     score_type: scoring_strategy.ProteinScoringStrategy,
     suppress_missing_peptide_warning: bool,
 ) -> Callable[[str, List[str]], List[str]]:

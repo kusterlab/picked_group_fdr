@@ -71,7 +71,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
         if self.numThreads > 1:
             processingPool = JobPool(
-                processes=self.numThreads, maxtasksperchild=10
+                processes=self.numThreads, maxtasksperchild=10, write_progress_to_logger=True
             )
 
         allIntensities = list()

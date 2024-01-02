@@ -4,7 +4,7 @@ import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import Any, List, Dict, Union
+from typing import Any, List, Dict, Tuple, Union
 
 import numpy as np
 
@@ -15,7 +15,6 @@ from . import helpers
 from . import entrapment
 from . import methods
 from . import fdr
-from . import results
 from . import writers
 from . import quantification
 from .digestion_params import (
@@ -206,7 +205,7 @@ def parse_args(argv):
     return args
 
 
-def main(argv):
+def main(argv) -> None:
     logger.info(GREETER)
     logger.info(
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
@@ -229,7 +228,9 @@ def main(argv):
         for config in configs:
             config["grouping"] = PseudoGeneGrouping()
 
-    peptide_to_protein_maps = get_peptide_to_protein_maps_if_needed(args, configs, use_pseudo_genes)
+    peptide_to_protein_maps = get_peptide_to_protein_maps_if_needed(
+        args, configs, use_pseudo_genes
+    )
     for config in configs:
         label, method_description_long = methods.get_method_description(config)
         logger.info(
@@ -304,8 +305,10 @@ def main(argv):
 
 
 def get_peptide_to_protein_maps_if_needed(
-    args: argparse.Namespace, configs: Dict[str, Any], use_pseudo_genes: bool,
-) -> List[Dict[str, List[str]]]:
+    args: argparse.Namespace,
+    configs: Dict[str, Any],
+    use_pseudo_genes: bool,
+) -> List[digest.PeptideToProteinMap]:
     parse_id = digest.parse_until_first_space
     if args.gene_level and not use_pseudo_genes:
         parse_id = protein_annotation.parse_gene_name_func
@@ -370,7 +373,7 @@ def get_protein_group_results(
     grouping_strategy: ProteinGroupingStrategy,
     plotter: Union[Plotter, NoPlotter],
     keep_all_proteins: bool,
-):
+) -> ProteinGroupResults:
     protein_groups = grouping_strategy.group_proteins(
         peptide_info_list, mq_protein_groups_file
     )
@@ -444,7 +447,7 @@ def get_protein_group_results(
 
 def parse_evidence_files(
     evidence_files: List[str],
-    peptide_to_protein_maps: List[Dict[str, List[str]]],
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
     score_type: ProteinScoringStrategy,
     suppress_missing_peptide_warning: bool,
 ) -> PeptideInfoList:
@@ -477,8 +480,8 @@ def do_quantification(
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
     use_pseudo_genes: bool,
-    peptide_to_protein_maps: List[Dict[str, List[str]]],
-):
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
+) -> Tuple[ProteinGroupResults, writers.ProteinGroupsWriter, List]:
     if not score_type.can_do_quantification():
         logger.warning(
             "Skipping quantification: need input file with precursor quantifications."
@@ -523,11 +526,11 @@ def do_quantification(
 
 def write_protein_groups(
     protein_groups_writer: writers.ProteinGroupsWriter,
-    protein_group_results: results.ProteinGroupResults,
+    protein_group_results: ProteinGroupResults,
     protein_groups_out: str,
     config: Dict[str, Any],
     apply_suffix: bool,
-):
+) -> None:
     if apply_suffix:
         base, ext = os.path.splitext(protein_groups_out)
         label = config.get("label", None)

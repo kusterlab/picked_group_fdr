@@ -50,6 +50,8 @@ ENZYME_CLEAVAGE_RULES = {
     "v8-de": {"pre": ["N", "D", "E", "Q"], "not_post": ["P"], "post": []},
 }
 
+PeptideToProteinMap = Dict[str, List[str]]
+
 
 def main(argv):  # pragma: no cover
     args = parse_args()
@@ -482,7 +484,7 @@ def get_peptide_to_protein_map(
         return peptide_to_protein_map
 
 
-def merge_peptide_to_protein_maps(peptide_protein_maps: Iterator[Dict[str, List[str]]]):
+def merge_peptide_to_protein_maps(peptide_protein_maps: Iterator[PeptideToProteinMap]):
     peptide_to_protein_map = collections.defaultdict(list)
     for peptide_protein_map in peptide_protein_maps:
         for peptide, proteins in peptide_protein_map.items():
