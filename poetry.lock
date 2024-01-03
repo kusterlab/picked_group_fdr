@@ -532,15 +532,16 @@ testing = ["Django", "attrs", "colorama", "docopt", "pytest (<7.0.0)"]
 
 [[package]]
 name = "job-pool"
-version = "0.2.4"
+version = "0.2.5"
 description = "Enhanced Job Pool for Python Multiprocessing"
 optional = false
 python-versions = ">=3.8,<4.0"
 files = [
-    {file = "job_pool-0.2.4-py3-none-any.whl", hash = "sha256:82bdbc823c71cdba43ca2474ce9c0499f2ccd867fa42da6fc2a1e0dddf2a698b"},
+    {file = "job_pool-0.2.5-py3-none-any.whl", hash = "sha256:dfa408f3b3310c0391c4260922ecded3c4bd8d89c60149e2c435ef8899eb385b"},
 ]
 
 [package.dependencies]
+threadpoolctl = ">=3.2.0,<4.0.0"
 tqdm = ">=4.66.1,<5.0.0"
 
 [[package]]
@@ -1526,13 +1527,13 @@ tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
 
 [[package]]
 name = "threadpoolctl"
-version = "2.1.0"
+version = "3.2.0"
 description = "threadpoolctl"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.8"
 files = [
-    {file = "threadpoolctl-2.1.0-py3-none-any.whl", hash = "sha256:38b74ca20ff3bb42caca8b00055111d74159ee95c4370882bbff2b93d24da725"},
-    {file = "threadpoolctl-2.1.0.tar.gz", hash = "sha256:ddc57c96a38beb63db45d6c159b5ab07b6bced12c45a1f07b2b92f272aebfa6b"},
+    {file = "threadpoolctl-3.2.0-py3-none-any.whl", hash = "sha256:2b7818516e423bdaebb97c723f86a7c6b0a83d3f3b0970328d66f4d9104dc032"},
+    {file = "threadpoolctl-3.2.0.tar.gz", hash = "sha256:c96a0ba3bdddeaca37dc4cc7344aafad41cdb8c313f74fdfe387a867bba93355"},
 ]
 
 [[package]]
@@ -1662,4 +1663,4 @@ gui = ["pyqt5"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "5826079b8f163bb0aca7b137bd199d109ca12b2be7df7c95334c7a055757c832"
+content-hash = "aaf9abd5bc622c8742ff45640c3d6ecbe563137d04291dd2d81294a5208a5024"
