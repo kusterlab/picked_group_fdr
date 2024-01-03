@@ -89,11 +89,11 @@ def parse_fasta_header(fasta_header: str) -> str:
 
 def read_fasta_proteins(
     file_path: str,
-    db: str ="concat",
+    db: str = "concat",
     parse_id: Callable[[str], str] = digest.parse_until_first_space,
     parse_protein_name: Callable[[str], str] = parse_protein_name_func,
     parse_gene_name: Callable[[str], str] = parse_gene_name_func,
-):
+) -> Iterator[ProteinAnnotation]:
     if not os.path.isfile(file_path):
         raise FileNotFoundError(
             f"Could not find fasta file {file_path}. Please make sure you provided a valid fasta file."
@@ -115,7 +115,9 @@ def read_fasta_proteins(
         )
 
 
-def get_protein_annotations_single(fasta_file: str, **kwargs):
+def get_protein_annotations_single(
+    fasta_file: str, **kwargs
+) -> Dict[str, ProteinAnnotation]:
     protein_annotations = dict()
 
     if not fasta_file:
@@ -130,7 +132,7 @@ def get_protein_annotations_single(fasta_file: str, **kwargs):
 
 def get_protein_annotations_multiple(
     fasta_files: Iterator[str], **kwargs
-) -> Dict[str, Tuple[str, str, str]]:
+) -> Dict[str, ProteinAnnotation]:
     protein_annotations = dict()
     for fasta_file in fasta_files:
         protein_annotations = {
@@ -143,7 +145,7 @@ def get_protein_annotations_multiple(
 
 def has_gene_names(
     protein_annotations: Dict[str, ProteinAnnotation], min_ratio_with_genes: float
-):
+) -> bool:
     counts = sum(
         1
         for pa in protein_annotations.values()
@@ -154,7 +156,7 @@ def has_gene_names(
 
 def get_protein_annotations(
     fasta: str, fasta_contains_decoys: bool, use_gene_level: bool
-):
+) -> Tuple[Dict[str, ProteinAnnotation], bool]:
     protein_annotations = dict()
     use_pseudo_genes = False
     if fasta:
@@ -163,13 +165,9 @@ def get_protein_annotations(
             fasta, db=db, parse_id=digest.parse_until_first_space
         )
         if use_gene_level:
-            if has_gene_names(
-                protein_annotations, min_ratio_with_genes=0.5
-            ):
-                protein_annotations = (
-                    get_protein_annotations_multiple(
-                        fasta, db=db, parse_id=parse_gene_name_func
-                    )
+            if has_gene_names(protein_annotations, min_ratio_with_genes=0.5):
+                protein_annotations = get_protein_annotations_multiple(
+                    fasta, db=db, parse_id=parse_gene_name_func
                 )
             else:
                 logger.warning(
