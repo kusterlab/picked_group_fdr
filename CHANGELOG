@@ -1,3 +1,8 @@
+v0.6.2
+- Update job-pool to v0.2.6 to fix hanging maxlfq quant
+- Fix gene_level support in quantification.py
+- Speed optimizations for digest.py
+
 v0.6.1
 - Fix `--gene-level` option
 - Switch to job-pool package for multiprocessing
