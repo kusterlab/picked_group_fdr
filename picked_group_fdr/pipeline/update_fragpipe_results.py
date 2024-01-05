@@ -323,7 +323,6 @@ def generate_fragpipe_protein_file(
         protein_group_results,
         protein_groups,
         experiment,
-        experimental_design,
         discard_shared_peptides,
     )
 
@@ -388,7 +387,7 @@ def generate_fragpipe_combined_protein_file(
         protein_groups,
         protein_group_results,
         peptide_to_protein_maps=None,
-        file_list_file=None,
+        experimental_design=None,
         discard_shared_peptides=discard_shared_peptides,
     )
 

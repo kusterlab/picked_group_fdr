@@ -51,7 +51,7 @@ def add_precursor_quants(
             continue
 
         if not helpers.is_decoy(proteins):
-            post_err_probs.append((post_err_prob, "", experiment, peptide))
+            post_err_probs.append((post_err_prob, experiment, experiment, peptide))
 
         for protein_group_idx in protein_group_idxs:
             precursor_quant = PrecursorQuant(
