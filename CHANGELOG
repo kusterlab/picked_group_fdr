@@ -1,3 +1,8 @@
+v0.6.3
+- Skip lfq if only 1 experiment is present
+- Fix organism fasta parsing
+- Added fractionated sample support for sage
+
 v0.6.2
 - Update job-pool to v0.2.6 to fix hanging maxlfq quant
 - Fix gene_level support in quantification.py
