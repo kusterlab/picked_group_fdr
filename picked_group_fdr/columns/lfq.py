@@ -40,7 +40,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
     def is_valid(self, protein_group_results: results.ProteinGroupResults):
         return (
-            len(protein_group_results.experiments) > 0
+            len(protein_group_results.experiments) > 1
             and protein_group_results.num_tmt_channels <= 0
         )
 

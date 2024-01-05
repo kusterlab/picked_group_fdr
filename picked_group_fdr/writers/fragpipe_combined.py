@@ -75,8 +75,9 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
         for experiment in experiments:
             header_dict[f"{experiment} Intensity"] = f"Intensity {experiment}"
 
-        for experiment in experiments:
-            header_dict[f"{experiment} MaxLFQ Intensity"] = f"LFQ Intensity {experiment}"
+        if len(experiments) > 1:
+            for experiment in experiments:
+                header_dict[f"{experiment} MaxLFQ Intensity"] = f"LFQ Intensity {experiment}"
 
         header_dict["Indistinguishable Proteins"] = "Indistinguishable Proteins"
 
