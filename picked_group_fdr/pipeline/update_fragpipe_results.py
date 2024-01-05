@@ -4,12 +4,15 @@ import os
 import logging
 from typing import Dict, List, Optional
 
+import pandas as pd
+
 
 from .. import __version__, __copyright__
 from .. import helpers
 from .. import digest
 from .. import protein_annotation
 from .. import writers
+from .. import quantification
 from ..picked_group_fdr import ArgumentParserWithLogger
 from ..quantification import add_quant_arguments
 from ..parsers import maxquant
@@ -96,6 +99,8 @@ def main(argv):
 
     protein_groups = ProteinGroups.from_mq_protein_groups_file(args.protein_groups)
 
+    experimental_design = quantification.get_experimental_design(args)
+
     db = "target" if args.fasta_contains_decoys else "concat"
     protein_annotations = protein_annotation.get_protein_annotations_multiple(
         args.fasta, db=db, parse_id=digest.parse_until_first_space
@@ -119,6 +124,7 @@ def main(argv):
             protein_group_results,
             protein_annotations,
             protein_sequences,
+            experimental_design,
             args.output_folder,
         )
 
@@ -273,6 +279,7 @@ def generate_fragpipe_protein_file(
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, ProteinAnnotation],
     protein_sequences: Dict[str, str],
+    experimental_design: Optional[pd.DataFrame],
     output_folder: Optional[str] = None,
     psm_fdr_cutoff: float = 0.01,
     discard_shared_peptides: bool = True,
@@ -316,6 +323,7 @@ def generate_fragpipe_protein_file(
         protein_group_results,
         protein_groups,
         experiment,
+        experimental_design,
         discard_shared_peptides,
     )
 

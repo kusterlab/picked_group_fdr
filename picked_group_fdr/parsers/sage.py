@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -74,7 +75,7 @@ def parse_sage_results_file(
     pept_col = tsv.get_column_index(headers, "peptide")
     charge_col = tsv.get_column_index(headers, "charge")
     score_col = tsv.get_column_index(headers, "sage_discriminant_score")
-    experiment_col = tsv.get_column_index(headers, "filename")
+    filename_col = tsv.get_column_index(headers, "filename")
     post_err_prob_col = tsv.get_column_index(headers, "posterior_error")
     protein_col = tsv.get_column_index(headers, "proteins")
 
@@ -88,7 +89,7 @@ def parse_sage_results_file(
 
         peptide = row[pept_col]
         charge = int(row[charge_col])
-        experiment = row[experiment_col]
+        filename = Path(row[filename_col]).stem
         score = float(row[score_col])
         if use_post_err_prob:
             # sage's posterior_error column is log10(PEP) transformed
@@ -99,17 +100,9 @@ def parse_sage_results_file(
         proteins = get_proteins(peptide, proteins)
         if proteins:
             if for_quantification:
-                yield peptide, proteins, experiment, score, charge
+                yield peptide, proteins, filename, score, charge
             else:
-                yield peptide, proteins, experiment, score
-
-
-def get_experiments_from_sage_lfq_headers(headers):
-    # here we make the dangerous assumption that the columns after spectral_angle are
-    # the intensity columns. For now, there is no better way, since there is no other
-    # way to identify the intensity columns.
-    spectral_angle_col = tsv.get_column_index(headers, "spectral_angle")
-    return headers[spectral_angle_col+1:]
+                yield peptide, proteins, filename, score
 
 
 def parse_sage_lfq_file(reader, headers):
@@ -122,7 +115,7 @@ def parse_sage_lfq_file(reader, headers):
     # way to identify the intensity columns.
     spectral_angle_col = tsv.get_column_index(headers, "spectral_angle")
     intensity_cols = [
-        (idx, h) for idx, h in enumerate(headers) if idx > spectral_angle_col
+        (idx, Path(h).stem) for idx, h in enumerate(headers) if idx > spectral_angle_col
     ]
 
     logger.info("Parsing Sage lfq.tsv file")
@@ -136,7 +129,7 @@ def parse_sage_lfq_file(reader, headers):
         proteins = row[protein_col].split(";")
 
         intensities = [
-            (experiment, float(row[col_idx])) for col_idx, experiment in intensity_cols
+            (filename, float(row[col_idx])) for col_idx, filename in intensity_cols
         ]
 
         yield peptide, charge, proteins, intensities

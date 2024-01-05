@@ -1,8 +1,9 @@
 from typing import Dict, List
 import logging
+from pathlib import Path
 
 import numpy as np
-import triqler.parsers
+import pandas as pd
 
 from . import tsv
 
@@ -119,19 +120,57 @@ def parse_peptides_file_single(
         yield row[peptide_col], proteins, experiment, score
 
 
-def parse_file_list(file_list_file: str, params: Dict):
-    file_info_list = triqler.parsers.parseFileList(file_list_file)
-    file_mapping = dict()
-    experiments = list()
-    for rawfile, condition, experiment, fraction in file_info_list:
-        if experiment not in experiments:
-            experiments.append(experiment)
-        file_mapping[rawfile] = (experiment, fraction)
-        # Note that params["groupLabels"] and params["groups"] are only used by Triqler
+def add_triqler_group_params(experimental_design: pd.DataFrame, params: Dict):
+    # Create formatted group names, e.g. 1:group1
+    conditions = experimental_design["Condition"].unique()
+    groupNames = [
+        f"{groupIdx + 1}:{groupName}" for groupIdx, groupName in enumerate(conditions)
+    ]
+    experimental_design["Condition"] = experimental_design["Condition"].map(
+        lambda x: groupNames[conditions.tolist().index(x)]
+    )
+
+    experiments = experimental_design["Experiment"].unique().tolist()
+
+    for _, condition, experiment, _ in experimental_design.itertuples(
+        index=False, name=None
+    ):
         if condition not in params["groupLabels"]:
             params["groupLabels"].append(condition)
             params["groups"].append([])
+
         params["groups"][params["groupLabels"].index(condition)].append(
             experiments.index(experiment)
         )
-    return experiments, file_mapping, params
+    return params
+
+
+def get_file_mapping(file_info_list: pd.DataFrame):
+    dict_with_keys = file_info_list.set_index("Name")[
+        ["Experiment", "Fraction"]
+    ].to_dict(orient="index")
+    return {key: tuple(value.values()) for key, value in dict_with_keys.items()}
+
+
+def parse_triqler_file_list(input_file: str):
+    column_names = ["Name", "Condition", "Experiment", "Fraction"]
+    df = pd.read_csv(input_file, sep="\t", header=None, names=column_names)
+    return normalize_experimental_design(df)
+
+
+def parse_mq_experimental_design(input_file: str):
+    df = pd.read_csv(input_file, sep="\t")
+    if "Condition" not in df.columns:
+        df["Condition"] = df["Experiment"]
+    df = df[["Name", "Condition", "Experiment", "Fraction"]]
+    return normalize_experimental_design(df)
+
+
+def normalize_experimental_design(df: pd.DataFrame) -> pd.DataFrame:
+    # Extract file names without extensions
+    df["Name"] = df["Name"].apply(lambda x: Path(x).stem)
+    df["Experiment"] = df["Experiment"].fillna(df["Name"])
+    df["Fraction"] = df["Fraction"].fillna(-1)
+    df["Condition"] = df["Condition"].fillna(df["Experiment"])
+
+    return df

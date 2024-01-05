@@ -1,7 +1,8 @@
 import logging
-from typing import Dict, List
+from typing import List, Optional
 
 import numpy as np
+import pandas as pd
 
 from .. import helpers
 from ..parsers import psm
@@ -22,17 +23,13 @@ def add_precursor_quants(
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
-    file_list_file: str,
+    experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
 ):
     file_mapping = None
-    if file_list_file:
-        params = dict()
-        (
-            protein_group_results.experiments,
-            file_mapping,
-            _,
-        ) = parsers.parse_file_list(file_list_file, params)    
+    if experimental_design is not None:
+        protein_group_results.experiments = experimental_design["Experiment"].unique().tolist()
+        file_mapping = parsers.get_file_mapping(experimental_design)
 
     post_err_probs = list()
     shared_peptide_precursors, unique_peptide_precursors = 0, 0

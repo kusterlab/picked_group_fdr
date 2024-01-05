@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import numpy as np
+import pandas as pd
 
 from .. import helpers
 from ..parsers import fragpipe, tsv
@@ -152,7 +153,7 @@ def add_precursor_quants_multiple(
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
-    file_list_file: str,
+    experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
 ):
     post_err_probs_combined = []

@@ -6,6 +6,7 @@ import warnings
 import logging
 
 import numpy as np
+import pandas as pd
 import triqler
 import triqler.parsers
 import triqler.hyperparameters
@@ -215,7 +216,7 @@ class TriqlerIntensityColumns(ProteinGroupColumns):
         return quantRows
 
 
-def init_triqler_params(file_list_file):
+def init_triqler_params(experimental_design: pd.DataFrame):
     params = dict()
     # TODO: make these parameters configurable from the command line
     params["decoyPattern"] = "REV__"
@@ -226,7 +227,7 @@ def init_triqler_params(file_list_file):
     params["foldChangeEval"] = 0.8
     params["returnPosteriors"] = False
     params["minSamples"] = 5
-    if file_list_file:
-        _, _, params = parsers.parse_file_list(file_list_file, params)
+    if experimental_design is not None:
+        params = parsers.add_triqler_group_params(experimental_design, params)
 
     return params

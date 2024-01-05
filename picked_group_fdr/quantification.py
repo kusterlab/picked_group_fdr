@@ -9,6 +9,7 @@ from . import digestion_params
 from . import protein_annotation
 from . import picked_group_fdr
 from .parsers import maxquant
+from .parsers import parsers
 from .quant import maxquant as mq_quant
 from .columns import protein_annotations as pa
 from .columns.triqler import init_triqler_params
@@ -123,11 +124,20 @@ def add_quant_arguments(apars) -> None:
     )
 
     apars.add_argument(
+        "--experimental_design_file",
+        metavar="L",
+        help="""Tab separated file in MaxQuant experimental design format. It should
+                contain the column names: "Name", "Fraction" and "Experiment". 
+                Optionally, a column named "Condition" can be added to enable 
+                differential expression analysis with Triqler.""",
+    )
+
+    apars.add_argument(
         "--file_list_file",
         metavar="L",
-        help="""Tab separated file with lines of the format (third and fourth 
-                columns are optional): raw_file <tab> condition <tab> experiment 
-                <tab> fraction.""",
+        help="""[deprecated in favor of --experimental_design_file] Tab separated file 
+                with lines of the format (third and fourth columns are optional): 
+                raw_file <tab> condition <tab> experiment <tab> fraction.""",
     )
 
 
@@ -162,7 +172,9 @@ def main(argv) -> None:
         additional_headers=pa.MQ_PROTEIN_ANNOTATION_HEADERS,
     )
 
-    params = init_triqler_params(args.file_list_file)
+    experimental_design = get_experimental_design(args)
+
+    params = init_triqler_params(experimental_design)
     protein_groups_writer = writers.MaxQuantProteinGroupsWriter(
         num_ibaq_peptides_per_protein,
         protein_annotations,
@@ -177,7 +189,7 @@ def main(argv) -> None:
         protein_group_results,
         args.mq_evidence,
         peptide_to_protein_maps,
-        args.file_list_file,
+        experimental_design,
         discard_shared_peptides=True,
     )
 
@@ -190,6 +202,17 @@ def main(argv) -> None:
     logger.info(
         f"Protein group results have been written to: {args.protein_groups_out}"
     )
+
+
+def get_experimental_design(args):
+    experimental_design = None
+    if args.experimental_design_file:
+        experimental_design = parsers.parse_mq_experimental_design(
+            args.experimental_design_file
+        )
+    elif args.file_list_file:
+        experimental_design = parsers.parse_triqler_file_list(args.file_list_file)
+    return experimental_design
 
 
 def get_peptide_to_protein_maps(

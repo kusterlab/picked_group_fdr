@@ -23,6 +23,7 @@ from .digestion_params import (
     DigestionParams,
 )
 from .parsers import psm
+from .parsers import parsers
 from .protein_groups import ProteinGroups
 from .grouping import PseudoGeneGrouping
 from .results import ProteinGroupResults
@@ -510,6 +511,7 @@ def do_quantification(
     discard_shared_peptides = True
 
     protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
+    experimental_design = quantification.get_experimental_design(args)
 
     protein_group_results, post_err_probs = score_type.get_quantification_parser()(
         score_type.get_evidence_file(args),
@@ -517,7 +519,7 @@ def do_quantification(
         protein_groups,
         protein_group_results,
         peptide_to_protein_maps,
-        args.file_list_file,
+        experimental_design,
         discard_shared_peptides,
     )
 

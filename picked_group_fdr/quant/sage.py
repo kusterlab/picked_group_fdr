@@ -1,10 +1,11 @@
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 
 from .. import helpers
-from ..parsers import sage, tsv
+from ..parsers import sage, tsv, parsers
 from ..precursor_quant import PrecursorQuant
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
@@ -19,8 +20,16 @@ def add_precursor_quants(
     fragpipe_psm_file: str,
     protein_group_results: ProteinGroupResults,
     protein_groups: ProteinGroups,
+    experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
 ):
+    file_mapping = None
+    if experimental_design is not None:
+        protein_group_results.experiments = (
+            experimental_design["Experiment"].unique().tolist()
+        )
+        file_mapping = parsers.get_file_mapping(experimental_design)
+
     delimiter = tsv.get_delimiter(fragpipe_psm_file)
     reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
     headers = next(reader)
@@ -28,10 +37,11 @@ def add_precursor_quants(
     get_proteins = lambda peptide, proteins: proteins
 
     post_err_probs = []
+    parsed_experiments = set()
     for (
         peptide,
         proteins,
-        experiment,
+        filename,
         post_err_prob,
         charge,
     ) in sage.parse_sage_results_file(
@@ -48,15 +58,21 @@ def add_precursor_quants(
         if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
             continue
 
+        experiment, fraction = filename, -1
+        if file_mapping:
+            experiment, fraction = file_mapping[filename]
+        elif experiment not in parsed_experiments:
+            parsed_experiments.add(experiment)
+
         if not helpers.is_decoy(proteins):
-            post_err_probs.append((post_err_prob, "", experiment, peptide))
+            post_err_probs.append((post_err_prob, filename, experiment, peptide))
 
         for protein_group_idx in protein_group_idxs:
             precursorQuant = PrecursorQuant(
                 peptide=peptide,
                 charge=charge,
                 experiment=experiment,
-                fraction=-1,
+                fraction=fraction,
                 intensity=np.nan,
                 post_err_prob=post_err_prob,
                 tmt_intensities=None,  # TODO: add TMT support
@@ -66,6 +82,10 @@ def add_precursor_quants(
             protein_group_results[protein_group_idx].precursorQuants.append(
                 precursorQuant
             )
+
+    if len(parsed_experiments) > 0:
+        protein_group_results.experiments = sorted(list(parsed_experiments))
+
     return protein_group_results, post_err_probs
 
 
@@ -73,15 +93,16 @@ def update_precursor_quants(
     protein_group_results: ProteinGroupResults,
     protein_groups: ProteinGroups,
     sage_lfq_tsv: str,
+    experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
 ):
+    file_mapping = None
+    if experimental_design is not None:
+        file_mapping = parsers.get_file_mapping(experimental_design)
+
     delimiter = tsv.get_delimiter(sage_lfq_tsv)
     reader = tsv.get_tsv_reader(sage_lfq_tsv, delimiter)
     headers = next(reader)
-
-    protein_group_results.experiments = sage.get_experiments_from_sage_lfq_headers(
-        headers
-    )
 
     for (
         peptide,
@@ -114,7 +135,11 @@ def update_precursor_quants(
                     ):
                         precursors_to_update[pq.experiment] = (pq.post_err_prob, pq_idx)
 
-            for experiment, intensity in intensities:
+            for filename, intensity in intensities:
+                experiment, fraction = filename, -1
+                if file_mapping:
+                    experiment, fraction = file_mapping[filename]
+
                 if intensity == 0.0:
                     continue
 
@@ -133,7 +158,7 @@ def update_precursor_quants(
                         peptide=peptide,
                         charge=charge,
                         experiment=experiment,
-                        fraction=-1,
+                        fraction=fraction,
                         intensity=intensity,
                         post_err_prob=np.nan,
                         tmt_intensities=None,  # TODO: add TMT support
@@ -152,8 +177,8 @@ def add_precursor_quants_multiple(
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
-    file_list_file: str,
-    discard_shared_peptides: bool
+    experimental_design: Optional[pd.DataFrame],
+    discard_shared_peptides: bool,
 ):
     post_err_probs_combined = []
     for sage_results_file in sage_results_files:
@@ -161,6 +186,7 @@ def add_precursor_quants_multiple(
             sage_results_file,
             protein_group_results,
             protein_groups,
+            experimental_design,
             discard_shared_peptides,
         )
         post_err_probs_combined.extend(post_err_probs)
@@ -169,6 +195,7 @@ def add_precursor_quants_multiple(
         protein_group_results,
         protein_groups,
         sage_lfq_tsv,
+        experimental_design,
         discard_shared_peptides,
     )
     return protein_group_results, post_err_probs_combined

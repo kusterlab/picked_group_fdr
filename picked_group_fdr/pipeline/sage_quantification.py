@@ -116,7 +116,7 @@ def main(argv):
         protein_groups,
         protein_group_results,
         peptide_to_protein_maps=None,
-        file_list_file=None,
+        file_list_file=args.file_list_file,
         discard_shared_peptides=discard_shared_peptides,
     )
 
