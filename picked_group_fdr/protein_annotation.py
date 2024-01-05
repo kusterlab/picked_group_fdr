@@ -51,7 +51,7 @@ def parse_protein_name_func(fasta_header: str) -> str:
 
 def parse_organism(fasta_header: str) -> Optional[str]:
     if " OS=" in fasta_header:
-        return " ".join(fasta_header.split(" OS=")[1].split(" GN=")[0])
+        return fasta_header.split(" OS=")[1].split(" GN=")[0]
     return None
 
 
