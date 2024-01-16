@@ -125,8 +125,8 @@ def getMqEvidenceFiles(mq_evidence_files: List[str]):
 
 
 def writeHeaders(writer, charges):
-    writer.writerow(["SpecId", "Label", "ScanNr", "ExpMass", "AndromedaScore", "DeltaScore", "PepLen"] + ["Charge" + str(i) for i in charges] + ["Mass", "enzN", "enzC", "enzInt", "numMods", "dM", "absdM", "Peptide", "Proteins"])
-    #writer.writerow(["DefaultDirection", "-", "-", "-", 1, 0.5, 0] + [0 for i in charges] + [0, 0, 0, -1.5, -2, 0, -1])
+    writer.writerow(["SpecId", "Label", "FileName", "ScanNr", "ExpMass", "AndromedaScore", "DeltaScore", "PepLen"] + ["Charge" + str(i) for i in charges] + ["Mass", "enzN", "enzC", "enzInt", "numMods", "dM", "absdM", "Peptide", "Proteins"])
+    #writer.writerow(["DefaultDirection", "-", "-", "-", "-", 1, 0.5, 0] + [0 for i in charges] + [0, 0, 0, -1.5, -2, 0, -1])
 
 
 def parseMqEvidenceFile(mqEvidenceFile, razor = False):
@@ -229,7 +229,7 @@ def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideTo
             else:
                 label = 1
         
-        r = [psmId, label, scanNr, expMass, andromedaScore, deltaScore, pepLen] + [1 if charge == i else 0 for i in charges] + [expMass, enzN, enzC, enzInt, numMods, deltaMass, absDeltaMass, modPeptide] + proteins
+        r = [psmId, label, fileName, scanNr, expMass, andromedaScore, deltaScore, pepLen] + [1 if charge == i else 0 for i in charges] + [expMass, enzN, enzC, enzInt, numMods, deltaMass, absDeltaMass, modPeptide] + proteins
         writer.writerow(r)
 
 def getPeptideStats(peptide, deltaMass, accurateModMasses = False):

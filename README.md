@@ -34,7 +34,7 @@ python gui.py
    ```shell
    python3 -u -m picked_group_fdr.pipeline.andromeda2pin </path/to/mq_evidence_txt> --outputTab andromeda.tab --databases </path/to/fasta_file>
    python3 -u -m picked_group_fdr.pipeline.run_mokapot 0.01 0.01 percolator <num_threads>
-   python3 -u -m picked_group_fdr.pipeline.update_evidence_from_pout --mq_evidence </path/to/mq_evidence_txt> --perc_results percolator/andromeda.mokapot.psms.txt percolator/andromeda.mokapot.decoys.psms.txt --mq_evidence_out percolator/evidence.txt
+   python3 -u -m picked_group_fdr.pipeline.update_evidence_from_pout --mq_evidence </path/to/mq_evidence_txt> --perc_results percolator/andromeda.mokapot.psms.txt percolator/andromeda.mokapot.decoy.psms.txt --mq_evidence_out percolator/evidence.txt
    ```
     Alternatively, you can use [Prosit](https://www.proteomicsdb.org/prosit/)'s Percolator results files directly:
    ```shell

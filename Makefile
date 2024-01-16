@@ -107,7 +107,7 @@ percolator_subset_training:
 		--trainFDR $(PERC_TRAIN_FDR) \
 		--subset-max-train 10000000 \
 		--results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.psms.txt \
-		--decoy-results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoys.psms.txt \
+		--decoy-results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoy.psms.txt \
 		--results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.peptides.txt \
-		--decoy-results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoys.peptides.txt \
+		--decoy-results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoy.peptides.txt \
 		$(OUT_DIR_LOCAL)/percolator/andromeda.tab 2>&1 | tee $(OUT_DIR_LOCAL)/percolator/andromeda.log

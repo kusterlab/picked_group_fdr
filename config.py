@@ -13,7 +13,7 @@ with open(os.path.join(configDir, 'config.json')) as f:
         if config["uploads"]["prosit_target.psms"] and config["uploads"]["prosit_decoy.psms"]:
             print(os.path.join(localDir, "prosit_target.psms"), os.path.join(localDir, "prosit_decoy.psms"))
         else:
-            print(os.path.join(localDir, "out/percolator/andromeda.mokapot.psms.txt"), os.path.join(localDir, "out/percolator/andromeda.mokapot.decoys.psms.txt"))
+            print(os.path.join(localDir, "out/percolator/andromeda.mokapot.psms.txt"), os.path.join(localDir, "out/percolator/andromeda.mokapot.decoy.psms.txt"))
     
     elif sys.argv[3] == "PROSIT_FLAG":
         if config["uploads"]["prosit_target.psms"] and config["uploads"]["prosit_decoy.psms"]:
