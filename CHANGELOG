@@ -1,7 +1,14 @@
+v0.6.4
+- Add filename column for andromeda2pin
+- Update mokapot to 0.10.0
+- Update packages in poetry.lock
+- Fix docker package version in greeter
+
 v0.6.3
 - Skip lfq if only 1 experiment is present
 - Fix organism fasta parsing
 - Added fractionated sample support for sage
+- Fix update_fragpipe_results
 
 v0.6.2
 - Update job-pool to v0.2.6 to fix hanging maxlfq quant
