@@ -11,14 +11,14 @@ PROSIT_FLAG = $(shell python3 config.py $(DATA) $(LOCAL_DIR) PROSIT_FLAG)
 DIGEST_PARAMS = $(shell python3 config.py $(DATA) $(LOCAL_DIR) DIGEST_PARAMS)
 PICKED_GROUP_FDR_EXTRA_PARAMS = $(shell python3 config.py $(DATA) $(LOCAL_DIR) PICKED_GROUP_FDR_EXTRA_PARAMS)
 NUM_THREADS = $(shell python3 config.py $(DATA) $(LOCAL_DIR) NUM_THREADS)
-
 FASTA_FILE = $(notdir $(shell ls $(DATA)/*.fasta | head -n1))
-INTERACTIVE = $(shell [ -t 0 ] && echo 1)
+
 MEMORY_LIMIT ?= 4gb
 CPU_LIMIT ?= 1
 PERC_TEST_FDR ?= 0.01
 PERC_TRAIN_FDR ?= 0.01
 
+INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 ifdef INTERACTIVE
 	USE_TTY= -t
 else
