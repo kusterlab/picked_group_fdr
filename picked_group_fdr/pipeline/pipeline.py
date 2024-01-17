@@ -119,7 +119,7 @@ def run_mokapot(pin_files: List[str], output_dir: str):
         pout_files.extend(
             [
                 f"{output_dir}/{idx}.mokapot.psms.txt",
-                f"{output_dir}/{idx}.mokapot.decoys.psms.txt",
+                f"{output_dir}/{idx}.mokapot.decoy.psms.txt",
             ]
         )
     return pout_files

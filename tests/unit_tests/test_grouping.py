@@ -4,7 +4,7 @@ import numpy as np
 import picked_group_fdr.grouping as grouping
 from picked_group_fdr.protein_groups import ProteinGroups
 from picked_group_fdr.results import ProteinGroupResult
-from picked_group_fdr.scoring import ProteinScoringStrategy
+from picked_group_fdr.scoring_strategy import ProteinScoringStrategy
 
 
 class TestNoGrouping:

@@ -1,14 +1,14 @@
 import sys
 
-from .. import results
+from ..parsers import maxquant
 
 
 def main(argv):
     protein_groups_file1 = argv[0]
     protein_groups_file2 = argv[1]
     
-    protein_groups1 = results.ProteinGroupResults.from_mq_protein_groups_file(protein_groups_file1)
-    protein_groups2 = results.ProteinGroupResults.from_mq_protein_groups_file(protein_groups_file2)
+    protein_groups1 = maxquant.parse_mq_protein_groups_file(protein_groups_file1)
+    protein_groups2 = maxquant.parse_mq_protein_groups_file(protein_groups_file2)
     
     leading_protein_groups1 = sorted(list(get_leading_proteins(protein_groups1)), key = lambda x: x[1])
     leading_protein_groups2 = {pg: (q, score) for pg, q, score in get_leading_proteins(protein_groups2)}

@@ -3,8 +3,8 @@ import pytest
 import numpy as np
 from timeit import default_timer as timer
 
-from picked_group_fdr.quant.lfq import LFQIntensityColumns
-from picked_group_fdr.quant.precursor_quant import PrecursorQuant
+from picked_group_fdr.columns.lfq import LFQIntensityColumns
+from picked_group_fdr.precursor_quant import PrecursorQuant
 from picked_group_fdr.results import ProteinGroupResult
 
 
@@ -25,15 +25,15 @@ def test_performanceLFQ():
         
         proteinGroupResults.append(pgr)
     
-    columns = [LFQIntensityColumns(silacChannels=[], minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
-    
-    experimentToIdxMap = getExperimentToIdxMap(num_experiments)
+    lfq_columns = [LFQIntensityColumns(silacChannels=[], minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
     
     start = timer()
+
+    for experiment in range(num_experiments):
+        proteinGroupResults.experiments.append(f'file{experiment}')
     
-    for c in columns:
-        #c.append_headers(proteinGroupResults, experiments)
-        c.append_columns(proteinGroupResults, experimentToIdxMap, postErrProbCutoff=1.0)
+    for c in lfq_columns:
+        c.append(proteinGroupResults, post_err_prob_cutoff=1.0)
     
     end = timer()
     print(f"execution took {'%.1f' % (end - start)} seconds wall clock time")

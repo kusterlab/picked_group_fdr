@@ -1,3 +1,32 @@
+v0.6.4
+- Add filename column for andromeda2pin
+- Update mokapot to 0.10.0
+- Update packages in poetry.lock
+- Fix docker package version in greeter
+
+v0.6.3
+- Skip lfq if only 1 experiment is present
+- Fix organism fasta parsing
+- Added fractionated sample support for sage
+- Fix update_fragpipe_results
+
+v0.6.2
+- Update job-pool to v0.2.6 to fix hanging maxlfq quant
+- Fix gene_level support in quantification.py
+- Speed optimizations for digest.py
+
+v0.6.1
+- Fix `--gene-level` option
+- Switch to job-pool package for multiprocessing
+- Use specific libxml2 version to fix GUI build (#12)
+
+v0.6.0
+- Added support for FragPipe and Sage for LFQ data
+- Support input files with byte order mark (#9)
+- Added tool for entrapment FDR calculation and plotting
+- Gui build fix (#8)
+- Major code refactoring (camelCase to snake_case, new classes, better submodules)
+
 v0.5.0
 - Added support for proteases that cleave before an amino acid, e.g. Asp-N, Lys-N
 - Fix for empty score field in evidence file

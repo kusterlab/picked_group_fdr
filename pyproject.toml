@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "picked_group_fdr"
-version = "0.5.0"
+version = "0.6.4"
 description = "Scalable, accurate and sensitive protein group FDRs for large-scale mass spectrometry experiments"
 authors = ["Matthew The <matthew.the@tum.de>"]
 license= "Apache-2.0"
@@ -25,16 +25,26 @@ mokapot = ">=0.3"
 Bottleneck = "^1.3.5"
 toml = "^0.10.2"
 pyqt5 = {version = "^5.15.7", optional = true}
+job-pool = "^0.2.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
-pytest-cov = "^2.12.1"
+pytest-cov = "^4.0.0"
 ipykernel = "^6.26.0"
 memory-profiler = "^0.61.0"
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.extras]
 gui = ["pyqt5"]
+
+[tool.coverage.run]
+omit = [
+  "picked_group_fdr/pipeline/*", 
+  "picked_group_fdr/plotter.py", 
+  "*/__init__.py",
+  "*/__main__.py",
+  "*/setup.py"
+]

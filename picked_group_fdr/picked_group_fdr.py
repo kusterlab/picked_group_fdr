@@ -1,30 +1,37 @@
+from pathlib import Path
 import sys
 import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import List, Dict, Union
+from typing import Any, List, Dict, Tuple, Union
 
 import numpy as np
 
 from . import __version__, __copyright__
 from . import digest
+from . import protein_annotation
 from . import helpers
-from . import parsers
-from . import proteotypicity
-from . import quantification
 from . import entrapment
 from . import methods
 from . import fdr
-
-from .digestion_params import add_digestion_arguments, get_digestion_params_list
+from . import writers
+from . import quantification
+from .digestion_params import (
+    add_digestion_arguments,
+    get_digestion_params_list,
+    DigestionParams,
+)
+from .parsers import psm
+from .parsers import parsers
+from .protein_groups import ProteinGroups
 from .grouping import PseudoGeneGrouping
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
 from .peptide_info import PeptideInfoList
 
 # for type hints only
-from .scoring import ProteinScoringStrategy
+from .scoring_strategy import ProteinScoringStrategy
 from .grouping import ProteinGroupingStrategy
 from .competition import ProteinCompetitionStrategy
 from .plotter import Plotter, NoPlotter
@@ -40,7 +47,7 @@ class ArgumentParserWithLogger(argparse.ArgumentParser):
         super().error(message)
 
 
-def parseArgs(argv):
+def parse_args(argv):
     apars = ArgumentParserWithLogger(
         description=GREETER, formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -54,10 +61,63 @@ def parseArgs(argv):
     )
 
     apars.add_argument(
+        "--perc_evidence",
+        default=None,
+        metavar="POUT",
+        nargs="+",
+        help="""Percolator output file(s) with PSMs or peptides; alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
+        "--fragpipe_psm",
+        default=None,
+        metavar="PSM",
+        nargs="+",
+        help="""Fragpipe psm.tsv output file(s); alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
+        "--combined_ion",
+        default=None,
+        metavar="I",
+        help="""Path to combined_ion.tsv produced by IonQuant/FragPipe. This enables
+                quantification of protein groups by PickedGroupFDR.""",
+    )
+
+    apars.add_argument(
+        "--sage_results",
+        default=None,
+        metavar="PSM",
+        nargs="+",
+        help="""Sage results.sage.tsv output file(s); alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
+        "--sage_lfq_tsv",
+        default=None,
+        metavar="I",
+        help="""Path to lfq.tsv produced by Sage. This enables
+                quantification of protein groups by PickedGroupFDR.""",
+    )
+
+    apars.add_argument(
         "--protein_groups_out",
         default=None,
         metavar="PG",
         help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.""",
+    )
+
+    apars.add_argument(
+        "--output_format",
+        default="auto",
+        metavar="PG",
+        help="""Protein groups output format. Options are "auto", "maxquant" and 
+                "fragpipe". "auto": decide based on input file format, will default to 
+                "maxquant" if no suitable format is known; "maxquant" (proteinGroups.txt
+                format) and "fragpipe" (combined_protein.tsv format).""",
     )
 
     apars.add_argument(
@@ -79,16 +139,6 @@ def parseArgs(argv):
     )
 
     apars.add_argument(
-        "--perc_evidence",
-        default=None,
-        metavar="POUT",
-        nargs="+",
-        help="""Percolator output file(s) with PSMs or peptides; alternative for 
-                --mq_evidence if we want to use Percolator PEPs instead of 
-                MaxQuant's PEPs.""",
-    )
-
-    apars.add_argument(
         "--methods",
         default="picked_protein_group",
         metavar="M1,M2",
@@ -106,13 +156,6 @@ def parseArgs(argv):
         nargs="+",
         help="""File with mapping from peptides to proteins; alternative for 
                 --fasta flag if digestion is time consuming.""",
-    )
-
-    apars.add_argument(
-        "--peptide_proteotypicity_map",
-        default=None,
-        metavar="M",
-        help="""File with mapping from peptides to proteotypicity.""",
     )
 
     apars.add_argument(
@@ -143,31 +186,6 @@ def parseArgs(argv):
     )
 
     apars.add_argument(
-        "--lfq_min_peptide_ratios",
-        default=2,
-        type=int,
-        metavar="M",
-        help="""Minimum number of common peptides between two samples
-                to qualify for calculating a peptide ratio in LFQ.""",
-    )
-
-    apars.add_argument(
-        "--num_threads",
-        default=1,
-        type=int,
-        metavar="T",
-        help="""Maximum number of threads to use. Currently only speeds up the MaxLFQ part.""",
-    )
-
-    apars.add_argument(
-        "--file_list_file",
-        metavar="L",
-        help="""Tab separated file with lines of the format (third and fourth 
-                columns are optional): raw_file <tab> condition <tab> experiment 
-                <tab> fraction.""",
-    )
-
-    apars.add_argument(
         "--figure_base_fn",
         default=None,
         metavar="F",
@@ -180,67 +198,48 @@ def parseArgs(argv):
 
     add_digestion_arguments(apars)
 
+    quantification.add_quant_arguments(apars)
+
     # ------------------------------------------------
     args = apars.parse_args(argv)
 
     return args
 
 
-def main(argv):
+def main(argv) -> None:
     logger.info(GREETER)
     logger.info(
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
     )
 
-    args = parseArgs(argv)
+    args = parse_args(argv)
+
+    start = timer()
 
     # set seed for random shuffling of protein groups, see competition.do_competition()
     np.random.seed(1)
 
     configs = methods.get_methods(args)
-    digestion_params_list = get_digestion_params_list(args)
-
-    start = timer()
-
     plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
-    plotter.initPlots()
+    protein_annotations, use_pseudo_genes = protein_annotation.get_protein_annotations(
+        args.fasta, args.fasta_contains_decoys, args.gene_level
+    )
 
-    parseId = digest.parseUntilFirstSpace
-    proteinAnnotations = dict()
-    if args.fasta:
-        proteinAnnotations = digest.get_protein_annotations_multiple(
-            args.fasta, parseId
-        )
-        if args.gene_level:
-            if digest.hasGeneNames(proteinAnnotations, minRatioWithGenes=0.5):
-                parseId = digest.parseGeneNameFunc
-                proteinAnnotations = digest.get_protein_annotations_multiple(
-                    args.fasta, parseId
-                )
-            else:
-                logger.warning(
-                    (
-                        "Found fewer than 50% of proteins without gene names in the "
-                        "fasta file, will attempt to infer pseudo-genes based on "
-                        "shared peptides instead."
-                    )
-                )
-                for config in configs:
-                    config["grouping"] = PseudoGeneGrouping()
+    if use_pseudo_genes:
+        for config in configs:
+            config["grouping"] = PseudoGeneGrouping()
 
-    peptideToProteinMaps = list()
-    peptideToProteotypicityMap = dict()
+    peptide_to_protein_maps = get_peptide_to_protein_maps_if_needed(
+        args, configs, use_pseudo_genes
+    )
     for config in configs:
-        methodDescriptionLong = methods.long_description(
-            config["scoreType"], config["grouping"], config["pickedStrategy"], True
-        )
-        label = config.get("label", "")
+        label, method_description_long = methods.get_method_description(config)
         logger.info(
-            f"Protein group level estimation method: {label} ({methodDescriptionLong})"
+            f"Protein group level estimation method: {label} ({method_description_long})"
         )
 
-        evidenceFiles = config["scoreType"].get_evidence_file(args)
-        if not evidenceFiles:
+        evidence_files = config["scoreType"].get_evidence_file(args)
+        if not evidence_files:
             logger.warning(
                 (
                     f'No evidence input file found, skipping method "{label}". Check '
@@ -249,59 +248,17 @@ def main(argv):
             )
             continue
 
-        if len(peptideToProteinMaps) == 0 and (
-            config["grouping"].needs_peptide_to_protein_map()
-            or config["scoreType"].remaps_peptides_to_proteins()
-        ):
-            if args.fasta:
-                for digestion_params in digestion_params_list:
-                    peptideToProteinMaps.append(
-                        digest.get_peptide_to_protein_map_from_params(
-                            args.fasta, [digestion_params]
-                        )
-                    )
-                    entrapment.markEntrapmentProteins(
-                        peptideToProteinMaps[-1], args.mq_protein_groups
-                    )
-            elif args.peptide_protein_map:
-                logger.info("Loading peptide to protein map")
-                for peptide_protein_map in args.peptide_protein_map:
-                    peptideToProteinMaps.append(
-                        digest.getPeptideToProteinMapFromFile(
-                            peptide_protein_map, useHashKey=False
-                        )
-                    )
-            else:
-                sys.exit(
-                    (
-                        "No fasta or peptide to protein mapping file detected, please"
-                        "specify either the --fasta or --peptide_protein_map flags."
-                    )
-                )
-
-        if (
-            len(peptideToProteotypicityMap) == 0
-            and config["scoreType"].use_proteotypicity
-        ):
-            peptideToProteotypicityMap = (
-                proteotypicity.getPeptideToProteotypicityFromFile(
-                    args.peptide_proteotypicity_map
-                )
-            )
-
-        peptideInfoList = parseEvidenceFiles(
-            evidenceFiles,
-            peptideToProteinMaps,
+        peptide_info_list = parse_evidence_files(
+            evidence_files,
+            peptide_to_protein_maps,
             config["scoreType"],
             args.suppress_missing_peptide_warning,
         )
 
         plotter.set_series_label_base(config.get("label", None))
-        proteinGroupResults = getProteinGroupResults(
-            peptideInfoList,
+        protein_group_results = get_protein_group_results(
+            peptide_info_list,
             args.mq_protein_groups,
-            proteinAnnotations,
-            peptideToProteotypicityMap,
             config["pickedStrategy"],
             config["scoreType"],
             config["grouping"],
@@ -309,14 +266,30 @@ def main(argv):
             args.keep_all_proteins,
         )
 
+        protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
+        post_err_probs = None
         if args.do_quant:
-            doQuantification(
-                config, args, proteinGroupResults, parseId, peptideToProteinMaps
+            (
+                protein_group_results,
+                protein_groups_writer,
+                post_err_probs,
+            ) = do_quantification(
+                config["scoreType"],
+                args,
+                protein_group_results,
+                protein_annotations,
+                use_pseudo_genes,
+                peptide_to_protein_maps,
             )
 
+        protein_groups_writer.append_quant_columns(
+            protein_group_results, post_err_probs, args.psm_fdr_cutoff
+        )
+
         if args.protein_groups_out:
-            writeProteinGroups(
-                proteinGroupResults,
+            write_protein_groups(
+                protein_groups_writer,
+                protein_group_results,
                 args.protein_groups_out,
                 config,
                 apply_suffix=len(configs) > 1,
@@ -327,172 +300,239 @@ def main(argv):
         f"PickedGroupFDR execution took {'%.1f' % (end - start)} seconds wall clock time"
     )
 
-    plotter.decoratePlots()
-    plotter.savePlots()
+    plotter.decorate_plots()
+    plotter.save_plots()
     plotter.show()
 
 
-def getProteinGroupResults(
-    peptideInfoList: PeptideInfoList,
-    mqProteinGroupsFile: str,
-    proteinAnnotations,
-    peptideToProteotypicityMap,
-    pickedStrategy: ProteinCompetitionStrategy,
-    scoreType: ProteinScoringStrategy,
-    groupingStrategy: ProteinGroupingStrategy,
+def get_peptide_to_protein_maps_if_needed(
+    args: argparse.Namespace,
+    configs: Dict[str, Any],
+    use_pseudo_genes: bool,
+) -> List[digest.PeptideToProteinMap]:
+    parse_id = digest.parse_until_first_space
+    if args.gene_level and not use_pseudo_genes:
+        parse_id = protein_annotation.parse_gene_name_func
+
+    for config in configs:
+        if (
+            config["grouping"].needs_peptide_to_protein_map()
+            or config["scoreType"].remaps_peptides_to_proteins()
+        ):
+            digestion_params_list = get_digestion_params_list(args)
+            return get_peptide_to_protein_maps(
+                args.fasta,
+                args.peptide_protein_map,
+                digestion_params_list,
+                args.mq_protein_groups,
+                parse_id=parse_id,
+            )
+    return list()
+
+
+def get_peptide_to_protein_maps(
+    fasta_file: str,
+    peptide_protein_map_file: str,
+    digestion_params_list: List[DigestionParams],
+    mq_protein_groups_file: str,
+    **kwargs,
+):
+    peptide_to_protein_maps = list()
+    if fasta_file:
+        for digestion_params in digestion_params_list:
+            peptide_to_protein_maps.append(
+                digest.get_peptide_to_protein_map_from_params(
+                    fasta_file, [digestion_params], **kwargs
+                )
+            )
+            entrapment.mark_entrapment_proteins(
+                peptide_to_protein_maps[-1], mq_protein_groups_file
+            )
+    elif peptide_protein_map_file:
+        logger.info("Loading peptide to protein map")
+        for peptide_protein_map_file in peptide_protein_map_file:
+            peptide_to_protein_maps.append(
+                digest.get_peptide_to_protein_map_from_file(
+                    peptide_protein_map_file, use_hash_key=False
+                )
+            )
+    else:
+        raise ValueError(
+            (
+                "No fasta or peptide to protein mapping file detected, please"
+                "specify either the --fasta or --peptide_protein_map flags."
+            )
+        )
+    return peptide_to_protein_maps
+
+
+def get_protein_group_results(
+    peptide_info_list: PeptideInfoList,
+    mq_protein_groups_file: str,
+    picked_strategy: ProteinCompetitionStrategy,
+    score_type: ProteinScoringStrategy,
+    grouping_strategy: ProteinGroupingStrategy,
     plotter: Union[Plotter, NoPlotter],
     keep_all_proteins: bool,
-):
-    proteinGroups = groupingStrategy.group_proteins(
-        peptideInfoList, mqProteinGroupsFile
+) -> ProteinGroupResults:
+    protein_groups = grouping_strategy.group_proteins(
+        peptide_info_list, mq_protein_groups_file
     )
 
     # for razor peptide strategy
-    scoreType.set_peptide_counts_per_protein(peptideInfoList)
+    score_type.set_peptide_counts_per_protein(peptide_info_list)
 
-    for rescue_step in groupingStrategy.get_rescue_steps():
+    for rescue_step in grouping_strategy.get_rescue_steps():
         if rescue_step:
-            if not scoreType.can_do_protein_group_rescue():
-                raise Exception(
+            if not score_type.can_do_protein_group_rescue():
+                raise NotImplementedError(
                     "Cannot do rescue step for other score types than bestPEP"
                 )
-            proteinGroups = groupingStrategy.rescue_protein_groups(
-                peptideInfoList,
-                proteinGroupResults,
-                proteinGroups,
-                proteinGroupPeptideInfos,
+            protein_groups = grouping_strategy.rescue_protein_groups(
+                peptide_info_list,
+                protein_group_results,
+                protein_groups,
+                protein_group_peptide_infos,
             )
 
-        proteinGroupPeptideInfos = scoreType.collect_peptide_scores_per_protein(
-            proteinGroups, peptideInfoList, suppressMissingProteinWarning=rescue_step
+        protein_group_peptide_infos = score_type.collect_peptide_scores_per_protein(
+            protein_groups,
+            peptide_info_list,
+            suppress_missing_protein_warning=rescue_step,
         )
 
         # find optimal division factor for multPEP score
-        scoreType.optimize_hyperparameters(proteinGroups, proteinGroupPeptideInfos)
+        score_type.optimize_hyperparameters(protein_groups, protein_group_peptide_infos)
 
-        if rescue_step and pickedStrategy.short_description() == "pgT":
+        if rescue_step and picked_strategy.short_description() == "pgT":
             (
-                proteinGroups,
-                proteinGroupPeptideInfos,
-            ) = groupingStrategy.update_protein_groups(
-                proteinGroups, proteinGroupPeptideInfos
+                protein_groups,
+                protein_group_peptide_infos,
+            ) = grouping_strategy.update_protein_groups(
+                protein_groups, protein_group_peptide_infos
             )
 
         (
-            pickedProteinGroups,
-            pickedProteinGroupPeptideInfos,
-            proteinScores,
-        ) = pickedStrategy.do_competition(
-            proteinGroups, proteinGroupPeptideInfos, scoreType
+            picked_protein_groups,
+            picked_protein_group_peptide_infos,
+            protein_scores,
+        ) = picked_strategy.do_competition(
+            protein_groups, protein_group_peptide_infos, score_type
         )
 
-        reportedQvals, observedQvals = fdr.calculateProteinFDRs(
-            pickedProteinGroups, proteinScores
+        reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(
+            picked_protein_groups, protein_scores
         )
 
-        peptide_score_cutoff = scoreType.peptide_score_cutoff if rescue_step else float("inf")
-        proteinGroupResults = ProteinGroupResults.from_protein_groups(
-            pickedProteinGroups,
-            pickedProteinGroupPeptideInfos,
-            proteinScores,
-            reportedQvals,
+        peptide_score_cutoff = (
+            score_type.peptide_score_cutoff if rescue_step else float("inf")
+        )
+        protein_group_results = ProteinGroupResults.from_protein_groups(
+            picked_protein_groups,
+            picked_protein_group_peptide_infos,
+            protein_scores,
+            reported_qvals,
             peptide_score_cutoff,
-            proteinAnnotations,
             keep_all_proteins,
         )
 
-    if scoreType.use_proteotypicity:
-        proteotypicity.calculateProteotypicityScores(
-            pickedProteinGroups,
-            pickedProteinGroupPeptideInfos,
-            peptideToProteotypicityMap,
-            scoreType,
-            peptide_score_cutoff,
-        )
-
     plotter.set_series_label(
-        scoreType, groupingStrategy, pickedStrategy, rescue_step=rescue_step
+        score_type, grouping_strategy, picked_strategy, rescue_step=rescue_step
     )
-    plotter.plotQvalCalibrationAndPerformance(
-        reportedQvals, observedQvals, absentRatio=1.0
+    plotter.plot_qval_calibration_and_performance(
+        reported_qvals, observed_qvals, absent_ratio=1.0
     )
 
-    return proteinGroupResults
+    return protein_group_results
 
 
-def parseEvidenceFiles(
-    evidenceFiles: List[str],
-    peptideToProteinMaps: List[Dict[str, List[str]]],
-    scoreType,
-    suppressMissingPeptideWarning: bool,
+def parse_evidence_files(
+    evidence_files: List[str],
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
+    score_type: ProteinScoringStrategy,
+    suppress_missing_peptide_warning: bool,
 ) -> PeptideInfoList:
     """Returns best score per peptide"""
-    if not scoreType.remaps_peptides_to_proteins():
-        peptideToProteinMaps = [None]
+    if not score_type.remaps_peptides_to_proteins():
+        peptide_to_protein_maps = [None]
 
-    if len(peptideToProteinMaps) == 1:
-        peptideToProteinMaps = peptideToProteinMaps * len(evidenceFiles)
+    if len(peptide_to_protein_maps) == 1:
+        peptide_to_protein_maps = peptide_to_protein_maps * len(evidence_files)
 
-    peptideInfoList = dict()
-    for peptide, proteins, _, score in parsers.parseEvidenceFiles(
-        evidenceFiles,
-        peptideToProteinMaps=peptideToProteinMaps,
-        scoreType=scoreType,
-        suppressMissingPeptideWarning=suppressMissingPeptideWarning,
+    peptide_info_list = dict()
+    for peptide, proteins, _, score in psm.parse_evidence_file_multiple(
+        evidence_files,
+        peptide_to_protein_maps=peptide_to_protein_maps,
+        score_type=score_type,
+        suppress_missing_peptide_warning=suppress_missing_peptide_warning,
     ):
-        peptide = helpers.cleanPeptide(peptide)
-        if np.isnan(score) or score >= peptideInfoList.get(peptide, [np.inf])[0]:
+        peptide = helpers.clean_peptide(peptide)
+        if np.isnan(score) or score >= peptide_info_list.get(peptide, [np.inf])[0]:
             continue
 
-        peptideInfoList[peptide] = [score, proteins]
+        peptide_info_list[peptide] = [score, proteins]
 
-    return peptideInfoList
+    return peptide_info_list
 
 
-def doQuantification(config, args, proteinGroupResults, parseId, peptideToProteinMaps):
-    if not config["scoreType"].can_do_quantification():
+def do_quantification(
+    score_type: ProteinScoringStrategy,
+    args: argparse.Namespace,
+    protein_group_results: ProteinGroupResults,
+    protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
+    use_pseudo_genes: bool,
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
+) -> Tuple[ProteinGroupResults, writers.ProteinGroupsWriter, List]:
+    if not score_type.can_do_quantification():
         logger.warning(
-            "Skipping quantification... Cannot do quantification from percolator output file; MQ evidence file input needed"
+            "Skipping quantification: need input file with precursor quantifications."
         )
-        return
+        return protein_group_results
 
-    proteinSequences = {}
-    if args.fasta:
-        digestion_params_list = get_digestion_params_list(args)
+    logger.info("Preparing for quantification")
 
-        logger.info("In silico protein digest for iBAQ")
-        numIbaqPeptidesPerProtein = digest.getNumIbaqPeptidesPerProtein(
-            args.fasta, digestion_params_list
-        )
-        proteinSequences = digest.getProteinSequences(args.fasta, parseId)
-    elif args.peptide_protein_map:
-        logger.warning("Found peptide_protein_map (instead of fasta input): ")
-        logger.warning(
-            "- calculating iBAQ values using all peptides in peptide_protein_map."
-        )
-        logger.warning("- cannot compute sequence coverage.")
-        numIbaqPeptidesPerProtein = digest.getNumPeptidesPerProtein(
-            digest.merge_peptide_to_protein_maps(peptideToProteinMaps)
-        )
-    else:
-        sys.exit(
-            "No fasta or peptide to protein mapping file detected, please specify either the --fasta or --peptide_protein_map flags"
-        )
+    score_origin = score_type.score_origin.long_description().lower()
+    if args.output_format == "auto" and score_origin in ["maxquant", "fragpipe"]:
+        args.output_format = score_origin
 
-    quantification.doQuantification(
-        args.mq_evidence,
-        proteinGroupResults,
-        proteinSequences,
-        peptideToProteinMaps,
-        numIbaqPeptidesPerProtein,
-        args.file_list_file,
-        config["scoreType"],
-        minPeptideRatiosLFQ=args.lfq_min_peptide_ratios,
-        numThreads=args.num_threads,
+    parse_id = digest.parse_until_first_space
+    if args.gene_level and not use_pseudo_genes:
+        parse_id = protein_annotation.parse_gene_name_func
+
+    protein_groups_writer = writers.get_protein_groups_output_writer(
+        protein_group_results,
+        args.output_format,
+        args,
+        protein_annotations,
+        parse_id,
+        peptide_to_protein_maps,
     )
 
+    discard_shared_peptides = True
 
-def writeProteinGroups(proteinGroupResults: ProteinGroupResults, protein_groups_out, config, apply_suffix):
+    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
+    experimental_design = quantification.get_experimental_design(args)
+
+    protein_group_results, post_err_probs = score_type.get_quantification_parser()(
+        score_type.get_evidence_file(args),
+        score_type.get_quantification_file(args),
+        protein_groups,
+        protein_group_results,
+        peptide_to_protein_maps,
+        experimental_design,
+        discard_shared_peptides,
+    )
+
+    return protein_group_results, protein_groups_writer, post_err_probs
+
+
+def write_protein_groups(
+    protein_groups_writer: writers.ProteinGroupsWriter,
+    protein_group_results: ProteinGroupResults,
+    protein_groups_out: str,
+    config: Dict[str, Any],
+    apply_suffix: bool,
+) -> None:
     if apply_suffix:
         base, ext = os.path.splitext(protein_groups_out)
         label = config.get("label", None)
@@ -503,7 +543,10 @@ def writeProteinGroups(proteinGroupResults: ProteinGroupResults, protein_groups_
         else:
             label = label.lower().replace(" ", "_")
         protein_groups_out = f"{base}_{label}{ext}"
-    proteinGroupResults.write(protein_groups_out)
+
+    Path(protein_groups_out).parent.mkdir(parents=True, exist_ok=True)
+
+    protein_groups_writer.write(protein_group_results, protein_groups_out)
     logger.info(f"Protein group results have been written to: {protein_groups_out}")
 
 

@@ -13,7 +13,7 @@ def run_mokapot(perc_folder, test_fdr, train_fdr, max_workers):
     psms_result_file = os.path.join(perc_folder, 'andromeda.mokapot.psms.txt')
     if os.path.isfile(psms_result_file):
       print(f"Found mokapot output file {psms_result_file}, remove this file to rerun mokapot.")
-      sys.exit(0)
+      return
 
     start = time.time()
 

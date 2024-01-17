@@ -20,12 +20,10 @@ test:
 integration_test:
 	python3 -um picked_group_fdr --mq_evidence ${DATA}/evidence.txt --fasta ${DATA}/db.fasta --enzyme trypsinp --min-length 6 --protein_groups_out ${DATA}/proteinGroups.txt --method picked_protein_group_mq_input --do_quant
 
-# to test the pipeline, run: DOCKER_CMD="" IMAGE="" LOCAL_DIR=$(pwd)/data/lfq_example OUT_DIR_LOCAL=$(pwd)/data/lfq_example make all
-# the rule below somehow messes up the percolator output file paths to /root/data
-# pipeline_test: DOCKER_CMD=
-# pipeline_test: IMAGE=
-# pipeline_test: LOCAL_DIR=$(DATA)
-# pipeline_test: all
+pipeline_test: DOCKER_CMD=
+pipeline_test: IMAGE=
+pipeline_test: LOCAL_DIR=$(DATA)
+pipeline_test: all
 
 performance:
 	python3 -m pytest -s tests/performance_tests/test_lfq.py
@@ -107,7 +105,7 @@ percolator_subset_training:
 		--trainFDR $(PERC_TRAIN_FDR) \
 		--subset-max-train 10000000 \
 		--results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.psms.txt \
-		--decoy-results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoys.psms.txt \
+		--decoy-results-psms $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoy.psms.txt \
 		--results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.peptides.txt \
-		--decoy-results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoys.peptides.txt \
+		--decoy-results-peptides $(OUT_DIR_LOCAL)/percolator/andromeda.mokapot.decoy.peptides.txt \
 		$(OUT_DIR_LOCAL)/percolator/andromeda.tab 2>&1 | tee $(OUT_DIR_LOCAL)/percolator/andromeda.log

@@ -51,15 +51,15 @@ RUN pip install urllib3==1.26.6
 
 ADD pyproject.toml /root/pyproject.toml
 ADD poetry.lock /root/poetry.lock
-
-# poetry useses virtualenvs by default -> we want global installation
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev
-
+ADD README.md /root/
 ADD ./picked_group_fdr/ /root/picked_group_fdr
+
+# poetry uses virtualenvs by default -> we want global installation
+RUN poetry config virtualenvs.create false
+RUN poetry install --only main
+
+# for bootstrapping, see the "bootstrap" rule in the Makefile
 ADD Makefile* /root/
 ADD config.py /root/
-
-# RUN cd /root/picked_group_fdr && python setup.py build_ext --inplace
 
 RUN cd /root/

@@ -14,8 +14,8 @@ import logging
 from logging.handlers import QueueListener
 import time
 import multiprocessing
+from job_pool import JobPool
 
-import picked_group_fdr.utils.multiprocessing_pool as pool
 import picked_group_fdr.digest as digest
 import picked_group_fdr.digestion_params as digestion_params
 import picked_group_fdr.pipeline as pipeline
@@ -364,7 +364,7 @@ class MainWindow(QtWidgets.QWidget):
         self.ql = QueueListener(self.q, handler)
         self.ql.start()
 
-        self.pool = pool.JobPool(processes=1, warningFilter="default", queue=self.q)
+        self.pool = JobPool(processes=1, warningFilter="default", queue=self.q)
 
         self.resize(900, self.height())
 
@@ -578,7 +578,7 @@ class MainWindow(QtWidgets.QWidget):
 
         logger.info("Picked Group FDR stopped by user")
 
-        self.pool = pool.JobPool(processes=1, warningFilter="default", queue=self.q)
+        self.pool = JobPool(processes=1, warningFilter="default", queue=self.q)
 
     def closeEvent(self, _):
         self.stop_picked()

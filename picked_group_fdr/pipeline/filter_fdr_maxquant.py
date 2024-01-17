@@ -1,18 +1,18 @@
 import sys
 import collections
-import re
 import logging
 import os
 
 import numpy as np
 
+
+from ..parsers import tsv
 from .. import __version__, __copyright__
-from .. import parsers
 from .. import helpers
 from .. import fdr
 from ..picked_group_fdr import ArgumentParserWithLogger
 
-# hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
+# hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
 
 Scan = collections.namedtuple('Scan', 'postErrorProb rawFile scanNr sequence precCharge isDecoy')
@@ -92,11 +92,11 @@ def main(argv):
 def filterProteinGroupsAtFDR(proteinGroupFiles, outputFile, fdrCutoff):
     for proteinGroupFile in proteinGroupFiles:
         if ".txt" not in proteinGroupFile:
-            sys.exit("ERROR: could not detect file extension .txt in the input file")
+            raise ValueError("ERROR: could not detect file extension .txt in the input file")
         
         logger.info(f"Writing filtered protein groups results to: {outputFile}")
-        writer = parsers.getTsvWriter(outputFile)
-        reader = parsers.getTsvReader(proteinGroupFile)
+        writer = tsv.get_tsv_writer(outputFile)
+        reader = tsv.get_tsv_reader(proteinGroupFile)
         header = next(reader)
         writer.writerow(header)
         
@@ -119,7 +119,7 @@ def filterAtFDR(msmsFiles, msmsOutputFile, fdrCutoff, psmLevelFDR, precursorLeve
     rawFiles = set()
     for msmsFile in msmsFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = tsv.get_tsv_reader(msmsFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -190,13 +190,13 @@ def getPeptidesBelowFdr(rawFiles, bestScans, fdrCutoff, level):
 
 def writeMsmsOutput(msmsOutputFile, headersOrig, msmsFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR):
     logger.info("Writing msms.txt output file")
-    writer = parsers.getTsvWriter(msmsOutputFile)
+    writer = tsv.get_tsv_writer(msmsOutputFile)
     writer.writerow(headersOrig)
     
     survivingPSMs = 0
     for msmsFile in msmsFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = tsv.get_tsv_reader(msmsFile)
         headersOrig = next(reader)
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -239,7 +239,7 @@ def calculatePostErrProbCutoff(sortedPostErrorProbs, fdrCutoff):
         fdrs.append(fps / tps)
         peps.append(postErrProb)
     
-    qvals = fdr.fdrsToQvals(fdrs)
+    qvals = fdr.fdrs_to_qvals(fdrs)
     if qvals[-1] <= fdrCutoff:
         postErrorProbCutoff = peps[-1]
     else:
@@ -259,7 +259,7 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
     rawFiles = set()
     for msmsFile in percInputFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = tsv.get_tsv_reader(msmsFile)
         headersOrig = next(reader) # save the header
         headers = list(map(lambda x : x.lower(), headersOrig))
         
@@ -273,7 +273,7 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
                 logger.info(f"Processing line {i}")
             
             isDecoy = False
-            if helpers.isDecoy(row[proteinsCol:]):
+            if helpers.is_decoy(row[proteinsCol:]):
                 isDecoy = True
             
             postErrorProb = float(row[postErrorProbCol])
@@ -306,13 +306,13 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
 
 def writePercOutput(percOutputFile, headersOrig, percInputFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR):
     logger.info("Writing percolator output file")
-    writer = parsers.getTsvWriter(percOutputFile)
+    writer = tsv.get_tsv_writer(percOutputFile)
     writer.writerow(headersOrig)
     
     survivingPSMs = 0
     for msmsFile in percInputFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = parsers.getTsvReader(msmsFile)
+        reader = tsv.get_tsv_reader(msmsFile)
         headersOrig = next(reader)
         headers = list(map(lambda x : x.lower(), headersOrig))
         

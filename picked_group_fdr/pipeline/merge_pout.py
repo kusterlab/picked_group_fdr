@@ -4,16 +4,16 @@ import os
 import logging
 
 import numpy as np
-import picked_group_fdr.digestion_params
 import triqler.qvality as qvality
 
 from .. import __version__, __copyright__
 from .. import helpers
 from .. import digest
-from .. import parsers
 from ..picked_group_fdr import ArgumentParserWithLogger
+from ..parsers import tsv, percolator
+from ..digestion_params import add_digestion_arguments
 
-# hacky way to get the package logger instead of just __main__ when running as python -m picked_group_fdr.pipeline.update_evidence_from_pout ...
+# hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
 
 
@@ -58,7 +58,7 @@ def parseArgs(argv):
         help="""Output file with merged pout results.""",
     )
 
-    picked_group_fdr.digestion_params.add_digestion_arguments(apars)
+    add_digestion_arguments(apars)
 
     # ------------------------------------------------
     args = apars.parse_args(argv)
@@ -80,34 +80,21 @@ def main(argv):
         )
         return
 
-    peptideToProteinMap = collections.defaultdict(list)
+    peptide_to_protein_map = collections.defaultdict(list)
     if len(args.fasta) > 0:
         digestion_params_list = digest.get_digestion_params_list(args)
+        peptide_to_protein_map = digest.get_peptide_to_protein_map_from_params(
+            args.fasta, digestion_params_list
+        )
 
-        peptideToProteinMaps = list()
-        for fasta in args.fasta:
-            for digestion_params in digestion_params_list:
-                peptideToProteinMaps.append(
-                    digest.getPeptideToProteinMapWithEnzyme(
-                        fasta,
-                        digestion_params.min_length,
-                        digestion_params.max_length,
-                        digestion_params.enzyme,
-                        digestion_params.cleavages,
-                        digestion_params.special_aas,
-                        db="concat",
-                    )
-                )
-        peptideToProteinMap = digest.merge_peptide_to_protein_maps(peptideToProteinMaps)
-
-    merge_pout(args.perc_results, peptideToProteinMap, args.perc_merged)
+    merge_pout(args.perc_results, peptide_to_protein_map, args.perc_merged)
 
 
 def merge_pout(perc_results, peptideToProteinMap, perc_merged):
     seenPeptides = dict()
     missingPeptides, matchedPeptides = 0, 0
     for poutFile in perc_results:
-        poutReader = parsers.getTsvReader(poutFile)
+        poutReader = tsv.get_tsv_reader(poutFile)
         headers = next(poutReader)
 
         (
@@ -117,7 +104,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
             qvalCol,
             postErrProbCol,
             proteinCol,
-        ) = parsers.getPercolatorColumnIdxs(headers)
+        ) = percolator.get_percolator_column_idxs(headers)
 
         sumPEP = 0.0
         matchedBefore = matchedPeptides
@@ -131,18 +118,18 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
 
             # removeFlanks=True only removes a single character (MaxQuant convention)
             # convert peptide string to upper case, since prosit converts modified amino acids to lower case
-            peptide = helpers.cleanPeptide(
-                row[peptCol][2:-2].upper(), removeFlanks=False
+            peptide = helpers.clean_peptide(
+                row[peptCol][2:-2].upper(), remove_flanks=False
             )
 
             if len(peptideToProteinMap) > 0:
-                proteins = digest.getProteins(peptideToProteinMap, peptide)
-            elif parsers.isNativePercolatorFile(headers):
+                proteins = digest.get_proteins(peptideToProteinMap, peptide)
+            elif percolator.is_native_percolator_file(headers):
                 proteins = row[proteinCol:]
-            elif parsers.isMokapotFile(headers):
-                proteins = row[proteinCol].split('\t')
-            
-            isDecoy = helpers.isDecoy(proteins)
+            elif percolator.is_mokapot_file(headers):
+                proteins = row[proteinCol].split("\t")
+
+            isDecoy = helpers.is_decoy(proteins)
 
             if isDecoy:
                 qValue = float(row[qvalCol])
@@ -163,7 +150,7 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
                     matchedPeptides += 1
                     seenPeptides[peptide] = (qValue, row, isDecoy)
                 else:
-                    if not helpers.isContaminant(proteins):
+                    if not helpers.is_contaminant(proteins):
                         logger.debug(
                             f"Could not find peptide {peptide} in fasta file, check your database and if the correct digestion parameters were specified"
                         )
@@ -197,11 +184,11 @@ def get_peptide_PEPs(psm_infos):
 
 
 def write_updated_PSMs(perc_merged, psm_infos, peps, update_qvals=False):
-    writer = parsers.getTsvWriter(perc_merged + ".tmp")
+    writer = tsv.get_tsv_writer(perc_merged + ".tmp")
 
-    headers = parsers.getPercolatorNativeHeaders()
+    headers = percolator.PERCOLATOR_NATIVE_HEADERS
     writer.writerow(headers)
-    _, _, _, qvalCol, _, _ = parsers.getPercolatorColumnIdxs(headers)
+    _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
 
     sumPEP = 0.0
     counts = 0

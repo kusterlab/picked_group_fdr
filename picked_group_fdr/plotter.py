@@ -13,31 +13,31 @@ class NoPlotter:
     def __init__(self):
         pass
     
-    def initPlots(self):
+    def init_plots(self):
         pass
     
-    def decoratePlots(self):
+    def decorate_plots(self):
         pass
         
-    def savePlots(self):
+    def save_plots(self):
         pass
     
     def show(self):
         pass
     
-    def set_series_label_base(self, figureLabel):
+    def set_series_label_base(self, figure_label):
         pass
     
-    def set_series_label(self, scoreType, groupingStrategy, pickedStrategy, rescue_step):
+    def set_series_label(self, score_type, grouping_strategy, picked_strategy, rescue_step):
         pass
     
-    def plotQvalCalibrationAndPerformance(self, reportedQvals, observedQvals, absentRatio = 1.0):
+    def plot_qval_calibration_and_performance(self, reported_qvals, observed_qvals, absent_ratio = 1.0):
         pass
 
 
 class Plotter:
-    maxProt: float
-    maxPlottedQval: float
+    max_prot: float
+    max_plotted_qval: float
     figure_base_fn: str
     plot_figures: bool
     label: str
@@ -46,23 +46,23 @@ class Plotter:
     import matplotlib.pyplot as plt
     
     def __init__(self, figure_base_fn, plot_figures):
-        self.maxPlottedQval = 0.1 # 0.02
-        self.maxProt = 0
+        self.max_plotted_qval = 0.1 # 0.02
+        self.max_prot = 0
         self.figure_base_fn = figure_base_fn
         self.plot_figures = plot_figures
         self.label = ""
     
-    def _updateMaxProt(self, reportedQvals):
-        self.maxProt = max([self.maxProt, fdr.countBelowThreshold(reportedQvals, self.maxPlottedQval)])
+    def _updateMaxProt(self, reported_qvals):
+        self.max_prot = max([self.max_prot, fdr.count_below_threshold(reported_qvals, self.max_plotted_qval)])
         
-    def initPlots(self):
+    def init_plots(self):
         self.plt.figure(1, figsize=(8,6))
         self.plt.figure(2, figsize=(8,6))
         self.plt.figure(3, figsize=(8,6))
     
-    def decoratePlots(self):
-        increments = 200 if self.maxProt < 2000 else 1000
-        maxProt = int(self.maxProt / increments + 1) * increments
+    def decorate_plots(self):
+        increments = 200 if self.max_prot < 2000 else 1000
+        max_prot = int(self.max_prot / increments + 1) * increments
         
         # calibration
         self.plt.figure(1)
@@ -73,8 +73,8 @@ class Plotter:
         self.plt.xlabel("Decoy q-value", fontsize = 14)
         self.plt.ylabel("Entrapment q-value", fontsize = 14)
         
-        self.plt.xlim([0,self.maxPlottedQval])
-        self.plt.ylim([0,self.maxPlottedQval])
+        self.plt.xlim([0,self.max_plotted_qval])
+        self.plt.ylim([0,self.max_plotted_qval])
         legend = self.plt.legend(fontsize = 14)
         self._right_align_legend(legend)
         
@@ -88,12 +88,12 @@ class Plotter:
         # performance entrapment
         self.plt.figure(2)
         #self.plt.subplot(2,2,2, label = 'performance entrapment')
-        self.plt.plot([0.01, 0.01], [0, maxProt], 'k--', alpha = 0.5, linewidth = 1)
+        self.plt.plot([0.01, 0.01], [0, max_prot], 'k--', alpha = 0.5, linewidth = 1)
         self.plt.xlabel("Entrapment q-value", fontsize = 14)
         self.plt.ylabel("# proteins / protein groups", fontsize = 14)
         
-        self.plt.xlim([0, self.maxPlottedQval])
-        self.plt.ylim([0, maxProt])
+        self.plt.xlim([0, self.max_plotted_qval])
+        self.plt.ylim([0, max_prot])
         legend = self.plt.legend(fontsize = 14)
         self._right_align_legend(legend)
         
@@ -107,12 +107,12 @@ class Plotter:
         # performance decoy
         self.plt.figure(3)
         #self.plt.subplot(2,2,3, label = 'performance')
-        self.plt.plot([0.01, 0.01], [0, maxProt], 'k--', alpha = 0.5, linewidth = 1)
+        self.plt.plot([0.01, 0.01], [0, max_prot], 'k--', alpha = 0.5, linewidth = 1)
         self.plt.xlabel("Decoy q-value", fontsize = 14)
         self.plt.ylabel("# proteins / protein groups", fontsize = 14)
         
-        self.plt.xlim([0, self.maxPlottedQval])
-        self.plt.ylim([0, maxProt])
+        self.plt.xlim([0, self.max_plotted_qval])
+        self.plt.ylim([0, max_prot])
         legend = self.plt.legend(fontsize = 14)
         self._right_align_legend(legend)
         
@@ -123,7 +123,7 @@ class Plotter:
         
         self.plt.tight_layout()
 
-    def savePlots(self):
+    def save_plots(self):
         if self.figure_base_fn:
             logger.info(f"Saving calibration plot: {self.figure_base_fn}-calibration.png")
             self.plt.figure(1)
@@ -144,22 +144,20 @@ class Plotter:
         if self.plot_figures:
             self.plt.show()
     
-    def plotQvalCalibrationAndPerformance(self, reportedQvals, observedQvals, absentRatio = 1.0):
+    def plot_qval_calibration_and_performance(self, reported_qvals, observed_qvals, absent_ratio = 1.0):
         self.plt.figure(1)
         #self.plt.subplot(2,2,1, label = 'calibration')
-        self.plt.plot(absentRatio*np.array(reportedQvals), np.array(observedQvals), '-', label = self.label)
-        
-        #self.plt.hist([decoyScores, entrapmentScores, poolScores], bins = np.arange(0, 400, 10), label = ['decoy', 'entrapment', 'pool'])
+        self.plt.plot(absent_ratio*np.array(reported_qvals), np.array(observed_qvals), '-', label = self.label)
         
         self.plt.figure(2)
         #self.plt.subplot(2,2,2, label = 'performance entrapment')
-        self.plt.plot(observedQvals, range(len(reportedQvals)), '-', label = self.label)
+        self.plt.plot(observed_qvals, range(len(reported_qvals)), '-', label = self.label)
         
         self.plt.figure(3)
         #self.plt.subplot(2,2,3, label = 'performance')
-        self.plt.plot(reportedQvals, range(len(reportedQvals)), '-', label = self.label)
+        self.plt.plot(reported_qvals, range(len(reported_qvals)), '-', label = self.label)
         
-        self._updateMaxProt(reportedQvals)
+        self._updateMaxProt(reported_qvals)
 
     def _right_align_legend(self, legend):    
         # get the width of your widest label, since every label will need 
@@ -170,12 +168,12 @@ class Plotter:
                 t.set_ha('right') # ha is alias for horizontalalignment
                 t.set_position((shift,0))
     
-    def set_series_label_base(self, figureLabel):
-        self.label_base = figureLabel
+    def set_series_label_base(self, figure_label):
+        self.label_base = figure_label
     
-    def set_series_label(self, scoreType, groupingStrategy, pickedStrategy, rescue_step):
+    def set_series_label(self, score_type, grouping_strategy, picked_strategy, rescue_step):
         label = self.label_base + " " if self.label_base else ""
-        short_desc = methods.short_description(scoreType, groupingStrategy, pickedStrategy, rescue_step, sep=",")
+        short_desc = methods.short_description(score_type, grouping_strategy, picked_strategy, rescue_step, sep=",")
         label += f'({short_desc})'
         self.label = label
 
@@ -183,9 +181,10 @@ class Plotter:
 class PlotterFactory:
     @staticmethod
     def get_plotter(figure_base_fn, plot_figures):
+        plotter = NoPlotter()
         if figure_base_fn or plot_figures:
-            return Plotter(figure_base_fn, plot_figures)
-        else:
-            return NoPlotter()
+            plotter = Plotter(figure_base_fn, plot_figures)            
+        plotter.init_plots()
+        return plotter
 
 
