@@ -187,7 +187,10 @@ class ProteinScoringStrategy:
             )  # filtering for razor peptide approach
 
             protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
-            if len(protein_group_idxs) == 0 and not suppress_missing_protein_warning:
+            if (
+                helpers.is_missing_in_protein_groups(protein_group_idxs)
+                and not suppress_missing_protein_warning
+            ):
                 raise Exception(
                     f"Could not find any of the proteins {proteins} in the ProteinGroups object, check if the identifier format is the same. \
                                   1st protein group in ProteinGroups object: {protein_groups.protein_groups[0]}"

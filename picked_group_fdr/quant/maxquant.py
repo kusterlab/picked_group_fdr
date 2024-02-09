@@ -72,7 +72,7 @@ def add_precursor_quants(
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
         # removes peptides not present in the proteinGroups.txt file
-        if len(protein_group_idxs) == 0:
+        if helpers.is_missing_in_protein_groups(protein_group_idxs):
             logger.debug(
                 f"Could not find any of the proteins {proteins} in proteinGroups.txt"
             )

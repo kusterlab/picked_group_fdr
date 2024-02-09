@@ -49,7 +49,7 @@ def add_precursor_quants(
     ):
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
-        if len(protein_group_idxs) == 0:
+        if helpers.is_missing_in_protein_groups(protein_group_idxs):
             logger.debug(
                 f"Could not find any of the proteins {proteins} in proteinGroups.txt"
             )
@@ -112,7 +112,7 @@ def update_precursor_quants(
     ) in sage.parse_sage_lfq_file(reader, headers):
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
-        if len(protein_group_idxs) == 0:
+        if helpers.is_missing_in_protein_groups(protein_group_idxs):
             logger.debug(
                 f"Could not find any of the proteins {proteins} in proteinGroups.txt"
             )

@@ -41,7 +41,7 @@ def add_precursor_quants(
     ) in fragpipe.parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
-        if len(protein_group_idxs) == 0:
+        if helpers.is_missing_in_protein_groups(protein_group_idxs):
             logger.debug(
                 f"Could not find any of the proteins {proteins} in proteinGroups.txt"
             )
@@ -92,7 +92,7 @@ def update_precursor_quants(
     ) in fragpipe.parse_fragpipe_combined_ion_file(reader, headers):
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
-        if len(protein_group_idxs) == 0:
+        if helpers.is_missing_in_protein_groups(protein_group_idxs):
             logger.debug(
                 f"Could not find any of the proteins {proteins} in proteinGroups.txt"
             )
