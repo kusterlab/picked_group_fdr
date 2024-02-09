@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Set
 
 import numpy as np
 
@@ -24,8 +24,8 @@ def is_mbr(post_err_prob: float) -> bool:
     return np.isnan(post_err_prob)  # match-between-runs have NaNs in the PEP column
 
 
-def is_shared_peptide(protein_group_idxs: List[int]) -> bool:
-    return len(protein_group_idxs) > 1 or protein_group_idxs == [-1]
+def is_shared_peptide(protein_group_idxs: Set[int]) -> bool:
+    return len(protein_group_idxs) > 1 or protein_group_idxs == {-1}
 
 
 def remove_decoy_proteins_from_target_peptides(proteins: List[str]) -> List[str]:
