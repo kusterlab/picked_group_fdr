@@ -24,7 +24,11 @@ def test_is_shared_peptide_true():
     assert helpers.is_shared_peptide({1, 2, 3}) == True
 
 
-def test_is_shared_peptide_true():
+def test_is_shared_peptide_true_strings():
+    assert helpers.is_shared_peptide([["proteinA"], ["proteinB", "proteinC"]]) == True
+
+
+def test_is_shared_peptide_true_with_missing():
     assert helpers.is_shared_peptide({1, 2, 3, -1}) == True
 
 
@@ -32,15 +36,30 @@ def test_is_shared_peptide_false():
     assert helpers.is_shared_peptide({3}) == False
 
 
+def test_is_shared_peptide_false_strings():
+    assert helpers.is_shared_peptide([["proteinB", "proteinC"]]) == False
+
+
 def test_is_missing_in_protein_groups_true():
     assert helpers.is_missing_in_protein_groups({-1}) == True
+
+
+def test_is_missing_in_protein_groups_true_strings():
+    assert helpers.is_missing_in_protein_groups([]) == True
 
 
 def test_is_missing_in_protein_groups_false():
     assert helpers.is_missing_in_protein_groups({1}) == False
 
 
-def test_is_missing_in_protein_groups_false():
+def test_is_missing_in_protein_groups_false_strings():
+    assert (
+        helpers.is_missing_in_protein_groups([["proteinA"], ["proteinB", "proteinC"]])
+        == False
+    )
+
+
+def test_is_missing_in_protein_groups_false_with_missing():
     assert helpers.is_missing_in_protein_groups({1, -1}) == False
 
 

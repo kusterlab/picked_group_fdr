@@ -20,6 +20,12 @@ test:
 integration_test:
 	python3 -um picked_group_fdr --mq_evidence $(DATA)/evidence.txt --fasta $(DATA)/db.fasta --enzyme trypsinp --min-length 6 --protein_groups_out ${DATA}/proteinGroups.txt --method picked_protein_group_mq_input --do_quant
 
+fragpipe_test:
+	cd data/fragpipe_example && ./run_picked_group_fdr.sh
+
+sage_test:
+	cd data/sage_example && ./run_picked_group_fdr.sh
+
 pipeline_test: DOCKER_CMD=
 pipeline_test: IMAGE=
 pipeline_test: LOCAL_DIR=$(DATA)
