@@ -1,3 +1,10 @@
+v0.6.6
+- Revert return type to List for ProteinGroups.get_protein_groups
+
+v0.6.5
+- Fix check for peptides not assigned to any protein group
+- Fix for docker interactive mode
+
 v0.6.4
 - Add filename column for andromeda2pin
 - Update mokapot to 0.10.0

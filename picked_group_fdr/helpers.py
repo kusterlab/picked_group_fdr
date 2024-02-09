@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Set
 
 import numpy as np
 
@@ -24,9 +24,34 @@ def is_mbr(post_err_prob: float) -> bool:
     return np.isnan(post_err_prob)  # match-between-runs have NaNs in the PEP column
 
 
-def is_shared_peptide(protein_group_idxs: List[int]) -> bool:
-    return len(protein_group_idxs) > 1 or protein_group_idxs == [-1]
+def is_shared_peptide(protein_group_idxs: Set[int]) -> bool:
+    """Checks if a peptide is assigned to multiple protein groups.
 
+    Args:
+        protein_group_idxs (Set[int]): Set of protein group indices, i.e. the index of
+            the protein group in ProteinGroups object.
+
+    Returns:
+        bool: True if peptide is assigned to multiple protein groups.
+    """
+    return len(protein_group_idxs) > 1
+
+
+def is_missing_in_protein_groups(protein_group_idxs: Set[int]) -> bool:
+    """Checks if a peptide could not be assigned to any protein group.
+
+    If a protein is not assigned to any protein group, a protein_group_idx of -1 is
+    assigned (see ProteinGroups.get_protein_group_idxs). This for example happens for
+    proteins that got outcompeted in the picked protein competition.
+
+    Args:
+        protein_group_idxs (Set[int]): Set of protein group indices, i.e. the index of
+            the protein group in ProteinGroups object.
+
+    Returns:
+        bool: True if peptide is assigned to no protein groups
+    """
+    return len(protein_group_idxs) == 0 or protein_group_idxs == {-1}
 
 def remove_decoy_proteins_from_target_peptides(proteins: List[str]) -> List[str]:
     """

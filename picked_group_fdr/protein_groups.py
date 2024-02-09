@@ -125,7 +125,7 @@ class ProteinGroups:
 
     def get_protein_groups(
         self, proteins: List[str], check_idx_valid: bool = True
-    ) -> Set[int]:
+    ) -> List[List[str]]:
         protein_group_idxs = self.get_protein_group_idxs(proteins, check_idx_valid)
         return [self.protein_groups[idx] for idx in protein_group_idxs]
 

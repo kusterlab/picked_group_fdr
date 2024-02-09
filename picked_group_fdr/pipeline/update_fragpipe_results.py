@@ -202,7 +202,7 @@ def update_fragpipe_psm_file(
     ):
         row_protein_groups = protein_groups.get_protein_groups(proteins)
 
-        if len(row_protein_groups) == 0:
+        if helpers.is_missing_in_protein_groups(row_protein_groups):
             logger.debug(
                 f"Could not find any of the proteins {proteins} in proteinGroups.txt"
             )
