@@ -1,3 +1,6 @@
+v0.6.6
+- Revert return type to List for ProteinGroups.get_protein_groups
+
 v0.6.5
 - Fix check for peptides not assigned to any protein group
 - Fix for docker interactive mode
