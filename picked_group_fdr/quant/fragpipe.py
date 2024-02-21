@@ -76,6 +76,22 @@ def add_precursor_quants(
 def update_precursor_quants(
     protein_group_results: ProteinGroupResults,
     protein_groups: ProteinGroups,
+    combined_ion_files: List[str],
+    discard_shared_peptides: bool,
+):
+    for combined_ion_file in combined_ion_files:
+        protein_group_results = update_precursor_quants_single(
+            protein_group_results,
+            protein_groups,
+            combined_ion_file,
+            discard_shared_peptides,
+        )
+    return protein_group_results
+
+
+def update_precursor_quants_single(
+    protein_group_results: ProteinGroupResults,
+    protein_groups: ProteinGroups,
     combined_ion_file: str,
     discard_shared_peptides: bool,
 ):
@@ -149,7 +165,7 @@ def update_precursor_quants(
 
 def add_precursor_quants_multiple(
     fragpipe_psm_files: List[str],
-    combined_ion_file: List[str],
+    combined_ion_files: List[str],
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
@@ -168,11 +184,11 @@ def add_precursor_quants_multiple(
         )
         post_err_probs_combined.extend(post_err_probs)
 
-    if combined_ion_file is not None:
+    if combined_ion_files is not None:
         protein_group_results = update_precursor_quants(
             protein_group_results,
             protein_groups,
-            combined_ion_file,
+            combined_ion_files,
             discard_shared_peptides,
         )
     return protein_group_results, post_err_probs_combined

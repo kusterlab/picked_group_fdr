@@ -82,6 +82,7 @@ def parse_args(argv):
         "--combined_ion",
         default=None,
         metavar="I",
+        nargs="+",
         help="""Path to combined_ion.tsv produced by IonQuant/FragPipe. This enables
                 quantification of protein groups by PickedGroupFDR.""",
     )

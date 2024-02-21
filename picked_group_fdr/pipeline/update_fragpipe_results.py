@@ -66,7 +66,8 @@ def parse_args(argv):
         "--combined_ion",
         default=None,
         metavar="I",
-        help="""Path to combined_ion.tsv produced by IonQuant/FragPipe. This enables
+        nargs="+",
+        help="""Path to combined_ion.tsv file(s) produced by IonQuant/FragPipe. This enables
                 quantification of protein groups by PickedGroupFDR in 
                 combined_protein.tsv.""",
     )
@@ -366,7 +367,7 @@ def get_fragpipe_protein_out_path(output_folder, fragpipe_psm_file):
 
 def generate_fragpipe_combined_protein_file(
     fragpipe_psm_files: List[str],
-    combined_ion_file: str,
+    combined_ion_files: List[str],
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, ProteinAnnotation],
@@ -383,7 +384,7 @@ def generate_fragpipe_combined_protein_file(
 
     protein_group_results, post_err_probs = add_precursor_quants_multiple(
         fragpipe_psm_files,
-        combined_ion_file,
+        combined_ion_files,
         protein_groups,
         protein_group_results,
         peptide_to_protein_maps=None,
