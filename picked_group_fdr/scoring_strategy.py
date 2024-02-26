@@ -1,11 +1,11 @@
+from __future__ import annotations
+
 import hashlib
 import logging
 from typing import Callable, Dict, List
 
 from . import fdr, helpers
 from .observed_peptides import ObservedPeptides
-from .peptide_info import PeptideInfoList, ProteinGroupPeptideInfos
-from .protein_groups import ProteinGroups
 from .scoring import (
     BestAndromedaScore,
     BestPEPScore,
@@ -16,11 +16,16 @@ from .scoring import (
 from .score_origin import (
     FragPipeInput,
     MaxQuantInput,
+    MaxQuantInputNoRemap,
     PercolatorInput,
     PercolatorInputRemapped,
     SageInput,
     ScoreOrigin,
 )
+
+# for type hints only
+from .protein_groups import ProteinGroups
+from .peptide_info import PeptideInfoList, ProteinGroupPeptideInfos
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +68,10 @@ class ProteinScoringStrategy:
         elif "Sage" in score_description:
             self.score_origin = SageInput()
         else:
-            self.score_origin = MaxQuantInput()
+            if "no_remap" in score_description:
+                self.score_origin = MaxQuantInputNoRemap()
+            else:
+                self.score_origin = MaxQuantInput()
 
     def get_evidence_file(self, args) -> str:
         return self.score_origin.get_evidence_file(args)

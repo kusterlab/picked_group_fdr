@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from typing import Dict, List, Optional, Tuple
 
@@ -7,19 +9,20 @@ import pandas as pd
 from .. import helpers
 from ..parsers import sage, tsv, parsers
 from ..precursor_quant import PrecursorQuant
-from ..protein_groups import ProteinGroups
-from ..results import ProteinGroupResults
 
 # for type hints only
 from .. import digest
+from .. import results
+from .. import protein_groups as pg
+from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
 
 def add_precursor_quants(
     fragpipe_psm_file: str,
-    protein_group_results: ProteinGroupResults,
-    protein_groups: ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
 ):
@@ -90,8 +93,8 @@ def add_precursor_quants(
 
 
 def update_precursor_quants(
-    protein_group_results: ProteinGroupResults,
-    protein_groups: ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
     sage_lfq_tsv: str,
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
@@ -174,11 +177,12 @@ def update_precursor_quants(
 def add_precursor_quants_multiple(
     sage_results_files: List[str],
     sage_lfq_tsv: str,
-    protein_groups: ProteinGroups,
-    protein_group_results: ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
+    score_type: scoring_strategy.ProteinScoringStrategy,
 ):
     post_err_probs_combined = []
     for sage_results_file in sage_results_files:

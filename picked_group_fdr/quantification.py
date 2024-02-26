@@ -13,6 +13,8 @@ from .parsers import parsers
 from .quant import maxquant as mq_quant
 from .columns import protein_annotations as pa
 from .columns.triqler import init_triqler_params
+from .protein_groups import ProteinGroups
+from .scoring_strategy import ProteinScoringStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +173,7 @@ def main(argv) -> None:
         args.mq_protein_groups,
         additional_headers=pa.MQ_PROTEIN_ANNOTATION_HEADERS,
     )
+    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
 
     experimental_design = get_experimental_design(args)
 
@@ -185,12 +188,19 @@ def main(argv) -> None:
         params,
     )
 
+    score_type = ProteinScoringStrategy("bestPEP")
+    if peptide_to_protein_maps == [None]:
+        score_type = ProteinScoringStrategy("no_remap bestPEP")
+
     protein_group_results, post_err_probs = mq_quant.add_precursor_quants(
-        protein_group_results,
         args.mq_evidence,
+        args.mq_evidence,
+        protein_groups,
+        protein_group_results,
         peptide_to_protein_maps,
         experimental_design,
         discard_shared_peptides=True,
+        score_type=score_type,
     )
 
     protein_group_results = protein_groups_writer.append_quant_columns(

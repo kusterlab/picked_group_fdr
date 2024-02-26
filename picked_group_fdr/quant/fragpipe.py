@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
@@ -8,19 +10,20 @@ import pandas as pd
 from .. import helpers
 from ..parsers import fragpipe, tsv
 from ..precursor_quant import PrecursorQuant
-from ..protein_groups import ProteinGroups
-from ..results import ProteinGroupResults
 
 # for type hints only
 from .. import digest
+from .. import results
+from .. import protein_groups as pg
+from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
 
 def add_precursor_quants(
     fragpipe_psm_file: str,
-    protein_group_results: ProteinGroupResults,
-    protein_groups: ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
     experiment: str,
     discard_shared_peptides: bool,
 ):
@@ -74,8 +77,8 @@ def add_precursor_quants(
 
 
 def update_precursor_quants(
-    protein_group_results: ProteinGroupResults,
-    protein_groups: ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
     combined_ion_files: List[str],
     discard_shared_peptides: bool,
 ):
@@ -90,8 +93,8 @@ def update_precursor_quants(
 
 
 def update_precursor_quants_single(
-    protein_group_results: ProteinGroupResults,
-    protein_groups: ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
     combined_ion_file: str,
     discard_shared_peptides: bool,
 ):
@@ -166,11 +169,12 @@ def update_precursor_quants_single(
 def add_precursor_quants_multiple(
     fragpipe_psm_files: List[str],
     combined_ion_files: List[str],
-    protein_groups: ProteinGroups,
-    protein_group_results: ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
+    score_type: scoring_strategy.ProteinScoringStrategy,
 ):
     post_err_probs_combined = []
     for fragpipe_psm_file in fragpipe_psm_files:

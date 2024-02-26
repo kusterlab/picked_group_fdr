@@ -100,6 +100,11 @@ class MaxQuantInput(ScoreOrigin):
         return 'MaxQuant'
 
 
+class MaxQuantInputNoRemap(MaxQuantInput):
+    def remaps_peptides_to_proteins(self):
+        return False
+
+
 class FragPipeInput(ScoreOrigin):
     def get_evidence_file(self, args):
         return args.fragpipe_psm

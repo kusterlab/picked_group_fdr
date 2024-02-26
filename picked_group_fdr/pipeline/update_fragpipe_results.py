@@ -22,6 +22,7 @@ from ..quant.fragpipe import add_precursor_quants, add_precursor_quants_multiple
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
+from ..scoring_strategy import ProteinScoringStrategy
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -382,6 +383,8 @@ def generate_fragpipe_combined_protein_file(
         fasta_file (str): fasta file with all protein sequences
     """
 
+    score_type = ProteinScoringStrategy("no_remap bestPEP")
+
     protein_group_results, post_err_probs = add_precursor_quants_multiple(
         fragpipe_psm_files,
         combined_ion_files,
@@ -390,6 +393,7 @@ def generate_fragpipe_combined_protein_file(
         peptide_to_protein_maps=None,
         experimental_design=None,
         discard_shared_peptides=discard_shared_peptides,
+        score_type=score_type,
     )
 
     if output_folder is None:

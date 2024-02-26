@@ -328,7 +328,7 @@ def get_peptide_to_protein_maps_if_needed(
                 args.mq_protein_groups,
                 parse_id=parse_id,
             )
-    return list()
+    return [None]
 
 
 def get_peptide_to_protein_maps(
@@ -454,12 +454,6 @@ def parse_evidence_files(
     suppress_missing_peptide_warning: bool,
 ) -> PeptideInfoList:
     """Returns best score per peptide"""
-    if not score_type.remaps_peptides_to_proteins():
-        peptide_to_protein_maps = [None]
-
-    if len(peptide_to_protein_maps) == 1:
-        peptide_to_protein_maps = peptide_to_protein_maps * len(evidence_files)
-
     peptide_info_list = dict()
     for peptide, proteins, _, score in psm.parse_evidence_file_multiple(
         evidence_files,
@@ -522,6 +516,7 @@ def do_quantification(
         peptide_to_protein_maps,
         experimental_design,
         discard_shared_peptides,
+        score_type=score_type,
     )
 
     return protein_group_results, protein_groups_writer, post_err_probs

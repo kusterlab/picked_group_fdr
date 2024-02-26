@@ -5,10 +5,10 @@ import logging
 
 from .. import digest
 from .. import helpers
-from .. import scoring_strategy
-
 from . import tsv
 
+# for type hints only
+from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +62,6 @@ def parse_evidence_file_single(
     for_quantification: bool = False,
     suppress_missing_peptide_warning: bool = False,
 ):
-    if score_type is None:
-        score_type = scoring_strategy.ProteinScoringStrategy("bestPEP")
-
     delimiter = tsv.get_delimiter(evidence_file)
     reader = tsv.get_tsv_reader(evidence_file, delimiter)
     headers = next(reader)
@@ -85,6 +82,12 @@ def parse_evidence_file_multiple(
     for_quantification: bool = False,
     suppress_missing_peptide_warning: bool = False,
 ):
+    if not score_type.remaps_peptides_to_proteins():
+        peptide_to_protein_maps = [None]
+
+    if len(peptide_to_protein_maps) == 1:
+        peptide_to_protein_maps = peptide_to_protein_maps * len(evidence_files)
+
     for evidence_file, peptide_to_protein_map in zip(
         evidence_files, peptide_to_protein_maps
     ):
