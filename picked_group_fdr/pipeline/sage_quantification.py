@@ -58,7 +58,8 @@ def parseArgs(argv):
         default=None,
         metavar="I",
         required=True,
-        help="""Path to lfq.tsv produced by Sage. This enables
+        nargs="+",
+        help="""Path to lfq.tsv file(s) produced by Sage. This enables
                 quantification of protein groups by PickedGroupFDR in 
                 combined_protein.tsv.""",
     )

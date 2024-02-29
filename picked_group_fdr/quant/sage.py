@@ -87,12 +87,30 @@ def add_precursor_quants(
             )
 
     if len(parsed_experiments) > 0:
-        protein_group_results.experiments = sorted(list(parsed_experiments))
+        protein_group_results.experiments.extend(sorted(list(parsed_experiments)))
 
     return protein_group_results, post_err_probs
 
 
 def update_precursor_quants(
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
+    sage_lfq_tsvs: List[str],
+    experimental_design: Optional[pd.DataFrame],
+    discard_shared_peptides: bool,
+):
+    for sage_lfq_tsv in sage_lfq_tsvs:
+        protein_group_results = update_precursor_quants_single(
+            protein_group_results,
+            protein_groups,
+            sage_lfq_tsv,
+            experimental_design,
+            discard_shared_peptides,
+        )
+    return protein_group_results
+
+
+def update_precursor_quants_single(
     protein_group_results: results.ProteinGroupResults,
     protein_groups: pg.ProteinGroups,
     sage_lfq_tsv: str,
@@ -176,7 +194,7 @@ def update_precursor_quants(
 
 def add_precursor_quants_multiple(
     sage_results_files: List[str],
-    sage_lfq_tsv: str,
+    sage_lfq_tsv: List[str],
     protein_groups: pg.ProteinGroups,
     protein_group_results: results.ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
