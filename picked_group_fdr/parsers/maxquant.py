@@ -9,14 +9,15 @@ from .parsers import tsv
 
 from . import tsv
 from .. import helpers
-from .. import results
-from .. import writers
+from .. import results  # TODO: get rid of this import
+from .. import writers  # TODO: get rid of this import
 
 # for type hints only
 from .. import scoring_strategy
 
 
 logger = logging.getLogger(__name__)
+
 
 def parse_mq_evidence_file(
     reader,

@@ -5,7 +5,7 @@ import logging
 
 from picked_group_fdr import protein_groups as pg
 
-from ..protein_annotation import ProteinAnnotation
+from ..protein_annotation import ProteinAnnotation  # TODO: get rid of this import
 from .base import ProteinGroupColumns
 
 # for type hints only

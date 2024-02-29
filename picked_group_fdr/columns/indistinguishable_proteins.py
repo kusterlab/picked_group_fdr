@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import List, Dict
 import logging
 
 from .base import ProteinGroupColumns
@@ -15,7 +14,7 @@ class IndistinguishableProteinsColumns(ProteinGroupColumns):
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
-    ) -> None:    
+    ) -> None:
         protein_group_results.append_header("Indistinguishable Proteins")
 
     def append_columns(
@@ -27,7 +26,9 @@ class IndistinguishableProteinsColumns(ProteinGroupColumns):
         for pgr in protein_group_results:
             highest_peptide_count = 0
             indistinguishable_proteins = []
-            for protein_id, peptide_counts in zip(pgr.proteinIds.split(";"), pgr.peptideCountsUnique.split(";")):
+            for protein_id, peptide_counts in zip(
+                pgr.proteinIds.split(";"), pgr.peptideCountsUnique.split(";")
+            ):
                 if int(peptide_counts) >= highest_peptide_count:
                     if highest_peptide_count > 0:
                         indistinguishable_proteins.append(protein_id)

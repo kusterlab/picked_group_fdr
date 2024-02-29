@@ -1,5 +1,4 @@
 from __future__ import annotations
-import sys
 
 from typing import List, Dict
 import logging
@@ -10,7 +9,7 @@ from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from ..precursor_quant import PrecursorQuant
+from .. import precursor_quant
 from .. import results
 
 logger = logging.getLogger(__name__)
@@ -112,7 +111,7 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
 
 
 def _get_intensities(
-    peptideIntensityList: List[PrecursorQuant],
+    peptideIntensityList: List[precursor_quant.PrecursorQuant],
     experimentToIdxMap,
     postErrProbCutoff,
     numSilacChannels,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable, Dict, List, Optional
 import logging
 
-from .. import digest
+from .. import digest  # TODO: get rid of this import
 from .. import helpers
 from . import tsv
 
