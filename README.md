@@ -54,7 +54,7 @@ python gui.py
    python -m picked_group_fdr \
       --mq_evidence percolator/evidence.txt \
       --fasta </path/to/fasta_file> \
-      --method picked_protein_group_mq_input_no_remap \
+      --method picked_protein_group_mq_input \
       --protein_groups_out percolator/proteinGroups.txt
    ```
 
