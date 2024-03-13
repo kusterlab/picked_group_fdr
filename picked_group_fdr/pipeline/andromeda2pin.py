@@ -54,7 +54,7 @@ def main(argv):
     
     for andromedaTargetOutFN, digestion_params in zip(andromedaTargetOutFNs, digestion_params_list):
         peptideToProteinMap = digest.get_peptide_to_protein_map_from_params(args.databases, [digestion_params])
-        convertAndromedaOutToPin(andromedaTargetOutFN, writer, charges, numHits, peptideToProteinMap, decoyPattern = decoyPattern)
+        convertAndromedaOutToPin(andromedaTargetOutFN, writer, charges, numHits, peptideToProteinMap, args.suppress_missing_peptide_warning, decoyPattern = decoyPattern)
     
     if len(percInFN) > 0:
         os.rename(percInFN + ".tmp", percInFN)
@@ -89,6 +89,12 @@ def parseArgs(argv):
                                          help='''Fasta database used in the search 
                                                          against the spectra file.
                                                     ''')
+
+    apars.add_argument(
+        "--suppress_missing_peptide_warning",
+        help="Suppress missing peptide warning when mapping peptides to proteins.",
+        action="store_true",
+    )
     
     add_digestion_arguments(apars)
                                                     
@@ -204,7 +210,7 @@ def parseMqEvidenceFile(mqEvidenceFile, razor = False):
             yield scanNr, charge, fileName, peptide, proteins, experiment, score, deltaScore, mass, deltaMass
 
 
-def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideToProteinMap, decoyPattern = ""):
+def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideToProteinMap, suppress_missing_peptide_warning, decoyPattern = ""):
     logger.info(f"Reading {andromedaOutFN}")
     
     for scanNr, charge, fileName, peptide, tmp_proteins, experiment, andromedaScore, deltaScore, expMass, deltaMass in parseMqEvidenceFile(andromedaOutFN):
@@ -219,7 +225,7 @@ def convertAndromedaOutToPin(andromedaOutFN, writer, charges, numHits, peptideTo
         if len(peptideToProteinMap) > 0:
             proteins = digest.get_proteins(peptideToProteinMap, cleanPeptide[2:-2])
             if len(proteins) == 0:
-                if not helpers.is_contaminant(tmp_proteins):
+                if not helpers.is_contaminant(tmp_proteins) and not suppress_missing_peptide_warning:
                     logger.warning(f"Could not find peptide {peptide} ({str(tmp_proteins)}) in fasta database, skipping PSM")
                 continue
         
