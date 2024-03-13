@@ -29,6 +29,7 @@ def add_precursor_quants(
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
     score_type: scoring_strategy.ProteinScoringStrategy,
+    suppress_missing_peptide_warning: bool,
 ):
     file_mapping = None
     if experimental_design is not None:
@@ -77,9 +78,10 @@ def add_precursor_quants(
 
         # removes peptides not present in the proteinGroups.txt file
         if helpers.is_missing_in_protein_groups(protein_group_idxs):
-            logger.debug(
-                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-            )
+            if not suppress_missing_peptide_warning:
+                logger.debug(
+                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                )
             missing_peptides_in_protein_groups += 1
             continue
 

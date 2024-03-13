@@ -26,6 +26,7 @@ def add_precursor_quants(
     protein_groups: pg.ProteinGroups,
     experiment: str,
     discard_shared_peptides: bool,
+    suppress_missing_peptide_warning: bool,
 ):
     protein_group_results.experiments.append(experiment)
 
@@ -45,9 +46,10 @@ def add_precursor_quants(
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
         if helpers.is_missing_in_protein_groups(protein_group_idxs):
-            logger.debug(
-                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-            )
+            if not suppress_missing_peptide_warning:
+                logger.debug(
+                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                )
             continue
 
         if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
@@ -81,6 +83,7 @@ def update_precursor_quants(
     protein_groups: pg.ProteinGroups,
     combined_ion_files: List[str],
     discard_shared_peptides: bool,
+    suppress_missing_peptide_warning: bool,
 ):
     for combined_ion_file in combined_ion_files:
         protein_group_results = update_precursor_quants_single(
@@ -88,6 +91,7 @@ def update_precursor_quants(
             protein_groups,
             combined_ion_file,
             discard_shared_peptides,
+            suppress_missing_peptide_warning,
         )
     return protein_group_results
 
@@ -97,6 +101,7 @@ def update_precursor_quants_single(
     protein_groups: pg.ProteinGroups,
     combined_ion_file: str,
     discard_shared_peptides: bool,
+    suppress_missing_peptide_warning: bool,
 ):
     delimiter = tsv.get_delimiter(combined_ion_file)
     reader = tsv.get_tsv_reader(combined_ion_file, delimiter)
@@ -112,9 +117,10 @@ def update_precursor_quants_single(
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
         if helpers.is_missing_in_protein_groups(protein_group_idxs):
-            logger.debug(
-                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-            )
+            if not suppress_missing_peptide_warning:
+                logger.debug(
+                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                )
             continue
 
         if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
@@ -175,6 +181,7 @@ def add_precursor_quants_multiple(
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
     score_type: scoring_strategy.ProteinScoringStrategy,
+    suppress_missing_peptide_warning: bool,
 ):
     post_err_probs_combined = []
     for fragpipe_psm_file in fragpipe_psm_files:
@@ -185,6 +192,7 @@ def add_precursor_quants_multiple(
             protein_groups,
             experiment,
             discard_shared_peptides,
+            suppress_missing_peptide_warning,
         )
         post_err_probs_combined.extend(post_err_probs)
 
@@ -194,5 +202,6 @@ def add_precursor_quants_multiple(
             protein_groups,
             combined_ion_files,
             discard_shared_peptides,
+            suppress_missing_peptide_warning,
         )
     return protein_group_results, post_err_probs_combined

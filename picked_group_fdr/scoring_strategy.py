@@ -178,7 +178,7 @@ class ProteinScoringStrategy:
         :param protein_groups: ProteinGroups object
         :param peptide_info_list: Dict of peptide -> (score, proteins)
         :param suppress_missing_protein_warning: suppresses the warning for missing proteins
-            in the proteiprotein_groupsnGroups object. This is set during the rescuing grouping procedure
+            in the proteinGroups object. This is set during the rescuing grouping procedure
             since some protein groups will have been filtered out in the rescuing step.
         :returns: lists of (score, peptide, proteins) tuples per protein group
         """

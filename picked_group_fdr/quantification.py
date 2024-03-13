@@ -82,6 +82,12 @@ def parse_args(argv):
         action="store_true",
     )
 
+    apars.add_argument(
+        "--suppress_missing_peptide_warning",
+        help="Suppress missing peptide warning when mapping peptides to proteins.",
+        action="store_true",
+    )
+
     digestion_params.add_digestion_arguments(apars)
 
     add_quant_arguments(apars)
@@ -201,6 +207,7 @@ def main(argv) -> None:
         experimental_design,
         discard_shared_peptides=True,
         score_type=score_type,
+        suppress_missing_peptide_warning=args.suppress_missing_peptide_warning,
     )
 
     protein_group_results = protein_groups_writer.append_quant_columns(

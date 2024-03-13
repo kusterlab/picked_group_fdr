@@ -282,6 +282,7 @@ def main(argv) -> None:
                 protein_annotations,
                 use_pseudo_genes,
                 peptide_to_protein_maps,
+                args.suppress_missing_peptide_warning
             )
 
         protein_groups_writer.append_quant_columns(
@@ -478,6 +479,7 @@ def do_quantification(
     protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
     use_pseudo_genes: bool,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
+    suppress_missing_peptide_warning: bool,
 ) -> Tuple[ProteinGroupResults, writers.ProteinGroupsWriter, List]:
     if not score_type.can_do_quantification():
         logger.warning(
@@ -518,6 +520,7 @@ def do_quantification(
         experimental_design,
         discard_shared_peptides,
         score_type=score_type,
+        suppress_missing_peptide_warning=suppress_missing_peptide_warning,
     )
 
     return protein_group_results, protein_groups_writer, post_err_probs
