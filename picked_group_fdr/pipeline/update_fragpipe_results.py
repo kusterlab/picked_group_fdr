@@ -1,3 +1,9 @@
+"""
+Updates protein and gene name specific columns in `psm.tsv` and `protein.tsv` 
+file for each FragPipe experiment folder using a protein grouping result from 
+Picked Group FDR in MaxQuant's proteinGroups.txt format.
+"""
+
 from pathlib import Path
 import sys
 import os
