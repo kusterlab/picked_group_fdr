@@ -264,16 +264,15 @@ def run_method(
     use_pseudo_genes: bool,
     apply_filename_suffix: bool,
 ) -> None:
-    label, method_description_long = methods.get_method_description(method_config)
     logger.info(
-        f"Protein group level estimation method: {label} ({method_description_long})"
+        f"Protein group level estimation method: {method_config.label} ({method_config.long_description()})"
     )
 
-    evidence_files = method_config["scoreType"].get_evidence_file(args)
+    evidence_files = method_config.score_type.get_evidence_file(args)
     if not evidence_files:
         logger.warning(
             (
-                f'No evidence input file found, skipping method "{label}". Check '
+                f'No evidence input file found, skipping method "{method_config.label}". Check '
                 "if an appropriate method was specified by the --methods flag."
             )
         )
@@ -282,11 +281,11 @@ def run_method(
     peptide_info_list = parse_evidence_files(
         evidence_files,
         peptide_to_protein_maps,
-        method_config["scoreType"],
+        method_config.score_type,
         args.suppress_missing_peptide_warning,
     )
 
-    plotter.set_series_label_base(method_config.get("label", None))
+    plotter.set_series_label_base(method_config.label)
     protein_group_results = get_protein_group_results(
         peptide_info_list,
         args.mq_protein_groups,
@@ -303,7 +302,7 @@ def run_method(
             protein_groups_writer,
             post_err_probs,
         ) = do_quantification(
-            method_config["scoreType"],
+            method_config.score_type,
             args,
             protein_group_results,
             protein_annotations,
@@ -320,7 +319,6 @@ def run_method(
         protein_groups_out = get_output_filename(
             args.protein_groups_out, apply_filename_suffix, method_config
         )
-
         write_protein_groups(
             protein_groups_writer,
             protein_group_results,
@@ -332,8 +330,8 @@ def requires_peptide_to_protein_map(method_configs: List[methods.MethodConfig]) 
     """Check if any configuration requires a peptide-to-protein map."""
     for method_config in method_configs:
         if (
-            method_config["grouping"].needs_peptide_to_protein_map()
-            or method_config["scoreType"].remaps_peptides_to_proteins()
+            method_config.grouping_strategy.needs_peptide_to_protein_map()
+            or method_config.score_type.remaps_peptides_to_proteins()
         ):
             return True
     return False
@@ -401,9 +399,9 @@ def get_protein_group_results(
     keep_all_proteins: bool,
 ) -> ProteinGroupResults:
     picked_strategy, score_type, grouping_strategy = (
-        method_config["pickedStrategy"],
-        method_config["scoreType"],
-        method_config["grouping"],
+        method_config.picked_strategy,
+        method_config.score_type,
+        method_config.grouping_strategy,
     )
 
     protein_groups = grouping_strategy.group_proteins(
@@ -468,7 +466,7 @@ def get_protein_group_results(
         )
 
     plotter.set_series_label(
-        score_type, grouping_strategy, picked_strategy, rescue_step=rescue_step
+        method_config, rescue_step=rescue_step
     )
     plotter.plot_qval_calibration_and_performance(
         reported_qvals, observed_qvals, absent_ratio=1.0
@@ -572,14 +570,9 @@ def get_output_filename(
         return protein_groups_out
 
     base, ext = os.path.splitext(protein_groups_out)
-    label = method_config.get("label", None)
+    label = method_config.label
     if label is None:
-        label = methods.short_description(
-            method_config["scoreType"],
-            method_config["grouping"],
-            method_config["pickedStrategy"],
-            True,
-        )
+        label = method_config.short_description(rescue_step=True)
     else:
         label = label.lower().replace(" ", "_")
     return f"{base}_{label}{ext}"

@@ -1,20 +1,43 @@
 import os
-from typing import Dict, Union, List
+from typing import List
 import toml
-
-from picked_group_fdr import methods
+from dataclasses import dataclass
 
 from .competition import ProteinCompetitionStrategyFactory, ProteinCompetitionStrategy
 from .scoring_strategy import ProteinScoringStrategy
 from .grouping import ProteinGroupingStrategyFactory, ProteinGroupingStrategy
 
 
-MethodConfig = Dict[
-    str,
-    Union[
-        ProteinCompetitionStrategy, ProteinScoringStrategy, ProteinGroupingStrategy, str
-    ],
-]
+@dataclass
+class MethodConfig:
+    picked_strategy: ProteinCompetitionStrategy
+    score_type: ProteinScoringStrategy
+    grouping_strategy: ProteinGroupingStrategy
+    label: str
+
+    def short_description(
+        self,
+        rescue_step: bool,
+        sep: str = "_",
+    ) -> str:
+        score_label = self.score_type.short_description()
+        grouping_label = self.grouping_strategy.short_description(rescue_step=rescue_step)
+        razor_label = self.score_type.short_description_razor()
+        fdr_label = self.picked_strategy.short_description()
+        return f"{score_label}{sep}{grouping_label}{sep}{razor_label}{sep}{fdr_label}"
+
+    def long_description(
+        self,
+        rescue_step: bool = True,
+        sep: str = ", ",
+    ) -> str:
+        score_label = self.score_type.long_description()
+        grouping_label = self.grouping_strategy.long_description(
+            rescue_step=rescue_step
+        )
+        razor_label = self.score_type.long_description_razor()
+        fdr_label = self.picked_strategy.long_description()
+        return f"{score_label}{sep}{grouping_label}{sep}{razor_label}{sep}{fdr_label}"
 
 
 def get_methods(method_names: str, use_pseudo_genes: bool) -> List[MethodConfig]:
@@ -87,48 +110,6 @@ def parse_method_toml(method_name: str, use_pseudo_genes: bool) -> MethodConfig:
     scoring_strategy = ProteinScoringStrategy(score_type)
     grouping_strategy = ProteinGroupingStrategyFactory(method_name["grouping"])
 
-    return {
-        "pickedStrategy": picked_strategy,
-        "scoreType": scoring_strategy,
-        "grouping": grouping_strategy,
-        "label": method_name["label"],
-    }
-
-
-def short_description(
-    score_type: ProteinScoringStrategy,
-    grouping_strategy: ProteinGroupingStrategy,
-    picked_strategy: ProteinCompetitionStrategy,
-    rescue_step: bool,
-    sep: str = "_",
-) -> str:
-    score_label = score_type.short_description()
-    grouping_label = grouping_strategy.short_description(rescue_step=rescue_step)
-    razor_label = score_type.short_description_razor()
-    fdr_label = picked_strategy.short_description()
-    return f"{score_label}{sep}{grouping_label}{sep}{razor_label}{sep}{fdr_label}"
-
-
-def long_description(
-    score_type: ProteinScoringStrategy,
-    grouping_strategy: ProteinGroupingStrategy,
-    picked_strategy: ProteinCompetitionStrategy,
-    rescue_step: bool,
-    sep: str = ", ",
-) -> str:
-    score_label = score_type.long_description()
-    grouping_label = grouping_strategy.long_description(rescue_step=rescue_step)
-    razor_label = score_type.long_description_razor()
-    fdr_label = picked_strategy.long_description()
-    return f"{score_label}{sep}{grouping_label}{sep}{razor_label}{sep}{fdr_label}"
-
-
-def get_method_description(method_config: MethodConfig):
-    method_description_long = methods.long_description(
-        method_config["scoreType"],
-        method_config["grouping"],
-        method_config["pickedStrategy"],
-        rescue_step=True,
+    return MethodConfig(
+        picked_strategy, scoring_strategy, grouping_strategy, method_name["label"]
     )
-    label = method_config.get("label", "")
-    return label, method_description_long

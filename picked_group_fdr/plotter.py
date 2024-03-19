@@ -28,7 +28,7 @@ class NoPlotter:
     def set_series_label_base(self, figure_label):
         pass
     
-    def set_series_label(self, score_type, grouping_strategy, picked_strategy, rescue_step):
+    def set_series_label(self, method_config: methods.MethodConfig, rescue_step: bool):
         pass
     
     def plot_qval_calibration_and_performance(self, reported_qvals, observed_qvals, absent_ratio = 1.0):
@@ -171,9 +171,9 @@ class Plotter:
     def set_series_label_base(self, figure_label):
         self.label_base = figure_label
     
-    def set_series_label(self, score_type, grouping_strategy, picked_strategy, rescue_step):
+    def set_series_label(self, method_config: methods.MethodConfig, rescue_step: bool):
         label = self.label_base + " " if self.label_base else ""
-        short_desc = methods.short_description(score_type, grouping_strategy, picked_strategy, rescue_step, sep=",")
+        short_desc = method_config.short_description(rescue_step, sep=",")
         label += f'({short_desc})'
         self.label = label
 
