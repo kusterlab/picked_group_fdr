@@ -159,23 +159,25 @@ def get_protein_annotations(
 ) -> Tuple[Dict[str, ProteinAnnotation], bool]:
     protein_annotations = dict()
     use_pseudo_genes = False
-    if fasta:
-        db = "target" if fasta_contains_decoys else "concat"
-        protein_annotations = get_protein_annotations_multiple(
-            fasta, db=db, parse_id=digest.parse_until_first_space
-        )
-        if use_gene_level:
-            if has_gene_names(protein_annotations, min_ratio_with_genes=0.5):
-                protein_annotations = get_protein_annotations_multiple(
-                    fasta, db=db, parse_id=parse_gene_name_func
+    if fasta is None:
+        return protein_annotations, use_pseudo_genes
+    
+    db = "target" if fasta_contains_decoys else "concat"
+    protein_annotations = get_protein_annotations_multiple(
+        fasta, db=db, parse_id=digest.parse_until_first_space
+    )
+    if use_gene_level:
+        if has_gene_names(protein_annotations, min_ratio_with_genes=0.5):
+            protein_annotations = get_protein_annotations_multiple(
+                fasta, db=db, parse_id=parse_gene_name_func
+            )
+        else:
+            logger.warning(
+                (
+                    "Found >50% of proteins without gene names in the "
+                    "fasta file, will infer pseudo-genes based on "
+                    "shared peptides instead."
                 )
-            else:
-                logger.warning(
-                    (
-                        "Found >50% of proteins without gene names in the "
-                        "fasta file, will infer pseudo-genes based on "
-                        "shared peptides instead."
-                    )
-                )
-                use_pseudo_genes = True
+            )
+            use_pseudo_genes = True
     return protein_annotations, use_pseudo_genes

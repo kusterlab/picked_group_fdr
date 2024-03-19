@@ -14,7 +14,9 @@ from . import scoring_strategy
 from . import peptide_info
 
 
-def ProteinCompetitionStrategyFactory(method="picked_group"):
+def ProteinCompetitionStrategyFactory(
+    method="picked_group",
+) -> ProteinCompetitionStrategy:
     methods = {}
     methods["picked"] = PickedStrategy
     methods["picked_group"] = PickedGroupStrategy

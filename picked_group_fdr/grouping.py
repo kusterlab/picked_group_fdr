@@ -21,6 +21,7 @@ def ProteinGroupingStrategyFactory(method="rescued_subset"):
     methods["rescued_subset"] = RescuedSubsetGrouping
     methods["mq_native"] = MQNativeGrouping
     methods["rescued_mq_native"] = RescuedMQNativeGrouping
+    methods["pseudo_gene"] = PseudoGeneGrouping
     if method not in methods:
         raise ValueError(
             f"Unknown pickedStrategy {method['pickedStrategy']}, should be one of 'no', 'subset' or 'rescued_subset'"

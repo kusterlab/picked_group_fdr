@@ -4,7 +4,7 @@ import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import Any, List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union
 
 import numpy as np
 
@@ -23,22 +23,29 @@ from .digestion_params import (
     DigestionParams,
 )
 from .parsers import psm
-from .parsers import parsers
 from .protein_groups import ProteinGroups
-from .grouping import PseudoGeneGrouping
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
 from .peptide_info import PeptideInfoList
 
 # for type hints only
 from .scoring_strategy import ProteinScoringStrategy
-from .grouping import ProteinGroupingStrategy
-from .competition import ProteinCompetitionStrategy
 from .plotter import Plotter, NoPlotter
 
 logger = logging.getLogger(__name__)
 
 GREETER = f"PickedGroupFDR version {__version__}\n{__copyright__}"
+
+
+def main(argv: List[str]) -> None:
+    """Main function."""
+    logger.info(GREETER)
+    logger.info(
+        f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
+    )
+
+    args = parse_args(argv)
+    run_picked_group_fdr(args)
 
 
 class ArgumentParserWithLogger(argparse.ArgumentParser):
@@ -208,95 +215,35 @@ def parse_args(argv):
     return args
 
 
-def main(argv) -> None:
-    logger.info(GREETER)
-    logger.info(
-        f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
-    )
-
-    args = parse_args(argv)
-
+def run_picked_group_fdr(args: argparse.Namespace) -> None:
+    """Run PickedGroupFDR algorithm."""
     start = timer()
 
     # set seed for random shuffling of protein groups, see competition.do_competition()
     np.random.seed(1)
 
-    configs = methods.get_methods(args)
-    plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
     protein_annotations, use_pseudo_genes = protein_annotation.get_protein_annotations(
         args.fasta, args.fasta_contains_decoys, args.gene_level
     )
+    method_configs = methods.get_methods(args.methods, use_pseudo_genes)
 
-    if use_pseudo_genes:
-        for config in configs:
-            config["grouping"] = PseudoGeneGrouping()
-
-    peptide_to_protein_maps = get_peptide_to_protein_maps_if_needed(
-        args, configs, use_pseudo_genes
-    )
-    for config in configs:
-        label, method_description_long = methods.get_method_description(config)
-        logger.info(
-            f"Protein group level estimation method: {label} ({method_description_long})"
+    peptide_to_protein_maps = [None]
+    if requires_peptide_to_protein_map(method_configs):
+        peptide_to_protein_maps = get_peptide_to_protein_maps_from_args(
+            args, use_pseudo_genes
         )
 
-        evidence_files = config["scoreType"].get_evidence_file(args)
-        if not evidence_files:
-            logger.warning(
-                (
-                    f'No evidence input file found, skipping method "{label}". Check '
-                    "if an appropriate method was specified by the --methods flag."
-                )
-            )
-            continue
-
-        peptide_info_list = parse_evidence_files(
-            evidence_files,
+    plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
+    for method_config in method_configs:
+        run_method(
+            args,
+            method_config,
             peptide_to_protein_maps,
-            config["scoreType"],
-            args.suppress_missing_peptide_warning,
-        )
-
-        plotter.set_series_label_base(config.get("label", None))
-        protein_group_results = get_protein_group_results(
-            peptide_info_list,
-            args.mq_protein_groups,
-            config["pickedStrategy"],
-            config["scoreType"],
-            config["grouping"],
+            protein_annotations,
             plotter,
-            args.keep_all_proteins,
+            use_pseudo_genes,
+            apply_filename_suffix=len(method_configs) > 1,
         )
-
-        protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
-        post_err_probs = None
-        if args.do_quant:
-            (
-                protein_group_results,
-                protein_groups_writer,
-                post_err_probs,
-            ) = do_quantification(
-                config["scoreType"],
-                args,
-                protein_group_results,
-                protein_annotations,
-                use_pseudo_genes,
-                peptide_to_protein_maps,
-                args.suppress_missing_peptide_warning
-            )
-
-        protein_groups_writer.append_quant_columns(
-            protein_group_results, post_err_probs, args.psm_fdr_cutoff
-        )
-
-        if args.protein_groups_out:
-            write_protein_groups(
-                protein_groups_writer,
-                protein_group_results,
-                args.protein_groups_out,
-                config,
-                apply_suffix=len(configs) > 1,
-            )
 
     end = timer()
     logger.info(
@@ -308,29 +255,106 @@ def main(argv) -> None:
     plotter.show()
 
 
-def get_peptide_to_protein_maps_if_needed(
+def run_method(
     args: argparse.Namespace,
-    configs: Dict[str, Any],
+    method_config: methods.MethodConfig,
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
+    protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
+    plotter: Plotter,
+    use_pseudo_genes: bool,
+    apply_filename_suffix: bool,
+) -> None:
+    label, method_description_long = methods.get_method_description(method_config)
+    logger.info(
+        f"Protein group level estimation method: {label} ({method_description_long})"
+    )
+
+    evidence_files = method_config["scoreType"].get_evidence_file(args)
+    if not evidence_files:
+        logger.warning(
+            (
+                f'No evidence input file found, skipping method "{label}". Check '
+                "if an appropriate method was specified by the --methods flag."
+            )
+        )
+        return
+
+    peptide_info_list = parse_evidence_files(
+        evidence_files,
+        peptide_to_protein_maps,
+        method_config["scoreType"],
+        args.suppress_missing_peptide_warning,
+    )
+
+    plotter.set_series_label_base(method_config.get("label", None))
+    protein_group_results = get_protein_group_results(
+        peptide_info_list,
+        args.mq_protein_groups,
+        method_config,
+        plotter,
+        args.keep_all_proteins,
+    )
+
+    protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
+    post_err_probs = None
+    if args.do_quant:
+        (
+            protein_group_results,
+            protein_groups_writer,
+            post_err_probs,
+        ) = do_quantification(
+            method_config["scoreType"],
+            args,
+            protein_group_results,
+            protein_annotations,
+            use_pseudo_genes,
+            peptide_to_protein_maps,
+            args.suppress_missing_peptide_warning,
+        )
+
+    protein_groups_writer.append_quant_columns(
+        protein_group_results, post_err_probs, args.psm_fdr_cutoff
+    )
+
+    if args.protein_groups_out:
+        protein_groups_out = get_output_filename(
+            args.protein_groups_out, apply_filename_suffix, method_config
+        )
+
+        write_protein_groups(
+            protein_groups_writer,
+            protein_group_results,
+            protein_groups_out,
+        )
+
+
+def requires_peptide_to_protein_map(method_configs: List[methods.MethodConfig]) -> bool:
+    """Check if any configuration requires a peptide-to-protein map."""
+    for method_config in method_configs:
+        if (
+            method_config["grouping"].needs_peptide_to_protein_map()
+            or method_config["scoreType"].remaps_peptides_to_proteins()
+        ):
+            return True
+    return False
+
+
+def get_peptide_to_protein_maps_from_args(
+    args: argparse.Namespace,
     use_pseudo_genes: bool,
 ) -> List[digest.PeptideToProteinMap]:
     parse_id = digest.parse_until_first_space
     if args.gene_level and not use_pseudo_genes:
         parse_id = protein_annotation.parse_gene_name_func
 
-    for config in configs:
-        if (
-            config["grouping"].needs_peptide_to_protein_map()
-            or config["scoreType"].remaps_peptides_to_proteins()
-        ):
-            digestion_params_list = get_digestion_params_list(args)
-            return get_peptide_to_protein_maps(
-                args.fasta,
-                args.peptide_protein_map,
-                digestion_params_list,
-                args.mq_protein_groups,
-                parse_id=parse_id,
-            )
-    return [None]
+    digestion_params_list = get_digestion_params_list(args)
+    return get_peptide_to_protein_maps(
+        args.fasta,
+        args.peptide_protein_map,
+        digestion_params_list,
+        args.mq_protein_groups,
+        parse_id=parse_id,
+    )
 
 
 def get_peptide_to_protein_maps(
@@ -372,12 +396,16 @@ def get_peptide_to_protein_maps(
 def get_protein_group_results(
     peptide_info_list: PeptideInfoList,
     mq_protein_groups_file: str,
-    picked_strategy: ProteinCompetitionStrategy,
-    score_type: ProteinScoringStrategy,
-    grouping_strategy: ProteinGroupingStrategy,
+    method_config: methods.MethodConfig,
     plotter: Union[Plotter, NoPlotter],
     keep_all_proteins: bool,
 ) -> ProteinGroupResults:
+    picked_strategy, score_type, grouping_strategy = (
+        method_config["pickedStrategy"],
+        method_config["scoreType"],
+        method_config["grouping"],
+    )
+
     protein_groups = grouping_strategy.group_proteins(
         peptide_info_list, mq_protein_groups_file
     )
@@ -506,11 +534,9 @@ def do_quantification(
         peptide_to_protein_maps,
     )
 
-    discard_shared_peptides = True
-
     protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
     experimental_design = quantification.get_experimental_design(args)
-
+    discard_shared_peptides = True
     protein_group_results, post_err_probs = score_type.get_quantification_parser()(
         score_type.get_evidence_file(args),
         score_type.get_quantification_file(args),
@@ -530,24 +556,33 @@ def write_protein_groups(
     protein_groups_writer: writers.ProteinGroupsWriter,
     protein_group_results: ProteinGroupResults,
     protein_groups_out: str,
-    config: Dict[str, Any],
-    apply_suffix: bool,
 ) -> None:
-    if apply_suffix:
-        base, ext = os.path.splitext(protein_groups_out)
-        label = config.get("label", None)
-        if label is None:
-            label = methods.short_description(
-                config["scoreType"], config["grouping"], config["pickedStrategy"], True
-            )
-        else:
-            label = label.lower().replace(" ", "_")
-        protein_groups_out = f"{base}_{label}{ext}"
-
     Path(protein_groups_out).parent.mkdir(parents=True, exist_ok=True)
 
     protein_groups_writer.write(protein_group_results, protein_groups_out)
     logger.info(f"Protein group results have been written to: {protein_groups_out}")
+
+
+def get_output_filename(
+    protein_groups_out: str,
+    apply_filename_suffix: bool,
+    method_config: methods.MethodConfig,
+):
+    if not apply_filename_suffix:
+        return protein_groups_out
+
+    base, ext = os.path.splitext(protein_groups_out)
+    label = method_config.get("label", None)
+    if label is None:
+        label = methods.short_description(
+            method_config["scoreType"],
+            method_config["grouping"],
+            method_config["pickedStrategy"],
+            True,
+        )
+    else:
+        label = label.lower().replace(" ", "_")
+    return f"{base}_{label}{ext}"
 
 
 if __name__ == "__main__":
