@@ -2,7 +2,10 @@
 
 Example:
 
-    python -m picked_group_fdr.pipeline.add_ibaq_columns --protein_groups_in data/fragpipe_example/results_from_combined_ion/combined_protein.tsv --protein_groups_out data/fragpipe_example/results_from_combined_ion/combined_protein_with_ibaq.tsv --fasta data/fragpipe_example/iprg2016_with_labels.fasta
+    python -m picked_group_fdr.pipeline.add_ibaq_columns \
+        --protein_groups_in data/fragpipe_example/results_from_combined_ion/combined_protein.tsv \
+        --protein_groups_out data/fragpipe_example/results_from_combined_ion/combined_protein_with_ibaq.tsv \
+        --fasta data/fragpipe_example/iprg2016_with_labels.fasta
 
 """
 

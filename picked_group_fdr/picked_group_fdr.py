@@ -311,19 +311,41 @@ def run_method(
             args.suppress_missing_peptide_warning,
         )
 
-    protein_groups_writer.append_quant_columns(
-        protein_group_results, post_err_probs, args.psm_fdr_cutoff
+    finalize_output(
+        protein_group_results,
+        protein_groups_writer,
+        post_err_probs,
+        args.protein_groups_out,
+        args.psm_fdr_cutoff,
+        apply_filename_suffix,
+        method_config,
     )
 
-    if args.protein_groups_out:
-        protein_groups_out = get_output_filename(
-            args.protein_groups_out, apply_filename_suffix, method_config
-        )
-        write_protein_groups(
-            protein_groups_writer,
-            protein_group_results,
-            protein_groups_out,
-        )
+
+def finalize_output(
+    protein_group_results: ProteinGroupResults,
+    protein_groups_writer: writers.ProteinGroupsWriter,
+    post_err_probs: List,
+    protein_groups_out: str,
+    psm_fdr_cutoff: float,
+    apply_filename_suffix: bool,
+    method_config: methods.MethodConfig,
+):
+    protein_groups_writer.append_quant_columns(
+        protein_group_results, post_err_probs, psm_fdr_cutoff
+    )
+
+    if not protein_groups_out:
+        return
+    
+    protein_groups_out = get_output_filename(
+        protein_groups_out, apply_filename_suffix, method_config
+    )
+    write_protein_groups(
+        protein_groups_writer,
+        protein_group_results,
+        protein_groups_out,
+    )
 
 
 def requires_peptide_to_protein_map(method_configs: List[methods.MethodConfig]) -> bool:
@@ -465,9 +487,7 @@ def get_protein_group_results(
             keep_all_proteins,
         )
 
-    plotter.set_series_label(
-        method_config, rescue_step=rescue_step
-    )
+    plotter.set_series_label(method_config, rescue_step=rescue_step)
     plotter.plot_qval_calibration_and_performance(
         reported_qvals, observed_qvals, absent_ratio=1.0
     )
@@ -507,6 +527,7 @@ def do_quantification(
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
     suppress_missing_peptide_warning: bool,
 ) -> Tuple[ProteinGroupResults, writers.ProteinGroupsWriter, List]:
+    # TODO: move this function to quantification.py
     if not score_type.can_do_quantification():
         logger.warning(
             "Skipping quantification: need input file with precursor quantifications."

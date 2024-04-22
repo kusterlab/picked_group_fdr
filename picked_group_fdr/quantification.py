@@ -65,6 +65,16 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--output_format",
+        default="auto",
+        metavar="PG",
+        help="""Protein groups output format. Options are "auto", "maxquant" and 
+                "fragpipe". "auto": decide based on input file format, uses
+                "maxquant" if no suitable format is known; "maxquant": proteinGroups.txt
+                format; "fragpipe": combined_protein.tsv format.""",
+    )
+
+    apars.add_argument(
         "--peptide_protein_map",
         default=None,
         metavar="M",
@@ -177,63 +187,47 @@ def main(argv) -> None:
         parse_id = protein_annotation.parse_uniprot_id
     db = "target" if args.fasta_contains_decoys else "concat"
 
-    (
-        peptide_to_protein_maps,
-        num_ibaq_peptides_per_protein,
-    ) = get_peptide_to_protein_maps(args, parse_id=parse_id)
-    
+    peptide_to_protein_maps, _ = get_peptide_to_protein_maps(args, parse_id=parse_id)
+
     protein_annotations = dict()
-    protein_sequences = dict()
     if args.fasta:
         protein_annotations = protein_annotation.get_protein_annotations_multiple(
-            args.fasta, db=db, parse_id=parse_id
-        )
-        protein_sequences = digest.get_protein_sequences(
             args.fasta, db=db, parse_id=parse_id
         )
 
     protein_group_results = maxquant.parse_mq_protein_groups_file(
         args.mq_protein_groups
     )
-    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
-
-    experimental_design = get_experimental_design(args)
-
-    params = init_triqler_params(experimental_design)
-    protein_groups_writer = writers.MaxQuantProteinGroupsWriter(
-        num_ibaq_peptides_per_protein,
-        protein_annotations,
-        protein_sequences,
-        args.lfq_min_peptide_ratios,
-        args.lfq_stabilize_large_ratios,
-        args.num_threads,
-        params,
-    )
 
     score_type = ProteinScoringStrategy("bestPEP")
     if peptide_to_protein_maps == [None]:
         score_type = ProteinScoringStrategy("no_remap bestPEP")
 
-    protein_group_results, post_err_probs = mq_quant.add_precursor_quants(
-        args.mq_evidence,
-        args.mq_evidence,
-        protein_groups,
+    use_pseudo_genes = False
+    (
         protein_group_results,
+        protein_groups_writer,
+        post_err_probs,
+    ) = picked_group_fdr.do_quantification(
+        score_type,
+        args,
+        protein_group_results,
+        protein_annotations,
+        use_pseudo_genes,
         peptide_to_protein_maps,
-        experimental_design,
-        discard_shared_peptides=True,
-        score_type=score_type,
-        suppress_missing_peptide_warning=args.suppress_missing_peptide_warning,
+        args.suppress_missing_peptide_warning,
     )
 
-    protein_group_results = protein_groups_writer.append_quant_columns(
-        protein_group_results, post_err_probs, args.psm_fdr_cutoff
-    )
-
-    protein_group_results.write(args.protein_groups_out)
-
-    logger.info(
-        f"Protein group results have been written to: {args.protein_groups_out}"
+    apply_filename_suffix = False
+    method_config = None
+    picked_group_fdr.finalize_output(
+        protein_group_results,
+        protein_groups_writer,
+        post_err_probs,
+        args.protein_groups_out,
+        args.psm_fdr_cutoff,
+        apply_filename_suffix,
+        method_config,
     )
 
 
