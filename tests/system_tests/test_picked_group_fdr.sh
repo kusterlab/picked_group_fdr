@@ -1,6 +1,9 @@
 DATA_DIR="data/lfq_example"
 RESULT_DIR="tests/system_tests/test_picked_group_fdr"
 
+# exit on first error
+set -e
+
 mkdir -p ${RESULT_DIR}
 
 # MaxQuant input
@@ -28,6 +31,6 @@ python3 -um picked_group_fdr --mq_evidence ${DATA_DIR}/evidence.txt \
     --do_quant
 diff ${RESULT_DIR}/proteinGroups_peptide_protein_map.txt ${RESULT_DIR}/proteinGroups_peptide_protein_map.reference.txt
 
-# multiple fasta
+# TODO: multiple fasta
 
-# multiple proteases
+# TODO: multiple proteases

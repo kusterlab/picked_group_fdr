@@ -1,6 +1,9 @@
 DATA_DIR="data/lfq_example"
 RESULT_DIR="tests/system_tests/test_quantification"
 
+# exit on first error
+set -e
+
 mkdir -p ${RESULT_DIR}
 
 # MaxQuant input
