@@ -25,9 +25,9 @@ def test_run_picked_group_fdr():
     ) as mock_get_annotations, patch(
         "picked_group_fdr.methods.get_methods", return_value=method_configs
     ) as mock_get_methods, patch(
-        "picked_group_fdr.picked_group_fdr.requires_peptide_to_protein_map", return_value=True
+        "picked_group_fdr.methods.requires_peptide_to_protein_map", return_value=True
     ) as mock_requires_ptp_map, patch(
-        "picked_group_fdr.picked_group_fdr.get_peptide_to_protein_maps_from_args",
+        "picked_group_fdr.peptide_protein_map.get_peptide_to_protein_maps_from_args",
         return_value=peptide_to_protein_maps,
     ) as mock_get_ptp_map, patch(
         "picked_group_fdr.picked_group_fdr.run_method"

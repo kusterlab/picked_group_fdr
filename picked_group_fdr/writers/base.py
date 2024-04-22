@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import logging
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Union, TYPE_CHECKING
 
 import numpy as np
 
@@ -11,10 +11,11 @@ from .. import fdr
 from .. import helpers
 
 # for type hints only
-from .. import results
-from .. import columns
-from .. import methods
-from ..precursor_quant import PrecursorQuant
+if TYPE_CHECKING:
+    from .. import results
+    from .. import columns
+    from .. import methods
+    from .. import precursor_quant
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ def write_protein_groups(
 
 
 def _retain_only_identified_precursors(
-    precursor_list: List[PrecursorQuant], post_err_prob_cutoff
+    precursor_list: List[precursor_quant.PrecursorQuant], post_err_prob_cutoff
 ):
     identified_precursors = set()
     for precursor in precursor_list:
