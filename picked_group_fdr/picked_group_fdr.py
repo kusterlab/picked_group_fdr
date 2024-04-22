@@ -163,7 +163,7 @@ def parse_args(argv):
         default=None,
         metavar="M",
         nargs="+",
-        help="""File with mapping from peptides to proteins; alternative for 
+        help="""Tab-separated file with mapping from peptides to proteins; alternative for 
                 --fasta flag if digestion is time consuming.""",
     )
 
@@ -357,7 +357,7 @@ def get_peptide_to_protein_maps_from_args(
 
 def get_peptide_to_protein_maps(
     fasta_file: str,
-    peptide_protein_map_file: str,
+    peptide_protein_map_files: List[str],
     digestion_params_list: List[DigestionParams],
     mq_protein_groups_file: str,
     **kwargs,
@@ -373,9 +373,9 @@ def get_peptide_to_protein_maps(
             entrapment.mark_entrapment_proteins(
                 peptide_to_protein_maps[-1], mq_protein_groups_file
             )
-    elif peptide_protein_map_file:
+    elif peptide_protein_map_files:
         logger.info("Loading peptide to protein map")
-        for peptide_protein_map_file in peptide_protein_map_file:
+        for peptide_protein_map_file in peptide_protein_map_files:
             peptide_to_protein_maps.append(
                 digest.get_peptide_to_protein_map_from_file(
                     peptide_protein_map_file, use_hash_key=False

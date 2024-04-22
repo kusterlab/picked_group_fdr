@@ -1,10 +1,14 @@
 """Performs quantification of previously generated protein groups and adds columns to a new output file.
 
-Currently only works for MaxQuant proteinGroups.txt.
+Currently only works with MaxQuant proteinGroups.txt.
 
 Usage:
 
-    python -m picked_group_fdr.quantification --mq_evidence evidence.txt --mq_protein_groups proteinGroups.txt --protein_groups_out proteinGroups_with_quant.txt --fasta db.fasta
+    python -m picked_group_fdr.quantification \
+        --mq_evidence evidence.txt \
+        --mq_protein_groups proteinGroups.txt \
+        --protein_groups_out proteinGroups_with_quant.txt \
+        --fasta db.fasta
 """
 
 import sys
@@ -64,7 +68,9 @@ def parse_args(argv):
         "--peptide_protein_map",
         default=None,
         metavar="M",
-        help="""TSV file with mapping from peptides to proteins.""",
+        nargs="+",
+        help="""Tab-separated file with mapping from peptides to proteins; alternative for 
+                --fasta flag if digestion is time consuming.""",
     )
 
     apars.add_argument(
@@ -175,13 +181,16 @@ def main(argv) -> None:
         peptide_to_protein_maps,
         num_ibaq_peptides_per_protein,
     ) = get_peptide_to_protein_maps(args, parse_id=parse_id)
-
-    protein_annotations = protein_annotation.get_protein_annotations_multiple(
-        args.fasta, db=db, parse_id=parse_id
-    )
-    protein_sequences = digest.get_protein_sequences(
-        args.fasta, db=db, parse_id=parse_id
-    )
+    
+    protein_annotations = dict()
+    protein_sequences = dict()
+    if args.fasta:
+        protein_annotations = protein_annotation.get_protein_annotations_multiple(
+            args.fasta, db=db, parse_id=parse_id
+        )
+        protein_sequences = digest.get_protein_sequences(
+            args.fasta, db=db, parse_id=parse_id
+        )
 
     protein_group_results = maxquant.parse_mq_protein_groups_file(
         args.mq_protein_groups
