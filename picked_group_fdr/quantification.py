@@ -13,6 +13,7 @@ Usage:
 
 import sys
 import os
+import argparse
 import logging
 from typing import Dict, List, Tuple
 
@@ -23,18 +24,15 @@ from . import protein_annotation
 from . import picked_group_fdr
 from .parsers import maxquant
 from .parsers import parsers
-from .quant import maxquant as mq_quant
-from .columns.triqler import init_triqler_params
 from .protein_groups import ProteinGroups
 from .scoring_strategy import ProteinScoringStrategy
+from .results import ProteinGroupResults
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
 
 
 def parse_args(argv):
-    import argparse
-
     apars = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -173,6 +171,58 @@ def add_quant_arguments(apars) -> None:
     )
 
 
+def do_quantification(
+    score_type: ProteinScoringStrategy,
+    args: argparse.Namespace,
+    protein_group_results: ProteinGroupResults,
+    protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
+    use_pseudo_genes: bool,
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
+    suppress_missing_peptide_warning: bool,
+) -> Tuple[ProteinGroupResults, writers.ProteinGroupsWriter, List]:
+    if not score_type.can_do_quantification():
+        logger.warning(
+            "Skipping quantification: need input file with precursor quantifications."
+        )
+        return protein_group_results
+
+    logger.info("Preparing for quantification")
+
+    score_origin = score_type.score_origin.long_description().lower()
+    if args.output_format == "auto" and score_origin in ["maxquant", "fragpipe"]:
+        args.output_format = score_origin
+
+    parse_id = digest.parse_until_first_space
+    if args.gene_level and not use_pseudo_genes:
+        parse_id = protein_annotation.parse_gene_name_func
+
+    protein_groups_writer = writers.get_protein_groups_output_writer(
+        protein_group_results,
+        args.output_format,
+        args,
+        protein_annotations,
+        parse_id,
+        peptide_to_protein_maps,
+    )
+
+    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
+    experimental_design = get_experimental_design(args)
+    discard_shared_peptides = True
+    protein_group_results, post_err_probs = score_type.get_quantification_parser()(
+        score_type.get_evidence_file(args),
+        score_type.get_quantification_file(args),
+        protein_groups,
+        protein_group_results,
+        peptide_to_protein_maps,
+        experimental_design,
+        discard_shared_peptides,
+        score_type=score_type,
+        suppress_missing_peptide_warning=suppress_missing_peptide_warning,
+    )
+
+    return protein_group_results, protein_groups_writer, post_err_probs
+
+
 def main(argv) -> None:
     logger.info(
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
@@ -208,7 +258,7 @@ def main(argv) -> None:
         protein_group_results,
         protein_groups_writer,
         post_err_probs,
-    ) = picked_group_fdr.do_quantification(
+    ) = do_quantification(
         score_type,
         args,
         protein_group_results,
