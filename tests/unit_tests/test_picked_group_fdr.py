@@ -27,7 +27,7 @@ def test_run_picked_group_fdr():
     ) as mock_get_methods, patch(
         "picked_group_fdr.picked_group_fdr.requires_peptide_to_protein_map", return_value=True
     ) as mock_requires_ptp_map, patch(
-        "picked_group_fdr.picked_group_fdr.get_peptide_to_protein_maps_if_required",
+        "picked_group_fdr.picked_group_fdr.get_peptide_to_protein_maps_from_args",
         return_value=peptide_to_protein_maps,
     ) as mock_get_ptp_map, patch(
         "picked_group_fdr.picked_group_fdr.run_method"
@@ -53,8 +53,8 @@ def test_run_picked_group_fdr():
             args,
             method_configs[0],
             peptide_to_protein_maps,
-            mock_get_plotter.return_value,
             protein_annotations,
+            mock_get_plotter.return_value,
             use_pseudo_genes,
             apply_filename_suffix=True,
         )
@@ -62,8 +62,8 @@ def test_run_picked_group_fdr():
             args,
             method_configs[1],
             peptide_to_protein_maps,
-            mock_get_plotter.return_value,
             protein_annotations,
+            mock_get_plotter.return_value,
             use_pseudo_genes,
             apply_filename_suffix=True,
         )
