@@ -1,3 +1,12 @@
+"""Performs quantification of previously generated protein groups and adds columns to a new output file.
+
+Currently only works for MaxQuant proteinGroups.txt.
+
+Usage:
+
+    python -m picked_group_fdr.quantification --mq_evidence evidence.txt --mq_protein_groups proteinGroups.txt --protein_groups_out proteinGroups_with_quant.txt --fasta db.fasta
+"""
+
 import sys
 import os
 import logging
@@ -11,12 +20,12 @@ from . import picked_group_fdr
 from .parsers import maxquant
 from .parsers import parsers
 from .quant import maxquant as mq_quant
-from .columns import protein_annotations as pa
 from .columns.triqler import init_triqler_params
 from .protein_groups import ProteinGroups
 from .scoring_strategy import ProteinScoringStrategy
 
-logger = logging.getLogger(__name__)
+# hacky way to get package logger when running as module
+logger = logging.getLogger(__package__ + "." + __file__)
 
 
 def parse_args(argv):
@@ -48,8 +57,7 @@ def parse_args(argv):
         default=None,
         metavar="PG",
         required=True,
-        help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.
-                                """,
+        help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.""",
     )
 
     apars.add_argument(
@@ -176,8 +184,7 @@ def main(argv) -> None:
     )
 
     protein_group_results = maxquant.parse_mq_protein_groups_file(
-        args.mq_protein_groups,
-        additional_headers=pa.MQ_PROTEIN_ANNOTATION_HEADERS,
+        args.mq_protein_groups
     )
     protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
 

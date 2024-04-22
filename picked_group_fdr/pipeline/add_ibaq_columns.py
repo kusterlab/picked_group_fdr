@@ -17,7 +17,8 @@ from .. import digest
 from .. import digestion_params
 from .. import protein_annotation
 
-logger = logging.getLogger(__name__)
+# hacky way to get package logger when running as module
+logger = logging.getLogger(__package__ + "." + __file__)
 
 
 def parse_args(argv):
@@ -40,8 +41,7 @@ def parse_args(argv):
         default=None,
         metavar="PG",
         required=True,
-        help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.
-                                """,
+        help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.""",
     )
 
     apars.add_argument(
@@ -110,7 +110,7 @@ def main(argv) -> None:
     )
 
 
-def add_ibaq_columns(df, num_ibaq_peptides_per_protein):
+def add_ibaq_columns(df: pd.DataFrame, num_ibaq_peptides_per_protein: Dict[str, int]):
     df["Num iBAQ peptides"] = df["Protein"].apply(
         get_num_ibaq_peptides,
         num_ibaq_peptides_per_protein=num_ibaq_peptides_per_protein,

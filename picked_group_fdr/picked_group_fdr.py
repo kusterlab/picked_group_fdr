@@ -124,9 +124,9 @@ def parse_args(argv):
         default="auto",
         metavar="PG",
         help="""Protein groups output format. Options are "auto", "maxquant" and 
-                "fragpipe". "auto": decide based on input file format, will default to 
-                "maxquant" if no suitable format is known; "maxquant" (proteinGroups.txt
-                format) and "fragpipe" (combined_protein.tsv format).""",
+                "fragpipe". "auto": decide based on input file format, uses
+                "maxquant" if no suitable format is known; "maxquant": proteinGroups.txt
+                format; "fragpipe": combined_protein.tsv format.""",
     )
 
     apars.add_argument(
