@@ -6,6 +6,7 @@ import numpy as np
 
 from .. import __version__, __copyright__
 from ..parsers import parsers
+from ..parsers import protein_groups as pgp
 from .. import helpers
 from .. import fdr
 from ..scoring import BestAndromedaScore
@@ -171,7 +172,7 @@ def main(argv):
             )
             protein_groups, protein_scores = zip(
                 *list(
-                    parsers.parse_protein_groups_file_multiple(
+                    pgp.parse_protein_groups_file_multiple(
                         protein_group_files,
                         are_decoy_file=is_decoy_file,
                         protein_column=args.protein_col,

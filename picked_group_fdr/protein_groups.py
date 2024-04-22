@@ -2,9 +2,9 @@ from __future__ import annotations
 from typing import List, Set, Dict
 import logging
 
-from .parsers import parsers
 from . import helpers
 from . import entrapment
+from .parsers import protein_groups as pgp
 
 # for type hints only
 from .peptide_info import ProteinGroupPeptideInfos
@@ -30,7 +30,7 @@ class ProteinGroups:
     def from_mq_protein_groups_file(mq_protein_groups_file: str):
         protein_groups = [
             protein_group
-            for protein_group, _ in parsers.parse_protein_groups_file_single(
+            for protein_group, _ in pgp.parse_protein_groups_file_single(
                 mq_protein_groups_file
             )
         ]

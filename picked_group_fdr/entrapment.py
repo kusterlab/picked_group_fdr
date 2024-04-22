@@ -1,7 +1,7 @@
 from typing import List, Dict, Set
 import logging
 
-from .parsers import parsers
+from .parsers import protein_groups as pgp
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def mark_entrapment_proteins(
 
 def get_entrapment_proteins(mq_protein_groups_file: str) -> Set[str]:
     entrapment_proteins = set()
-    for protein_group, _ in parsers.parse_protein_groups_file_single(
+    for protein_group, _ in pgp.parse_protein_groups_file_single(
         mq_protein_groups_file
     ):
         for protein in protein_group:

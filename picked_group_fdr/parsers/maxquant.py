@@ -5,8 +5,6 @@ from enum import Enum
 import logging
 from typing import List
 
-from .parsers import tsv
-
 from . import tsv
 from .. import helpers
 from .. import results  # TODO: get rid of this import

@@ -113,3 +113,14 @@ def parse_method_toml(method_name: str, use_pseudo_genes: bool) -> MethodConfig:
     return MethodConfig(
         picked_strategy, scoring_strategy, grouping_strategy, method_name["label"]
     )
+
+
+def requires_peptide_to_protein_map(method_configs: List[MethodConfig]) -> bool:
+    """Check if any configuration requires a peptide-to-protein map."""
+    for method_config in method_configs:
+        if (
+            method_config.grouping_strategy.needs_peptide_to_protein_map()
+            or method_config.score_type.remaps_peptides_to_proteins()
+        ):
+            return True
+    return False

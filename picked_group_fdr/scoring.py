@@ -6,8 +6,7 @@ import numpy as np
 
 from . import helpers
 from . import fdr
-from .parsers import parsers
-
+from .parsers import protein_groups as pgp
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ class MQProteinScore(ProteinScore):
         
     def get_protein_scores_from_file(self):
         protein_group_peptide_infos = list()
-        for protein_group, protein_score in parsers.parse_protein_groups_file_single(self.mq_protein_groups_file):
+        for protein_group, protein_score in pgp.parse_protein_groups_file_single(self.mq_protein_groups_file):
             protein_group_peptide_infos.append([(protein_score, "NA", protein_group)])
         return protein_group_peptide_infos
 

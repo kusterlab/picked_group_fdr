@@ -21,7 +21,7 @@ from . import writers
 from . import digest
 from . import digestion_params
 from . import protein_annotation
-from . import picked_group_fdr
+from . import peptide_protein_map
 from .parsers import maxquant
 from .parsers import parsers
 from .protein_groups import ProteinGroups
@@ -237,8 +237,11 @@ def main(argv) -> None:
         parse_id = protein_annotation.parse_uniprot_id
     db = "target" if args.fasta_contains_decoys else "concat"
 
-    peptide_to_protein_maps, _ = get_peptide_to_protein_maps(args, parse_id=parse_id)
-
+    peptide_to_protein_maps = peptide_protein_map.get_peptide_to_protein_maps_from_args(
+        args,
+        use_pseudo_genes=False
+    )
+    
     protein_annotations = dict()
     if args.fasta:
         protein_annotations = protein_annotation.get_protein_annotations_multiple(
@@ -270,7 +273,7 @@ def main(argv) -> None:
 
     apply_filename_suffix = False
     method_config = None
-    picked_group_fdr.finalize_output(
+    writers.finalize_output(
         protein_group_results,
         protein_groups_writer,
         post_err_probs,
@@ -290,27 +293,6 @@ def get_experimental_design(args):
     elif args.file_list_file:
         experimental_design = parsers.parse_triqler_file_list(args.file_list_file)
     return experimental_design
-
-
-def get_peptide_to_protein_maps(
-    args, **kwargs
-) -> Tuple[List[digest.PeptideToProteinMap], Dict[str, int]]:
-    logger.info("Loading peptide to protein map...")
-
-    digestion_params_list = digestion_params.get_digestion_params_list(args)
-    peptide_to_protein_maps = picked_group_fdr.get_peptide_to_protein_maps(
-        args.fasta,
-        args.peptide_protein_map,
-        digestion_params_list,
-        args.mq_protein_groups,
-        **kwargs,
-    )
-
-    num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein_from_args(
-        args, peptide_to_protein_maps
-    )
-
-    return peptide_to_protein_maps, num_ibaq_peptides_per_protein
 
 
 if __name__ == "__main__":

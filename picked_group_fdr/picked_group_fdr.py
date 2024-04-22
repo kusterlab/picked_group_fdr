@@ -1,4 +1,3 @@
-from pathlib import Path
 import sys
 import os
 import logging
@@ -11,24 +10,20 @@ import numpy as np
 from . import __version__, __copyright__
 from . import digest
 from . import protein_annotation
-from . import helpers
-from . import entrapment
+from . import peptide_protein_map
 from . import methods
 from . import fdr
+from .parsers import evidence
 from . import writers
 from . import quantification
 from .digestion_params import (
     add_digestion_arguments,
-    get_digestion_params_list,
-    DigestionParams,
 )
-from .parsers import psm
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
 from .peptide_info import PeptideInfoList
 
 # for type hints only
-from .scoring_strategy import ProteinScoringStrategy
 from .plotter import Plotter, NoPlotter
 
 logger = logging.getLogger(__name__)
@@ -227,8 +222,8 @@ def run_picked_group_fdr(args: argparse.Namespace) -> None:
     method_configs = methods.get_methods(args.methods, use_pseudo_genes)
 
     peptide_to_protein_maps = [None]
-    if requires_peptide_to_protein_map(method_configs):
-        peptide_to_protein_maps = get_peptide_to_protein_maps_from_args(
+    if methods.requires_peptide_to_protein_map(method_configs):
+        peptide_to_protein_maps = peptide_protein_map.get_peptide_to_protein_maps_from_args(
             args, use_pseudo_genes
         )
 
@@ -277,7 +272,7 @@ def run_method(
         )
         return
 
-    peptide_info_list = parse_evidence_files(
+    peptide_info_list = evidence.parse_evidence_files(
         evidence_files,
         peptide_to_protein_maps,
         method_config.score_type,
@@ -310,7 +305,7 @@ def run_method(
             args.suppress_missing_peptide_warning,
         )
 
-    finalize_output(
+    writers.finalize_output(
         protein_group_results,
         protein_groups_writer,
         post_err_probs,
@@ -319,97 +314,6 @@ def run_method(
         apply_filename_suffix,
         method_config,
     )
-
-
-def finalize_output(
-    protein_group_results: ProteinGroupResults,
-    protein_groups_writer: writers.ProteinGroupsWriter,
-    post_err_probs: List,
-    protein_groups_out: str,
-    psm_fdr_cutoff: float,
-    apply_filename_suffix: bool,
-    method_config: methods.MethodConfig,
-):
-    protein_groups_writer.append_quant_columns(
-        protein_group_results, post_err_probs, psm_fdr_cutoff
-    )
-
-    if not protein_groups_out:
-        return
-    
-    protein_groups_out = get_output_filename(
-        protein_groups_out, apply_filename_suffix, method_config
-    )
-    write_protein_groups(
-        protein_groups_writer,
-        protein_group_results,
-        protein_groups_out,
-    )
-
-
-def requires_peptide_to_protein_map(method_configs: List[methods.MethodConfig]) -> bool:
-    """Check if any configuration requires a peptide-to-protein map."""
-    for method_config in method_configs:
-        if (
-            method_config.grouping_strategy.needs_peptide_to_protein_map()
-            or method_config.score_type.remaps_peptides_to_proteins()
-        ):
-            return True
-    return False
-
-
-def get_peptide_to_protein_maps_from_args(
-    args: argparse.Namespace,
-    use_pseudo_genes: bool,
-) -> List[digest.PeptideToProteinMap]:
-    parse_id = digest.parse_until_first_space
-    if args.gene_level and not use_pseudo_genes:
-        parse_id = protein_annotation.parse_gene_name_func
-
-    digestion_params_list = get_digestion_params_list(args)
-    return get_peptide_to_protein_maps(
-        args.fasta,
-        args.peptide_protein_map,
-        digestion_params_list,
-        args.mq_protein_groups,
-        parse_id=parse_id,
-    )
-
-
-def get_peptide_to_protein_maps(
-    fasta_file: str,
-    peptide_protein_map_files: List[str],
-    digestion_params_list: List[DigestionParams],
-    mq_protein_groups_file: str,
-    **kwargs,
-):
-    peptide_to_protein_maps = list()
-    if fasta_file:
-        for digestion_params in digestion_params_list:
-            peptide_to_protein_maps.append(
-                digest.get_peptide_to_protein_map_from_params(
-                    fasta_file, [digestion_params], **kwargs
-                )
-            )
-            entrapment.mark_entrapment_proteins(
-                peptide_to_protein_maps[-1], mq_protein_groups_file
-            )
-    elif peptide_protein_map_files:
-        logger.info("Loading peptide to protein map")
-        for peptide_protein_map_file in peptide_protein_map_files:
-            peptide_to_protein_maps.append(
-                digest.get_peptide_to_protein_map_from_file(
-                    peptide_protein_map_file, use_hash_key=False
-                )
-            )
-    else:
-        raise ValueError(
-            (
-                "No fasta or peptide to protein mapping file detected, please"
-                "specify either the --fasta or --peptide_protein_map flags."
-            )
-        )
-    return peptide_to_protein_maps
 
 
 def get_protein_group_results(
@@ -492,57 +396,6 @@ def get_protein_group_results(
     )
 
     return protein_group_results
-
-
-def parse_evidence_files(
-    evidence_files: List[str],
-    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
-    score_type: ProteinScoringStrategy,
-    suppress_missing_peptide_warning: bool,
-) -> PeptideInfoList:
-    """Returns best score per peptide"""
-    peptide_info_list = dict()
-    for peptide, proteins, _, score in psm.parse_evidence_file_multiple(
-        evidence_files,
-        peptide_to_protein_maps=peptide_to_protein_maps,
-        score_type=score_type,
-        suppress_missing_peptide_warning=suppress_missing_peptide_warning,
-    ):
-        peptide = helpers.clean_peptide(peptide)
-        if np.isnan(score) or score >= peptide_info_list.get(peptide, [np.inf])[0]:
-            continue
-
-        peptide_info_list[peptide] = [score, proteins]
-
-    return peptide_info_list
-
-
-def write_protein_groups(
-    protein_groups_writer: writers.ProteinGroupsWriter,
-    protein_group_results: ProteinGroupResults,
-    protein_groups_out: str,
-) -> None:
-    Path(protein_groups_out).parent.mkdir(parents=True, exist_ok=True)
-
-    protein_groups_writer.write(protein_group_results, protein_groups_out)
-    logger.info(f"Protein group results have been written to: {protein_groups_out}")
-
-
-def get_output_filename(
-    protein_groups_out: str,
-    apply_filename_suffix: bool,
-    method_config: methods.MethodConfig,
-):
-    if not apply_filename_suffix:
-        return protein_groups_out
-
-    base, ext = os.path.splitext(protein_groups_out)
-    label = method_config.label
-    if label is None:
-        label = method_config.short_description(rescue_step=True)
-    else:
-        label = label.lower().replace(" ", "_")
-    return f"{base}_{label}{ext}"
 
 
 if __name__ == "__main__":
