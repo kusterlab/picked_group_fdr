@@ -9,7 +9,7 @@ from mokapot import __version__
 from mokapot.model import PercolatorModel
 
 
-def run_mokapot(perc_folder, test_fdr, train_fdr, max_workers):
+def run_mokapot(perc_folder, test_fdr, train_fdr, max_workers, seed=1):
     psms_result_file = os.path.join(perc_folder, 'andromeda.mokapot.psms.txt')
     if os.path.isfile(psms_result_file):
       print(f"Found mokapot output file {psms_result_file}, remove this file to rerun mokapot.")
@@ -44,8 +44,8 @@ def run_mokapot(perc_folder, test_fdr, train_fdr, max_workers):
     logging.info("=================")
 
     psms = mokapot.read_pin(os.path.join(perc_folder, "andromeda.tab"))
-    model = PercolatorModel(train_fdr=train_fdr)
-    results, models = mokapot.brew(psms, model=model, test_fdr=test_fdr, max_workers=max_workers)
+    model = PercolatorModel(train_fdr=train_fdr, rng=seed)
+    results, _ = mokapot.brew(psms, model=model, test_fdr=test_fdr, max_workers=max_workers, rng=seed)
     results.to_txt(dest_dir = perc_folder, file_root="andromeda", decoys = True)
 
     total_time = round(time.time() - start)

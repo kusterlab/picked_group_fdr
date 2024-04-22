@@ -6,6 +6,9 @@ set -e
 
 mkdir -p ${RESULT_DIR}
 
+rm -f ${RESULT_DIR}/andromeda.{tab,mokapot.psms.txt,mokapot.decoy.psms.txt}
+rm -f ${RESULT_DIR}/evidence.txt ${RESULT_DIR}/proteinGroups.txt
+
 python -u -m picked_group_fdr.pipeline.andromeda2pin \
     ${DATA_DIR}/evidence.txt \
     --outputTab ${RESULT_DIR}/andromeda.tab \
@@ -18,12 +21,12 @@ OMP_NUM_THREADS=1 \
     python -u -m picked_group_fdr.pipeline.run_mokapot \
         0.01 0.01 ${RESULT_DIR} 1
 diff -q ${RESULT_DIR}/andromeda.mokapot.psms.txt ${RESULT_DIR}/andromeda.mokapot.psms.reference.txt
-diff -q ${RESULT_DIR}/andromeda.mokapot.decoys.psms.txt ${RESULT_DIR}/andromeda.mokapot.decoys.psms.reference.txt
+diff -q ${RESULT_DIR}/andromeda.mokapot.decoy.psms.txt ${RESULT_DIR}/andromeda.mokapot.decoy.psms.reference.txt
 
 python -u -m picked_group_fdr.pipeline.update_evidence_from_pout \
     --mq_evidence ${DATA_DIR}/evidence.txt \
     --perc_results ${RESULT_DIR}/andromeda.mokapot.psms.txt \
-        ${RESULT_DIR}/andromeda.mokapot.decoys.psms.txt \
+        ${RESULT_DIR}/andromeda.mokapot.decoy.psms.txt \
     --mq_evidence_out ${RESULT_DIR}/evidence.txt
 diff -q ${RESULT_DIR}/evidence.txt ${RESULT_DIR}/evidence.reference.txt
 
