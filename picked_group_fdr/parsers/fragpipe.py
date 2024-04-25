@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from typing import List
 import logging
 
 from . import tsv
+from .. import writers
+from .. import helpers
 
 # for type hints only
 from .. import scoring_strategy
+from .. import results
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +55,11 @@ logger = logging.getLogger(__name__)
 
 
 def parse_fragpipe_psm_file(
-    reader, headers, get_proteins, score_type: scoring_strategy.ProteinScoringStrategy, **kwargs
+    reader,
+    headers,
+    get_proteins,
+    score_type: scoring_strategy.ProteinScoringStrategy,
+    **kwargs,
 ):
     pept_col = tsv.get_column_index(headers, "Peptide")
     score_col = tsv.get_column_index(
@@ -157,3 +165,62 @@ def parse_fragpipe_combined_ion_file(reader, headers):
         ]
 
         yield peptide, charge, assigned_mods, proteins, intensities
+
+
+def parse_fragpipe_combined_protein_file(
+    combined_protein_file: str, additional_headers: List[str] = None
+) -> results.ProteinGroupResults:
+    if additional_headers is None:
+        additional_headers = []
+
+    delimiter = "\t"
+    if combined_protein_file.endswith(".csv"):
+        delimiter = ","
+
+    reader = tsv.get_tsv_reader(combined_protein_file, delimiter)
+    headers = next(reader)
+
+    cols = {
+        x: headers.index(x)
+        for x in writers.PROTEIN_GROUP_HEADERS
+        + ["Protein group", "Protein Probability"]
+        + additional_headers
+        if x in headers
+    }
+
+    logger.info("Parsing FragPipe combined_protein_tsv file")
+    protein_group_results = []
+    for row in reader:
+        protein_group_results.append(
+            parse_fragpipe_combined_protein_file_row(row, cols, additional_headers)
+        )
+
+    protein_group_results = results.ProteinGroupResults(protein_group_results)
+    protein_group_results.append_headers(additional_headers)
+
+    return protein_group_results
+
+
+def parse_fragpipe_combined_protein_file_row(row, cols, additional_headers):
+    def _get_field(x, default_value=""):
+        return row[cols[x]] if x in cols else default_value
+
+    return results.ProteinGroupResult(
+        proteinIds=_get_field("Protein group"),
+        majorityProteinIds=_get_field("Majority protein IDs"),
+        peptideCountsUnique=_get_field(
+            "Peptide counts (unique)",
+            ";".join(["1"] * len(_get_field("Protein group").split(";"))),
+        ),
+        bestPeptide="",
+        numberOfProteins=int(_get_field("Number of proteins", -1)),
+        qValue=float(_get_field("Q-value", 0.0)),
+        score=float(_get_field("Score", _get_field("Protein Probability"))),
+        reverse=_get_field(
+            "Reverse",
+            "+" if helpers.is_decoy(_get_field("Protein group").split(";")) else "",
+        ),
+        potentialContaminant=_get_field("Potential contaminant"),
+        precursorQuants=[],
+        extraColumns=[_get_field(x) for x in additional_headers],
+    )

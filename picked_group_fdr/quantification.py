@@ -23,6 +23,7 @@ from . import digestion_params
 from . import protein_annotation
 from . import peptide_protein_map
 from .parsers import maxquant
+from .parsers import fragpipe
 from .parsers import parsers
 from .protein_groups import ProteinGroups
 from .scoring_strategy import ProteinScoringStrategy
@@ -41,17 +42,40 @@ def parse_args(argv):
         "--mq_evidence",
         default=None,
         metavar="EV",
-        required=True,
         nargs="+",
         help="""MaxQuant evidence file.""",
+    )
+
+    apars.add_argument(
+        "--fragpipe_psm",
+        default=None,
+        metavar="PSM",
+        nargs="+",
+        help="""Fragpipe psm.tsv output file(s); alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
+        "--combined_ion",
+        default=None,
+        metavar="I",
+        nargs="+",
+        help="""Path to combined_ion.tsv produced by IonQuant/FragPipe. This enables
+                quantification of protein groups by PickedGroupFDR.""",
     )
 
     apars.add_argument(
         "--mq_protein_groups",
         default=None,
         metavar="PG",
-        required=True,
         help="""MaxQuant protein groups file.""",
+    )
+
+    apars.add_argument(
+        "--combined_protein",
+        default=None,
+        metavar="PG",
+        help="""Protein groups file in combined_protein.tsv MSFragger format.""",
     )
 
     apars.add_argument(
@@ -127,6 +151,12 @@ def add_quant_arguments(apars) -> None:
         metavar="C",
         type=float,
         help="PSM-level FDR threshold used for filtering PSMs for quantification.",
+    )
+
+    apars.add_argument(
+        "--skip_lfq",
+        help="Skip LFQ quantification, this significantly speeds up quantification.",
+        action="store_true",
     )
 
     apars.add_argument(
@@ -238,23 +268,32 @@ def main(argv) -> None:
     db = "target" if args.fasta_contains_decoys else "concat"
 
     peptide_to_protein_maps = peptide_protein_map.get_peptide_to_protein_maps_from_args(
-        args,
-        use_pseudo_genes=False
+        args, use_pseudo_genes=False
     )
-    
+
     protein_annotations = dict()
     if args.fasta:
         protein_annotations = protein_annotation.get_protein_annotations_multiple(
             args.fasta, db=db, parse_id=parse_id
         )
 
-    protein_group_results = maxquant.parse_mq_protein_groups_file(
-        args.mq_protein_groups
-    )
-
-    score_type = ProteinScoringStrategy("bestPEP")
+    score_type_string = "bestPEP"
     if peptide_to_protein_maps == [None]:
-        score_type = ProteinScoringStrategy("no_remap bestPEP")
+        score_type_string = "no_remap bestPEP"
+    
+    if args.mq_protein_groups:
+        protein_group_results = maxquant.parse_mq_protein_groups_file(
+            args.mq_protein_groups
+        )
+    elif args.combined_protein:
+        protein_group_results = fragpipe.parse_fragpipe_combined_protein_file(
+            args.combined_protein
+        )
+        score_type_string = "FragPipe " + score_type_string
+    else:
+        raise ValueError("Need either --mq_protein_groups or --combined_protein as input to read protein groups from.")
+
+    score_type = ProteinScoringStrategy(score_type_string)
 
     use_pseudo_genes = False
     (

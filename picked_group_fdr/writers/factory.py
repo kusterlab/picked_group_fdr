@@ -27,6 +27,7 @@ def get_protein_groups_output_writer(
         return writers.FragPipeCombinedProteinWriter(
             protein_groups,
             protein_annotations,
+            args.skip_lfq,
             args.lfq_min_peptide_ratios,
             args.lfq_stabilize_large_ratios,
             args.num_threads,
@@ -46,6 +47,7 @@ def get_protein_groups_output_writer(
             num_ibaq_peptides_per_protein,
             protein_annotations,
             protein_sequences,
+            args.skip_lfq,
             args.lfq_min_peptide_ratios,
             args.lfq_stabilize_large_ratios,
             args.num_threads,

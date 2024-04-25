@@ -132,16 +132,16 @@ def get_silac_cols(headers, get_header_col, for_quantification):
 
 
 def parse_mq_protein_groups_file(
-    mqProteinGroupsFile: str, additional_headers: List[str] = None
+    mq_protein_groups_file: str, additional_headers: List[str] = None
 ) -> results.ProteinGroupResults:
     if additional_headers is None:
         additional_headers = []
 
     delimiter = "\t"
-    if mqProteinGroupsFile.endswith(".csv"):
+    if mq_protein_groups_file.endswith(".csv"):
         delimiter = ","
 
-    reader = tsv.get_tsv_reader(mqProteinGroupsFile, delimiter)
+    reader = tsv.get_tsv_reader(mq_protein_groups_file, delimiter)
     headers = next(reader)
 
     cols = {
