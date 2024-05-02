@@ -84,6 +84,12 @@ def parse_args(argv):
                 (automatic detection).""",
     )
 
+    apars.add_argument(
+        "--suppress_missing_peptide_warning",
+        help="Suppress missing peptide warning when mapping peptides to proteins.",
+        action="store_true",
+    )
+
     # ------------------------------------------------
     args = apars.parse_args(argv)
 
@@ -114,6 +120,7 @@ def main(argv) -> None:
         args.mq_evidence_out,
         args.mq_msms,
         args.pout_input_type,
+        args.suppress_missing_peptide_warning,
     )
 
     os.rename(args.mq_evidence_out + ".tmp", args.mq_evidence_out)
@@ -125,6 +132,7 @@ def update_evidence_file(
     out_evidence_file: str,
     msms_files: List[str],
     pout_input_type: str,
+    suppress_missing_peptide_warning: bool,
 ) -> None:
     fixed_mods, results_dict = get_percolator_results(pout_files, pout_input_type)
 
@@ -139,6 +147,7 @@ def update_evidence_file(
             fixed_mods,
             results_dict,
             pout_input_type,
+            suppress_missing_peptide_warning,
         )
 
     logger.info(f"Results written to {out_evidence_file}")
@@ -151,6 +160,7 @@ def update_evidence_single(
     fixed_mods: Dict[str, str],
     results_dict: Dict[str, Dict[Tuple[int, str], Tuple[float, float]]],
     pout_input_type: str,
+    suppress_missing_peptide_warning: bool,
 ) -> List[str]:
     logger.info(f"Processing {evidence_file}")
     reader = tsv.get_tsv_reader(evidence_file)
@@ -199,12 +209,14 @@ def update_evidence_single(
         if not perc_result:
             if is_unexplainable_missing_psm(psm, peptide, pout_input_type):
                 unexplained_missing_PSMs += 1
-                logger.debug("Unexplained missing PSM:")
+                if not suppress_missing_peptide_warning:
+                    logger.debug("Unexplained missing PSM:")
                 if unexplained_missing_PSMs <= 10:
                     unexplained_peptides.append(psm.peptide)
-            logger.debug(
-                f"Missing PSM in percolator output: {psm.raw_file}, {peptide}, {psm.scannr}"
-            )
+            if not suppress_missing_peptide_warning:
+                logger.debug(
+                    f"Missing PSM in percolator output: {psm.raw_file}, {peptide}, {psm.scannr}"
+                )
             continue
 
         perc_score, perc_post_err_prob = perc_result
@@ -303,6 +315,7 @@ def update_peptides_file(
     out_peptide_file: str,
     msms_files: List[str],
     pout_input_type: str,
+    suppress_missing_peptide_warning: bool,
 ) -> None:
     _, results_dict = get_percolator_results(pout_files, pout_input_type)
 

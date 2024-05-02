@@ -1,7 +1,10 @@
 from typing import List
 from picked_group_fdr.protein_annotation import ProteinAnnotation
 from picked_group_fdr.columns.base import ProteinGroupColumns
-from picked_group_fdr.columns.protein_annotations import MQ_PROTEIN_ANNOTATION_HEADERS, ProteinAnnotationsColumns
+from picked_group_fdr.columns.protein_annotations import (
+    MQ_PROTEIN_ANNOTATION_HEADERS,
+    ProteinAnnotationsColumns,
+)
 from picked_group_fdr.results import ProteinGroupResult, ProteinGroupResults
 from picked_group_fdr.parsers.maxquant import parse_mq_protein_groups_file_row
 
@@ -109,7 +112,9 @@ def test_from_protein_group_keep_all_proteins():
         keep_all_proteins,
     )
 
-    annotation_columns: List[ProteinGroupColumns] = [ProteinAnnotationsColumns(proteinAnnotations)]
+    annotation_columns: List[ProteinGroupColumns] = [
+        ProteinAnnotationsColumns(proteinAnnotations)
+    ]
 
     proteinGroupResults = ProteinGroupResults([p])
     for c in annotation_columns:

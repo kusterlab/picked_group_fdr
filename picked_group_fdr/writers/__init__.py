@@ -1,5 +1,6 @@
 from .base import (
-    format_extra_columns,
+    finalize_output,
+    write_protein_groups,
     PROTEIN_GROUP_HEADERS,
     ProteinGroupsWriter,
 )

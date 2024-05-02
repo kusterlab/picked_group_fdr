@@ -7,7 +7,7 @@ from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from ..precursor_quant import PrecursorQuant
+from .. import precursor_quant
 from .. import results
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class SpectralCountColumns(ProteinGroupColumns):
 
 
 def _spectral_counts_per_experiment(
-    precursor_list: List[PrecursorQuant],
+    precursor_list: List[precursor_quant.PrecursorQuant],
     experiment_to_idx_map: Dict[str, int],
     post_err_prob_cutoff: float,
 ):

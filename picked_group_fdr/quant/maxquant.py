@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from typing import List, Optional
 
@@ -6,13 +8,14 @@ import pandas as pd
 
 from .. import helpers
 from ..parsers import psm
-from ..precursor_quant import PrecursorQuant
-from ..protein_groups import ProteinGroups
-from ..results import ProteinGroupResults
 from ..parsers import parsers
+from ..precursor_quant import PrecursorQuant
 
 # for type hints only
 from .. import digest
+from .. import results
+from .. import protein_groups as pg
+from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +23,13 @@ logger = logging.getLogger(__name__)
 def add_precursor_quants(
     mq_evidence_files: List[str],
     mq_quantification_files: List[str],
-    protein_groups: ProteinGroups,
-    protein_group_results: ProteinGroupResults,
+    protein_groups: pg.ProteinGroups,
+    protein_group_results: results.ProteinGroupResults,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
+    score_type: scoring_strategy.ProteinScoringStrategy,
+    suppress_missing_peptide_warning: bool,
 ):
     file_mapping = None
     if experimental_design is not None:
@@ -51,7 +56,7 @@ def add_precursor_quants(
     ) in psm.parse_evidence_file_multiple(
         mq_evidence_files,
         peptide_to_protein_maps=peptide_to_protein_maps,
-        score_type=None,
+        score_type=score_type,
         for_quantification=True,
     ):
         if protein_group_results.num_tmt_channels == -1:
@@ -73,9 +78,10 @@ def add_precursor_quants(
 
         # removes peptides not present in the proteinGroups.txt file
         if helpers.is_missing_in_protein_groups(protein_group_idxs):
-            logger.debug(
-                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-            )
+            if not suppress_missing_peptide_warning:
+                logger.debug(
+                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                )
             missing_peptides_in_protein_groups += 1
             continue
 

@@ -7,6 +7,8 @@ from typing import Optional
 import numpy as np
 
 from . import tsv
+
+# for type hints only
 from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)

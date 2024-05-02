@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import List, Dict
+from typing import List
 import logging
 
 from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from ..precursor_quant import PrecursorQuant
+from .. import precursor_quant
 from .. import results
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class TopPeptideProbabilityColumns(ProteinGroupColumns):
 
 
 def _top_peptide_probability(
-    precursor_list: List[PrecursorQuant],
+    precursor_list: List[precursor_quant.PrecursorQuant],
 ) -> float:
     top_peptide_probability = 0.0
     for precursor in precursor_list:

@@ -7,7 +7,7 @@ from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from ..precursor_quant import PrecursorQuant
+from .. import precursor_quant
 from .. import results
 
 
@@ -37,7 +37,7 @@ class IdentificationTypeColumns(ProteinGroupColumns):
 
 
 def _identification_type_per_experiment(
-    peptideIntensityList: List[PrecursorQuant],
+    peptideIntensityList: List[precursor_quant.PrecursorQuant],
     experimentToIdxMap: Dict[str, int],
     postErrProbCutoff: float,
 ):

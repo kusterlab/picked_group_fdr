@@ -32,10 +32,12 @@ def test_has_gene_names_false_below_half():
             id=f"protein{p}", gene_name=f"gene{p}", fasta_header=f"fasta{p}"
         )
     for p in ["A", "B", "C", "D", "E"]:
-        proteinAnnotations[f"protein_no_gene{p}"] = protein_annotation.ProteinAnnotation(
-            id=f"protein_no_gene{p}",
-            gene_name="",
-            fasta_header=f"fasta_no_gene{p}",
+        proteinAnnotations[f"protein_no_gene{p}"] = (
+            protein_annotation.ProteinAnnotation(
+                id=f"protein_no_gene{p}",
+                gene_name="",
+                fasta_header=f"fasta_no_gene{p}",
+            )
         )
 
     assert (

@@ -1,3 +1,9 @@
+"""
+Updates protein and gene name specific columns in `psm.tsv` and `protein.tsv` 
+file for each FragPipe experiment folder using a protein grouping result from 
+Picked Group FDR in MaxQuant's proteinGroups.txt format.
+"""
+
 from pathlib import Path
 import sys
 import os
@@ -22,6 +28,7 @@ from ..quant.fragpipe import add_precursor_quants, add_precursor_quants_multiple
 from ..protein_annotation import ProteinAnnotation
 from ..protein_groups import ProteinGroups
 from ..results import ProteinGroupResults
+from ..scoring_strategy import ProteinScoringStrategy
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -66,7 +73,8 @@ def parse_args(argv):
         "--combined_ion",
         default=None,
         metavar="I",
-        help="""Path to combined_ion.tsv produced by IonQuant/FragPipe. This enables
+        nargs="+",
+        help="""Path to combined_ion.tsv file(s) produced by IonQuant/FragPipe. This enables
                 quantification of protein groups by PickedGroupFDR in 
                 combined_protein.tsv.""",
     )
@@ -78,6 +86,12 @@ def parse_args(argv):
         help="""Output folder (optional). If this argument is not specified, the
                 original psm.tsv and protein.tsv are overwritten, keeping copies
                 of the original files as psm.original.tsv and protein.original.tsv.""",
+    )
+
+    apars.add_argument(
+        "--suppress_missing_peptide_warning",
+        help="Suppress missing peptide warning when mapping peptides to proteins.",
+        action="store_true",
     )
 
     add_quant_arguments(apars)
@@ -111,7 +125,11 @@ def main(argv):
 
     for fragpipe_psm_file in args.fragpipe_psm:
         fragpipe_psm_file_out = update_fragpipe_psm_file(
-            fragpipe_psm_file, protein_groups, protein_annotations, args.output_folder
+            fragpipe_psm_file,
+            protein_groups,
+            protein_annotations,
+            args.output_folder,
+            args.suppress_missing_peptide_warning,
         )
 
         # create a fresh ProteinGroupResults object for each psm.tsv
@@ -126,6 +144,7 @@ def main(argv):
             protein_sequences,
             experimental_design,
             args.output_folder,
+            suppress_missing_peptide_warning=args.suppress_missing_peptide_warning,
         )
 
     if args.combined_ion is not None:
@@ -140,8 +159,9 @@ def main(argv):
             protein_group_results,
             protein_annotations,
             args.output_folder,
+            suppress_missing_peptide_warning=args.suppress_missing_peptide_warning,
         )
-    
+
     logger.info(f"Protein group results have been written to: {args.output_folder}")
 
 
@@ -151,6 +171,7 @@ def update_fragpipe_psm_file(
     protein_annotations: Dict[str, ProteinAnnotation],
     output_folder: Optional[str] = None,
     discard_shared_peptides: bool = True,
+    suppress_missing_peptide_warning: bool = False,
 ) -> str:
     """Update protein mappings for each peptide using the PickedGroupFDR protein groups.
 
@@ -203,9 +224,10 @@ def update_fragpipe_psm_file(
         row_protein_groups = protein_groups.get_protein_groups(proteins)
 
         if helpers.is_missing_in_protein_groups(row_protein_groups):
-            logger.debug(
-                f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-            )
+            if not suppress_missing_peptide_warning:
+                logger.debug(
+                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                )
             missing_peptides_in_protein_groups += 1
             continue
 
@@ -283,6 +305,7 @@ def generate_fragpipe_protein_file(
     output_folder: Optional[str] = None,
     psm_fdr_cutoff: float = 0.01,
     discard_shared_peptides: bool = True,
+    suppress_missing_peptide_warning: bool = False,
 ):
     """Generate experiment specific protein.tsv file from psm.tsv and fasta file.
 
@@ -324,6 +347,7 @@ def generate_fragpipe_protein_file(
         protein_groups,
         experiment,
         discard_shared_peptides,
+        suppress_missing_peptide_warning,
     )
 
     fragpipe_protein_file_out = get_fragpipe_protein_out_path(
@@ -366,13 +390,14 @@ def get_fragpipe_protein_out_path(output_folder, fragpipe_psm_file):
 
 def generate_fragpipe_combined_protein_file(
     fragpipe_psm_files: List[str],
-    combined_ion_file: str,
+    combined_ion_files: List[str],
     protein_groups: ProteinGroups,
     protein_group_results: ProteinGroupResults,
     protein_annotations: Dict[str, ProteinAnnotation],
     output_folder: Optional[str] = None,
     psm_fdr_cutoff: float = 0.01,
     discard_shared_peptides: bool = True,
+    suppress_missing_peptide_warning: bool = False,
 ):
     """Generate combined_protein.tsv file from psm.tsv and protein annotations.
 
@@ -381,14 +406,18 @@ def generate_fragpipe_combined_protein_file(
         fasta_file (str): fasta file with all protein sequences
     """
 
+    score_type = ProteinScoringStrategy("no_remap bestPEP")
+
     protein_group_results, post_err_probs = add_precursor_quants_multiple(
         fragpipe_psm_files,
-        combined_ion_file,
+        combined_ion_files,
         protein_groups,
         protein_group_results,
         peptide_to_protein_maps=None,
         experimental_design=None,
         discard_shared_peptides=discard_shared_peptides,
+        score_type=score_type,
+        suppress_missing_peptide_warning=suppress_missing_peptide_warning,
     )
 
     if output_folder is None:
@@ -464,7 +493,9 @@ def write_fragpipe_combined_protein_file(
 
     fragpipe_writer.write(protein_group_results, protein_groups_out_file)
 
-    logger.info(f"Protein group results have been written to: {protein_groups_out_file}")
+    logger.info(
+        f"Protein group results have been written to: {protein_groups_out_file}"
+    )
 
 
 if __name__ == "__main__":

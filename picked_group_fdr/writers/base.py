@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import collections
 import logging
-from typing import Dict, List, Union
+from pathlib import Path
+from typing import Dict, List, Union, TYPE_CHECKING
 
 import numpy as np
 
@@ -10,9 +11,11 @@ from .. import fdr
 from .. import helpers
 
 # for type hints only
-from .. import results
-from .. import columns
-from ..precursor_quant import PrecursorQuant
+if TYPE_CHECKING:
+    from .. import results
+    from .. import columns
+    from .. import methods
+    from .. import precursor_quant
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +42,7 @@ class ProteinGroupsWriter:
         pass
 
     def get_extra_columns_formatter(self):
-        return format_extra_columns
+        return _format_extra_columns
 
     def append_quant_columns(
         self,
@@ -87,8 +90,19 @@ class ProteinGroupsWriter:
         )
 
 
+def write_protein_groups(
+    protein_groups_writer: ProteinGroupsWriter,
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups_out: str,
+) -> None:
+    Path(protein_groups_out).parent.mkdir(parents=True, exist_ok=True)
+
+    protein_groups_writer.write(protein_group_results, protein_groups_out)
+    logger.info(f"Protein group results have been written to: {protein_groups_out}")
+
+
 def _retain_only_identified_precursors(
-    precursor_list: List[PrecursorQuant], post_err_prob_cutoff
+    precursor_list: List[precursor_quant.PrecursorQuant], post_err_prob_cutoff
 ):
     identified_precursors = set()
     for precursor in precursor_list:
@@ -137,7 +151,7 @@ def _print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float
         )
 
 
-def format_extra_columns(x: Union[str, float]) -> str:
+def _format_extra_columns(x: Union[str, float]) -> str:
     if type(x) == str:
         return x
     if np.isnan(x):
@@ -145,3 +159,44 @@ def format_extra_columns(x: Union[str, float]) -> str:
     return "%.0f" % (x)
 
 
+def _get_output_filename(
+    protein_groups_out: Path,
+    apply_filename_suffix: bool,
+    method_config: methods.MethodConfig,
+):
+    if not apply_filename_suffix:
+        return protein_groups_out
+
+    protein_groups_out = Path(protein_groups_out)
+    label = method_config.label
+    if label is None:
+        label = method_config.short_description(rescue_step=True)
+    else:
+        label = label.lower().replace(" ", "_")
+    return f"{protein_groups_out.stem}_{label}{protein_groups_out.suffix}"
+
+
+def finalize_output(
+    protein_group_results: results.ProteinGroupResults,
+    protein_groups_writer: ProteinGroupsWriter,
+    post_err_probs: List,
+    protein_groups_out: str,
+    psm_fdr_cutoff: float,
+    apply_filename_suffix: bool,
+    method_config: methods.MethodConfig,
+):
+    protein_groups_writer.append_quant_columns(
+        protein_group_results, post_err_probs, psm_fdr_cutoff
+    )
+
+    if not protein_groups_out:
+        return
+
+    protein_groups_out = _get_output_filename(
+        protein_groups_out, apply_filename_suffix, method_config
+    )
+    write_protein_groups(
+        protein_groups_writer,
+        protein_group_results,
+        protein_groups_out,
+    )

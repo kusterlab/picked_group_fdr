@@ -9,7 +9,7 @@ from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from ..precursor_quant import PrecursorQuant
+from .. import precursor_quant
 from .. import results
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class SequenceCoverageColumns(ProteinGroupColumns):
 
     def get_sequence_coverages(
         self,
-        precursor_list: List[PrecursorQuant],
+        precursor_list: List[precursor_quant.PrecursorQuant],
         experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
         protein_ids: str,
@@ -70,7 +70,7 @@ class SequenceCoverageColumns(ProteinGroupColumns):
 
     def unique_peptides_per_experiment(
         self,
-        precursor_list: List[PrecursorQuant],
+        precursor_list: List[precursor_quant.PrecursorQuant],
         experiment_to_idx_map: Dict[str, int],
         post_err_prob_cutoff: float,
     ) -> List[Set[str]]:

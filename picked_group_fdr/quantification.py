@@ -1,5 +1,19 @@
+"""Performs quantification of previously generated protein groups and adds columns to a new output file.
+
+Currently only works with MaxQuant proteinGroups.txt.
+
+Usage:
+
+    python -m picked_group_fdr.quantification \
+        --mq_evidence evidence.txt \
+        --mq_protein_groups proteinGroups.txt \
+        --protein_groups_out proteinGroups_with_quant.txt \
+        --fasta db.fasta
+"""
+
 import sys
 import os
+import argparse
 import logging
 from typing import Dict, List, Tuple
 
@@ -7,19 +21,19 @@ from . import writers
 from . import digest
 from . import digestion_params
 from . import protein_annotation
-from . import picked_group_fdr
+from . import peptide_protein_map
 from .parsers import maxquant
+from .parsers import fragpipe
 from .parsers import parsers
-from .quant import maxquant as mq_quant
-from .columns import protein_annotations as pa
-from .columns.triqler import init_triqler_params
+from .protein_groups import ProteinGroups
+from .scoring_strategy import ProteinScoringStrategy
+from .results import ProteinGroupResults
 
-logger = logging.getLogger(__name__)
+# hacky way to get package logger when running as module
+logger = logging.getLogger(__package__ + "." + __file__)
 
 
 def parse_args(argv):
-    import argparse
-
     apars = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -28,17 +42,40 @@ def parse_args(argv):
         "--mq_evidence",
         default=None,
         metavar="EV",
-        required=True,
         nargs="+",
         help="""MaxQuant evidence file.""",
+    )
+
+    apars.add_argument(
+        "--fragpipe_psm",
+        default=None,
+        metavar="PSM",
+        nargs="+",
+        help="""Fragpipe psm.tsv output file(s); alternative for 
+                --mq_evidence.""",
+    )
+
+    apars.add_argument(
+        "--combined_ion",
+        default=None,
+        metavar="I",
+        nargs="+",
+        help="""Path to combined_ion.tsv produced by IonQuant/FragPipe. This enables
+                quantification of protein groups by PickedGroupFDR.""",
     )
 
     apars.add_argument(
         "--mq_protein_groups",
         default=None,
         metavar="PG",
-        required=True,
         help="""MaxQuant protein groups file.""",
+    )
+
+    apars.add_argument(
+        "--combined_protein",
+        default=None,
+        metavar="PG",
+        help="""Protein groups file in combined_protein.tsv MSFragger format.""",
     )
 
     apars.add_argument(
@@ -46,15 +83,26 @@ def parse_args(argv):
         default=None,
         metavar="PG",
         required=True,
-        help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.
-                                """,
+        help="""Protein groups output file, mimicks a subset of the MQ protein groups columns.""",
+    )
+
+    apars.add_argument(
+        "--output_format",
+        default="auto",
+        metavar="PG",
+        help="""Protein groups output format. Options are "auto", "maxquant" and 
+                "fragpipe". "auto": decide based on input file format, uses
+                "maxquant" if no suitable format is known; "maxquant": proteinGroups.txt
+                format; "fragpipe": combined_protein.tsv format.""",
     )
 
     apars.add_argument(
         "--peptide_protein_map",
         default=None,
         metavar="M",
-        help="""TSV file with mapping from peptides to proteins.""",
+        nargs="+",
+        help="""Tab-separated file with mapping from peptides to proteins; alternative for 
+                --fasta flag if digestion is time consuming.""",
     )
 
     apars.add_argument(
@@ -80,6 +128,12 @@ def parse_args(argv):
         action="store_true",
     )
 
+    apars.add_argument(
+        "--suppress_missing_peptide_warning",
+        help="Suppress missing peptide warning when mapping peptides to proteins.",
+        action="store_true",
+    )
+
     digestion_params.add_digestion_arguments(apars)
 
     add_quant_arguments(apars)
@@ -97,6 +151,12 @@ def add_quant_arguments(apars) -> None:
         metavar="C",
         type=float,
         help="PSM-level FDR threshold used for filtering PSMs for quantification.",
+    )
+
+    apars.add_argument(
+        "--skip_lfq",
+        help="Skip LFQ quantification, this significantly speeds up quantification.",
+        action="store_true",
     )
 
     apars.add_argument(
@@ -141,6 +201,58 @@ def add_quant_arguments(apars) -> None:
     )
 
 
+def do_quantification(
+    score_type: ProteinScoringStrategy,
+    args: argparse.Namespace,
+    protein_group_results: ProteinGroupResults,
+    protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
+    use_pseudo_genes: bool,
+    peptide_to_protein_maps: List[digest.PeptideToProteinMap],
+    suppress_missing_peptide_warning: bool,
+) -> Tuple[ProteinGroupResults, writers.ProteinGroupsWriter, List]:
+    if not score_type.can_do_quantification():
+        logger.warning(
+            "Skipping quantification: need input file with precursor quantifications."
+        )
+        return protein_group_results
+
+    logger.info("Preparing for quantification")
+
+    score_origin = score_type.score_origin.long_description().lower()
+    if args.output_format == "auto" and score_origin in ["maxquant", "fragpipe"]:
+        args.output_format = score_origin
+
+    parse_id = digest.parse_until_first_space
+    if args.gene_level and not use_pseudo_genes:
+        parse_id = protein_annotation.parse_gene_name_func
+
+    protein_groups_writer = writers.get_protein_groups_output_writer(
+        protein_group_results,
+        args.output_format,
+        args,
+        protein_annotations,
+        parse_id,
+        peptide_to_protein_maps,
+    )
+
+    protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
+    experimental_design = get_experimental_design(args)
+    discard_shared_peptides = True
+    protein_group_results, post_err_probs = score_type.get_quantification_parser()(
+        score_type.get_evidence_file(args),
+        score_type.get_quantification_file(args),
+        protein_groups,
+        protein_group_results,
+        peptide_to_protein_maps,
+        experimental_design,
+        discard_shared_peptides,
+        score_type=score_type,
+        suppress_missing_peptide_warning=suppress_missing_peptide_warning,
+    )
+
+    return protein_group_results, protein_groups_writer, post_err_probs
+
+
 def main(argv) -> None:
     logger.info(
         f'Issued command: {os.path.basename(__file__)} {" ".join(map(str, argv))}'
@@ -155,52 +267,59 @@ def main(argv) -> None:
         parse_id = protein_annotation.parse_uniprot_id
     db = "target" if args.fasta_contains_decoys else "concat"
 
+    peptide_to_protein_maps = peptide_protein_map.get_peptide_to_protein_maps_from_args(
+        args, use_pseudo_genes=False
+    )
+
+    protein_annotations = dict()
+    if args.fasta:
+        protein_annotations = protein_annotation.get_protein_annotations_multiple(
+            args.fasta, db=db, parse_id=parse_id
+        )
+
+    score_type_string = "bestPEP"
+    if peptide_to_protein_maps == [None]:
+        score_type_string = "no_remap bestPEP"
+    
+    if args.mq_protein_groups:
+        protein_group_results = maxquant.parse_mq_protein_groups_file(
+            args.mq_protein_groups
+        )
+    elif args.combined_protein:
+        protein_group_results = fragpipe.parse_fragpipe_combined_protein_file(
+            args.combined_protein
+        )
+        score_type_string = "FragPipe " + score_type_string
+    else:
+        raise ValueError("Need either --mq_protein_groups or --combined_protein as input to read protein groups from.")
+
+    score_type = ProteinScoringStrategy(score_type_string)
+
+    use_pseudo_genes = False
     (
-        peptide_to_protein_maps,
-        num_ibaq_peptides_per_protein,
-    ) = get_peptide_to_protein_maps(args, parse_id=parse_id)
-
-    protein_annotations = protein_annotation.get_protein_annotations_multiple(
-        args.fasta, db=db, parse_id=parse_id
-    )
-    protein_sequences = digest.get_protein_sequences(
-        args.fasta, db=db, parse_id=parse_id
-    )
-
-    protein_group_results = maxquant.parse_mq_protein_groups_file(
-        args.mq_protein_groups,
-        additional_headers=pa.MQ_PROTEIN_ANNOTATION_HEADERS,
-    )
-
-    experimental_design = get_experimental_design(args)
-
-    params = init_triqler_params(experimental_design)
-    protein_groups_writer = writers.MaxQuantProteinGroupsWriter(
-        num_ibaq_peptides_per_protein,
-        protein_annotations,
-        protein_sequences,
-        args.lfq_min_peptide_ratios,
-        args.lfq_stabilize_large_ratios,
-        args.num_threads,
-        params,
-    )
-
-    protein_group_results, post_err_probs = mq_quant.add_precursor_quants(
         protein_group_results,
-        args.mq_evidence,
+        protein_groups_writer,
+        post_err_probs,
+    ) = do_quantification(
+        score_type,
+        args,
+        protein_group_results,
+        protein_annotations,
+        use_pseudo_genes,
         peptide_to_protein_maps,
-        experimental_design,
-        discard_shared_peptides=True,
+        args.suppress_missing_peptide_warning,
     )
 
-    protein_group_results = protein_groups_writer.append_quant_columns(
-        protein_group_results, post_err_probs, args.psm_fdr_cutoff
-    )
-
-    protein_group_results.write(args.protein_groups_out)
-
-    logger.info(
-        f"Protein group results have been written to: {args.protein_groups_out}"
+    apply_filename_suffix = False
+    method_config = None
+    writers.finalize_output(
+        protein_group_results,
+        protein_groups_writer,
+        post_err_probs,
+        args.protein_groups_out,
+        args.psm_fdr_cutoff,
+        apply_filename_suffix,
+        method_config,
     )
 
 
@@ -213,27 +332,6 @@ def get_experimental_design(args):
     elif args.file_list_file:
         experimental_design = parsers.parse_triqler_file_list(args.file_list_file)
     return experimental_design
-
-
-def get_peptide_to_protein_maps(
-    args, **kwargs
-) -> Tuple[List[digest.PeptideToProteinMap], Dict[str, int]]:
-    logger.info("Loading peptide to protein map...")
-
-    digestion_params_list = digestion_params.get_digestion_params_list(args)
-    peptide_to_protein_maps = picked_group_fdr.get_peptide_to_protein_maps(
-        args.fasta,
-        args.peptide_protein_map,
-        digestion_params_list,
-        args.mq_protein_groups,
-        **kwargs,
-    )
-
-    num_ibaq_peptides_per_protein = digest.get_num_ibaq_peptides_per_protein_from_args(
-        args, peptide_to_protein_maps
-    )
-
-    return peptide_to_protein_maps, num_ibaq_peptides_per_protein
 
 
 if __name__ == "__main__":

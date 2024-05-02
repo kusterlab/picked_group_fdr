@@ -546,7 +546,7 @@ def get_all_proteins(peptide_to_protein_map):
 
 
 def get_ibaq_peptide_to_protein_map(
-    fasta_files: List[str], digestion_params_list: List[DigestionParams]
+    fasta_files: List[str], digestion_params_list: List[DigestionParams], **kwargs
 ):
     digestion_params_list_ibaq = []
     for digestion_params in digestion_params_list:
@@ -556,16 +556,16 @@ def get_ibaq_peptide_to_protein_map(
         digestion_params.methionine_cleavage = False
         digestion_params_list_ibaq.append(digestion_params)
     return get_peptide_to_protein_map_from_params(
-        fasta_files, digestion_params_list_ibaq
+        fasta_files, digestion_params_list_ibaq, **kwargs
     )
 
 
-def get_num_ibaq_peptides_per_protein_from_args(args, peptide_to_protein_maps):
+def get_num_ibaq_peptides_per_protein_from_args(args, peptide_to_protein_maps, **kwargs):
     digestion_params_list = get_digestion_params_list(args)
     if args.fasta:
         logger.info("In silico protein digest for iBAQ")
         num_ibaq_peptides_per_protein = get_num_ibaq_peptides_per_protein(
-            args.fasta, digestion_params_list
+            args.fasta, digestion_params_list, **kwargs
         )
     elif args.peptide_protein_map:
         logger.warning("Found peptide_protein_map (instead of fasta input): ")
@@ -584,10 +584,10 @@ def get_num_ibaq_peptides_per_protein_from_args(args, peptide_to_protein_maps):
 
 
 def get_num_ibaq_peptides_per_protein(
-    fasta_files: List[str], digestion_params_list: List[DigestionParams]
+    fasta_files: List[str], digestion_params_list: List[DigestionParams], **kwargs
 ) -> Dict[str, int]:
     peptide_to_protein_map_ibaq = get_ibaq_peptide_to_protein_map(
-        fasta_files, digestion_params_list
+        fasta_files, digestion_params_list, **kwargs
     )
     return get_num_peptides_per_protein(peptide_to_protein_map_ibaq)
 

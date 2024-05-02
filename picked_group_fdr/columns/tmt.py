@@ -9,7 +9,7 @@ from .. import helpers
 from .base import ProteinGroupColumns
 
 # for type hints only
-from ..precursor_quant import PrecursorQuant
+from .. import precursor_quant
 from .. import results
 
 
@@ -55,7 +55,7 @@ class TMTIntensityColumns(ProteinGroupColumns):
 
 
 def _get_tmt_intensities(
-    precursor_list: List[PrecursorQuant],
+    precursor_list: List[precursor_quant.PrecursorQuant],
     experiment_to_idx_map: Dict[str, int],
     post_err_prob_cutoff: float,
     num_tmt_channels: int,

@@ -18,7 +18,7 @@ from .peptide_count import _unique_peptide_counts_per_experiment
 
 # imports for typing
 from .. import results
-from ..precursor_quant import PrecursorQuant
+from .. import precursor_quant
 
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
 
 def _getLFQIntensities(
-    precursor_list: List[PrecursorQuant],
+    precursor_list: List[precursor_quant.PrecursorQuant],
     experiment_to_idx_map: Dict[str, int],
     postErrProbCutoff: float,
     minPeptideRatiosLFQ: int = 2,
@@ -170,7 +170,7 @@ def _getLFQIntensities(
 
 
 def _getPeptideIntensities(
-    precursor_list: List[PrecursorQuant],
+    precursor_list: List[precursor_quant.PrecursorQuant],
     experimentToIdxMap: Dict[str, int],
     postErrProbCutoff: float,
     numSilacChannels: int,
@@ -180,7 +180,7 @@ def _getPeptideIntensities(
     Collects all precursor intensities per experiment
     """
 
-    def filterMissingAndUnidentified(p: PrecursorQuant):
+    def filterMissingAndUnidentified(p: precursor_quant.PrecursorQuant):
         return p.intensity > 0.0 and (
             helpers.is_mbr(p.post_err_prob) or p.post_err_prob <= postErrProbCutoff
         )
@@ -189,7 +189,7 @@ def _getPeptideIntensities(
 
     # for each (peptide, charge, experiment, fraction) tuple, sort the
     # lowest PEP (= most confident PSM) on top
-    def orderByPEP(p: PrecursorQuant):
+    def orderByPEP(p: precursor_quant.PrecursorQuant):
         return (
             p.peptide,
             p.charge,
@@ -228,7 +228,7 @@ def _getPeptideIntensities(
 
 def _applyLargeRatioStabilization(
     logMedianPeptideRatios: Dict[Tuple[int, int], float],
-    precursor_list: List[PrecursorQuant],
+    precursor_list: List[precursor_quant.PrecursorQuant],
     experimentToIdxMap: Dict[str, int],
     postErrProbCutoff: float,
     numSilacChannels: int,

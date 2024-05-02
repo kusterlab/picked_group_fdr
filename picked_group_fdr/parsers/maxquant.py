@@ -5,18 +5,17 @@ from enum import Enum
 import logging
 from typing import List
 
-from .parsers import tsv
-
 from . import tsv
 from .. import helpers
-from .. import results
-from .. import writers
+from .. import results  # TODO: get rid of this import
+from .. import writers  # TODO: get rid of this import
 
 # for type hints only
 from .. import scoring_strategy
 
 
 logger = logging.getLogger(__name__)
+
 
 def parse_mq_evidence_file(
     reader,
@@ -133,16 +132,16 @@ def get_silac_cols(headers, get_header_col, for_quantification):
 
 
 def parse_mq_protein_groups_file(
-    mqProteinGroupsFile: str, additional_headers: List[str] = None
+    mq_protein_groups_file: str, additional_headers: List[str] = None
 ) -> results.ProteinGroupResults:
     if additional_headers is None:
         additional_headers = []
 
     delimiter = "\t"
-    if mqProteinGroupsFile.endswith(".csv"):
+    if mq_protein_groups_file.endswith(".csv"):
         delimiter = ","
 
-    reader = tsv.get_tsv_reader(mqProteinGroupsFile, delimiter)
+    reader = tsv.get_tsv_reader(mq_protein_groups_file, delimiter)
     headers = next(reader)
 
     cols = {

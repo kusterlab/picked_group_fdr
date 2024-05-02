@@ -14,7 +14,7 @@ import triqler.qvality
 import triqler.triqler
 
 from .. import helpers
-from ..parsers import parsers
+from ..parsers import parsers  # TODO: get rid of this import
 from .base import ProteinGroupColumns
 
 # for type hints only

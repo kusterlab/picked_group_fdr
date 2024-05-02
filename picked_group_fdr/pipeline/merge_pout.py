@@ -87,10 +87,17 @@ def main(argv):
             args.fasta, digestion_params_list
         )
 
-    merge_pout(args.perc_results, peptide_to_protein_map, args.perc_merged)
+    merge_pout(
+        args.perc_results,
+        peptide_to_protein_map,
+        args.perc_merged,
+        args.suppress_missing_peptide_warning,
+    )
 
 
-def merge_pout(perc_results, peptideToProteinMap, perc_merged):
+def merge_pout(
+    perc_results, peptideToProteinMap, perc_merged, suppress_missing_peptide_warning
+):
     seenPeptides = dict()
     missingPeptides, matchedPeptides = 0, 0
     for poutFile in perc_results:
@@ -150,7 +157,10 @@ def merge_pout(perc_results, peptideToProteinMap, perc_merged):
                     matchedPeptides += 1
                     seenPeptides[peptide] = (qValue, row, isDecoy)
                 else:
-                    if not helpers.is_contaminant(proteins):
+                    if (
+                        not helpers.is_contaminant(proteins)
+                        and not suppress_missing_peptide_warning
+                    ):
                         logger.debug(
                             f"Could not find peptide {peptide} in fasta file, check your database and if the correct digestion parameters were specified"
                         )
