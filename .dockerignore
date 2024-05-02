@@ -2,5 +2,8 @@ admin
 build
 data
 dist
+docs
 results
 .*
+matplotlib_mock
+tests

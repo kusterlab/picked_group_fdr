@@ -1,4 +1,4 @@
-1. test if unit and system tests pass: `make test; make integration_test; make pipeline_test`
+1. test if unit and system tests pass: `make test; make integration_test; make pipeline_test; make system_test`
    test if fragpipe and sage system tests pass: `make fragpipe_test; make sage_test`
 2. check if docker image works: `make build; make all`
 3. update version number: `poetry version <major/minor/patch>`

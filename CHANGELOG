@@ -1,3 +1,15 @@
+v0.7.0
+- Less strict llvmlite dependency
+- Add functionality to requantify fragpipe combined_protein.tsv
+- Fix random number seed for mokapot
+- Major refactoring and linting of multiple scripts
+- Add system tests
+- Fix peptide_protein_map input option for quantification.py
+- Refactor picked_group_fdr.py, add some unit tests
+- Add --suppress_missing_peptide_warning to all relevant modules
+- Add readthedocs documentation
+- Allow combining multiple Sage or FragPipe searches
+
 v0.6.6
 - Revert return type to List for ProteinGroups.get_protein_groups
 
