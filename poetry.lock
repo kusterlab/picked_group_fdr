@@ -2129,4 +2129,4 @@ gui = ["pyqt5"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "aeb10b311e458d3b4d7c3c2a5f99c7d776d7763c10deba93282a4429501833f1"
+content-hash = "bf5fe6e2b8d368a7b2509803007f05fd486e94e205ffcc43c3d225503986c32c"
