@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class UniquePeptideCountColumns(ProteinGroupColumns):
+    """Counts unique peptides per experiment and in total for each protein.
+
+    Modified peptides are considered unique peptides themselves, e.g. 
+    AP(ox)EPTIDE and APEPTIDE would count as 2 unique peptides.
+    """    
     def append_headers(
         self,
         protein_group_results: results.ProteinGroupResults,
