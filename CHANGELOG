@@ -1,3 +1,7 @@
+v0.7.1
+- Switch to modified peptide instead of peptide in fragpipe parsing functions
+- Make peptide flanking characters consistent across search engines. Fixes bug with percolator input used with --peptide_protein_map
+
 v0.7.0
 - Less strict llvmlite dependency
 - Add functionality to requantify fragpipe combined_protein.tsv
