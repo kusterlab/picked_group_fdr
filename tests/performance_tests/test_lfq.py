@@ -46,7 +46,7 @@ def getPeptideIntensityList(num_experiments, num_peptides):
             x = random.uniform(1.0, 100.0)
             if x > 80.0: # test performance on sparse matrix
                 continue
-            peptideIntensityList.append(PrecursorQuant(f'_APEPTIDE{peptide}_', 2, f'file{experiment}', 1, x, 0.001, None, None, 1))
+            peptideIntensityList.append(PrecursorQuant(f'APEPTIDE{peptide}', 2, f'file{experiment}', 1, x, 0.001, None, None, 1))
 
     return peptideIntensityList
 

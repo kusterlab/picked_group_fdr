@@ -36,7 +36,7 @@ def getPeptideIntensityList(num_experiments, num_peptides, protein_sequence):
             start = random.randint(0, len(protein_sequence) - 60)
             length = random.randint(6, 50)
             peptide_sequence = protein_sequence[start:start+length]
-            peptideIntensityList.append(PrecursorQuant(f'_{peptide_sequence}_', 2, f'file{experiment}', 1, random.uniform(1.0, 100.0), 0.001, [], [], 1))
+            peptideIntensityList.append(PrecursorQuant(peptide_sequence, 2, f'file{experiment}', 1, random.uniform(1.0, 100.0), 0.001, [], [], 1))
 
     return peptideIntensityList 
 

@@ -219,8 +219,11 @@ def do_quantification(
     logger.info("Preparing for quantification")
 
     score_origin = score_type.score_origin.long_description().lower()
-    if args.output_format == "auto" and score_origin in ["maxquant", "fragpipe"]:
-        args.output_format = score_origin
+    if args.output_format == "auto":
+        if score_origin in ["maxquant", "fragpipe"]:
+            args.output_format = score_origin
+        else:
+            args.output_format = "maxquant"
 
     parse_id = digest.parse_until_first_space
     if args.gene_level and not use_pseudo_genes:

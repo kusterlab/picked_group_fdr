@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 """psm.tsv columns:
 1 Spectrum
 2 Spectrum File
-3 Peptide
-4 Modified Peptide
+3 Peptide  # example: KEVPKQQAAYR (does not contain modifications)
+4 Modified Peptide  # example: APHAM[147]DRDWKESVASK
 5 Prev AA
 6 Next AA
 7 Peptide Length

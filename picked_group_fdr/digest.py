@@ -515,8 +515,7 @@ def get_peptide_to_protein_map_from_file(
     return peptide_to_protein_map
 
 
-def get_proteins(peptide_to_protein_map, peptide):
-    peptide = peptide  # .replace("I", "L")
+def get_proteins(peptide_to_protein_map, peptide: str):
     if len(peptide_to_protein_map) == 2:
         hash_key = peptide[:6]
         proteins = list()

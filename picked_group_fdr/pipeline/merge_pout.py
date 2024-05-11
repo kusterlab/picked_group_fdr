@@ -123,11 +123,8 @@ def merge_pout(
                     f"Processing row {i}: #Missing peptides: {missingPeptides}, #Matched peptides: {matchedPeptides}"
                 )
 
-            # removeFlanks=True only removes a single character (MaxQuant convention)
             # convert peptide string to upper case, since prosit converts modified amino acids to lower case
-            peptide = helpers.clean_peptide(
-                row[peptCol][2:-2].upper(), remove_flanks=False
-            )
+            peptide = helpers.remove_modifications(row[peptCol][2:-2].upper())
 
             if len(peptideToProteinMap) > 0:
                 proteins = digest.get_proteins(peptideToProteinMap, peptide)

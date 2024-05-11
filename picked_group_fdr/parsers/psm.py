@@ -34,8 +34,9 @@ def get_peptide_to_protein_mapper(
         Callable[[str, List[str]], List[str]]: a function that maps a peptide and a list
             of proteins to an updated list of proteins.
     """    
-    def get_proteins(peptide, tmp_proteins):
+    def get_proteins(modified_peptide: str, tmp_proteins: List[str]):
         if score_type.remaps_peptides_to_proteins():
+            peptide = helpers.remove_modifications(modified_peptide)
             proteins = digest.get_proteins(peptide_to_protein_map, peptide)
             if len(proteins) == 0:
                 if (

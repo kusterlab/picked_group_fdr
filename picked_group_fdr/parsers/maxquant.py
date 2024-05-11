@@ -82,9 +82,9 @@ def parse_mq_evidence_file(
         if line_idx % 500000 == 0:
             logger.info(f"    Reading line {line_idx}")
 
-        peptide = row[pept_col]
+        modified_peptide = row[pept_col][1:-1]
         proteins = get_proteins(
-            helpers.clean_peptide(peptide), row[protein_col].split(";")
+            modified_peptide, row[protein_col].split(";")
         )
         if not proteins:
             continue
@@ -96,7 +96,7 @@ def parse_mq_evidence_file(
         score = float(row[score_col]) if len(row[score_col]) > 0 else float("nan")
 
         if not for_quantification:
-            yield peptide, proteins, experiment, score
+            yield modified_peptide, proteins, experiment, score
         else:
             charge = int(row[charge_col])
             intensity = (
@@ -113,7 +113,7 @@ def parse_mq_evidence_file(
                 for silac_col in silac_cols
             ]
             evidence_id = int(row[evidence_id_col])
-            yield peptide, proteins, charge, raw_file, experiment, fraction, intensity, score, tmt_intensities, silac_intensities, evidence_id
+            yield modified_peptide, proteins, charge, raw_file, experiment, fraction, intensity, score, tmt_intensities, silac_intensities, evidence_id
 
 
 def get_silac_cols(headers, get_header_col, for_quantification):

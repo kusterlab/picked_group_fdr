@@ -81,7 +81,7 @@ class SequenceCoverageColumns(ProteinGroupColumns):
                 or precursor.post_err_prob <= post_err_prob_cutoff
             ):
                 uniquePeptides[experiment_to_idx_map[precursor.experiment]].add(
-                    helpers.clean_peptide(precursor.peptide)
+                    helpers.remove_modifications(precursor.peptide)
                 )
         return uniquePeptides
 

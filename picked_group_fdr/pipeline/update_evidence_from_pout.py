@@ -421,8 +421,8 @@ def convert_PSM_dict_to_peptide_dict(
 ) -> Dict[str, Tuple[float, float]]:
     peptide_results_dict = dict()
     for _, results in results_dict.items():
-        for (_, peptide), (score, PEP) in results.items():
-            peptide = helpers.clean_peptide(peptide, remove_flanks=False)
+        for (_, modified_peptide), (score, PEP) in results.items():
+            peptide = helpers.remove_modifications(modified_peptide)
             curr_score, curr_PEP = peptide_results_dict.get(peptide, (-1e10, 1e10))
             peptide_results_dict[peptide] = (max(curr_score, score), min(curr_PEP, PEP))
     return peptide_results_dict
@@ -434,7 +434,7 @@ def is_mbr_evidence_row(psm: maxquant.EvidenceRow) -> bool:
 
 def is_valid_prosit_peptide(peptide: str) -> bool:
     return (
-        len(helpers.clean_peptide(peptide, remove_flanks=False)) <= 30
+        len(helpers.remove_modifications(peptide)) <= 30
         and not "(ac)" in peptide
     )
 

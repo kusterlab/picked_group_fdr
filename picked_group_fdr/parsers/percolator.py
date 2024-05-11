@@ -10,6 +10,7 @@ from .tsv import (
     get_delimiter,
     get_tsv_reader,
 )
+from .. import helpers
 
 # for type hints only
 from .. import scoring_strategy
@@ -49,7 +50,11 @@ def get_percolator_column_idxs(headers):
 
 
 def parse_percolator_out_file(
-    reader, headers, get_proteins, score_type: scoring_strategy.ProteinScoringStrategy, **kwargs
+    reader,
+    headers,
+    get_proteins,
+    score_type: scoring_strategy.ProteinScoringStrategy,
+    **kwargs,
 ):
     (
         _,
@@ -68,7 +73,15 @@ def parse_percolator_out_file(
         if line_idx % 500000 == 0:
             logger.info(f"    Reading line {line_idx}")
 
-        peptide = row[pept_col][1:-1]
+        modified_peptide = row[pept_col]
+        if line_idx == 0:
+            peptide_contains_flanks = modified_peptide.startswith(
+                "-."
+            ) and modified_peptide.endswith(".-")
+
+        if peptide_contains_flanks:
+            modified_peptide = modified_peptide[2:-2]
+
         experiment = 1
         score = float(row[score_col])
 
@@ -77,9 +90,9 @@ def parse_percolator_out_file(
         elif is_mokapot_file(headers):
             proteins = row[protein_col].split("\t")
 
-        proteins = get_proteins(peptide, proteins)
+        proteins = get_proteins(modified_peptide, proteins)
         if proteins:
-            yield peptide, proteins, experiment, score
+            yield modified_peptide, proteins, experiment, score
 
 
 def parse_percolator_out_file_to_dict(

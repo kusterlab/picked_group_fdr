@@ -89,7 +89,7 @@ def parse_sage_results_file(
         if line_idx % 500000 == 0:
             logger.info(f"    Reading line {line_idx}")
 
-        peptide = row[pept_col]
+        modified_peptide = row[pept_col] # example: FC[+57.0215]LPYRMDVEK
         charge = int(row[charge_col])
         filename = Path(row[filename_col]).stem
         score = float(row[score_col])
@@ -99,12 +99,12 @@ def parse_sage_results_file(
 
         proteins = row[protein_col].split(";")
 
-        proteins = get_proteins(peptide, proteins)
+        proteins = get_proteins(modified_peptide, proteins)
         if proteins:
             if for_quantification:
-                yield peptide, proteins, filename, score, charge
+                yield modified_peptide, proteins, filename, score, charge
             else:
-                yield peptide, proteins, filename, score
+                yield modified_peptide, proteins, filename, score
 
 
 def parse_sage_lfq_file(reader, headers):
