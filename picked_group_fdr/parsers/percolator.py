@@ -128,8 +128,10 @@ def parse_percolator_out_file_to_dict(
             elif fixed_mod_idx >= 0:
                 if FIXED_MODS_UNIMOD[fixed_mod_idx] not in peptide:
                     fixed_mod_idx = -1
-            raw_file = "-".join(psm_id.split("-")[:-4])
-            scan_number = int(float(psm_id.split("-")[-4]))
+            scan_number_idx = -4
+            scan_number_idx -= peptide.count("-")
+            raw_file = "-".join(psm_id.split("-")[:scan_number_idx])
+            scan_number = int(float(psm_id.split("-")[scan_number_idx]))
         else:
             peptide = peptide.replace("[42]", "(ac)").replace("M[16]", "M(ox)")
             raw_file = "_".join(psm_id.split("_")[:-3])
