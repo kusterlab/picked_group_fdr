@@ -5,12 +5,7 @@ import logging
 from typing import Dict, Tuple
 
 from .modifications import FIXED_MODS_DICTS, FIXED_MODS_UNIMOD
-from .tsv import (
-    get_column_index,
-    get_delimiter,
-    get_tsv_reader,
-)
-from .. import helpers
+from . import tsv
 
 # for type hints only
 from .. import scoring_strategy
@@ -28,19 +23,19 @@ def is_mokapot_file(headers):
 
 def get_percolator_column_idxs(headers):
     if is_native_percolator_file(headers):
-        id_col = get_column_index(headers, "PSMId")
-        pept_col = get_column_index(headers, "peptide")
-        score_col = get_column_index(headers, "score")
-        qval_col = get_column_index(headers, "q-value")
-        post_err_prob_col = get_column_index(headers, "posterior_error_prob")
-        protein_col = get_column_index(headers, "proteinIds")
+        id_col = tsv.get_column_index(headers, "PSMId")
+        pept_col = tsv.get_column_index(headers, "peptide")
+        score_col = tsv.get_column_index(headers, "score")
+        qval_col = tsv.get_column_index(headers, "q-value")
+        post_err_prob_col = tsv.get_column_index(headers, "posterior_error_prob")
+        protein_col = tsv.get_column_index(headers, "proteinIds")
     elif is_mokapot_file(headers):
-        id_col = get_column_index(headers, "SpecId")
-        pept_col = get_column_index(headers, "Peptide")
-        score_col = get_column_index(headers, "mokapot score")
-        qval_col = get_column_index(headers, "mokapot q-value")
-        post_err_prob_col = get_column_index(headers, "mokapot PEP")
-        protein_col = get_column_index(headers, "Proteins")
+        id_col = tsv.get_column_index(headers, "SpecId")
+        pept_col = tsv.get_column_index(headers, "Peptide")
+        score_col = tsv.get_column_index(headers, "mokapot score")
+        qval_col = tsv.get_column_index(headers, "mokapot q-value")
+        post_err_prob_col = tsv.get_column_index(headers, "mokapot PEP")
+        protein_col = tsv.get_column_index(headers, "Proteins")
     else:
         raise ValueError(
             "Could not determine percolator input file format. The file should either "
@@ -103,8 +98,8 @@ def parse_percolator_out_file_to_dict(
             f"Could not find percolator output file {perc_out_file}. Please check if this file exists."
         )
 
-    delimiter = get_delimiter(perc_out_file)
-    reader = get_tsv_reader(perc_out_file, delimiter)
+    delimiter = tsv.get_delimiter(perc_out_file)
+    reader = tsv.get_tsv_reader(perc_out_file, delimiter)
     headers = next(reader)  # save the header
 
     id_col, pept_col, score_col, _, post_err_prob_col, _ = get_percolator_column_idxs(

@@ -32,6 +32,7 @@ pytest = "^6.2.4"
 pytest-cov = "^4.0.0"
 ipykernel = "^6.26.0"
 memory-profiler = "^0.61.0"
+pytest-mock = "^3.14.0"
 
 [build-system]
 requires = ["poetry>=1.0.0"]
