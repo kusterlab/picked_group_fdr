@@ -229,7 +229,12 @@ def update_evidence_single(
         rows_written += 1
         writer.writerow(row)
 
-    unexplained_percentage = int(unexplained_missing_PSMs / rows_written * 100)
+    if rows_written > 0:
+        unexplained_percentage = int(unexplained_missing_PSMs / rows_written * 100)
+    else:
+        unexplained_percentage = 0
+        logger.warning("No rows were written")
+
     logger.info(
         f"Unexplained missing PSMs in Percolator results: {unexplained_missing_PSMs} out of {rows_written} ({unexplained_percentage}%)"
     )
@@ -291,7 +296,7 @@ def find_percolator_psm(
         fixed_mods_tmp = fixed_mods
         if maxquant.is_heavy_labeled(psm.labeling_state):
             fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-        peptide = modifications.maxquant_mod_to_unimod_single(
+        peptide = modifications.maxquant_mod_to_proforma(
             psm.peptide, fixed_mods=fixed_mods_tmp
         )
 
@@ -302,7 +307,7 @@ def find_percolator_psm(
         and maxquant.has_unknown_silac_label(psm.labeling_state)
     ):
         fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-        peptide = modifications.maxquant_mod_to_unimod_single(
+        peptide = modifications.maxquant_mod_to_proforma(
             psm.peptide, fixed_mods=fixed_mods_tmp
         )
         perc_result = results_dict[psm.raw_file].get((psm.scannr, peptide), None)

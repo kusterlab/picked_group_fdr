@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Tuple
 
 from .modifications import FIXED_MODS_DICTS, FIXED_MODS_UNIMOD
+from . import modifications
 from . import tsv
 
 # for type hints only
@@ -119,7 +120,14 @@ def parse_percolator_out_file_to_dict(
 
         psm_id = row[id_col]
         if input_type == "prosit":
-            peptide = peptide.replace("m", "M(ox)")
+            scan_number_idx = -4
+            scan_number_idx -= peptide.count("-")
+
+            peptide = modifications.prosit_mod_to_proforma(peptide)
+            
+            raw_file = "-".join(psm_id.split("-")[:scan_number_idx])
+            scan_number = int(float(psm_id.split("-")[scan_number_idx]))
+
             if first:
                 for i, fixed_mod in enumerate(FIXED_MODS_UNIMOD):
                     if fixed_mod in peptide:
@@ -127,12 +135,9 @@ def parse_percolator_out_file_to_dict(
                 first = False
             elif fixed_mod_idx >= 0:
                 if FIXED_MODS_UNIMOD[fixed_mod_idx] not in peptide:
-                    fixed_mod_idx = -1
-            scan_number_idx = -4
-            scan_number_idx -= peptide.count("-")
-            raw_file = "-".join(psm_id.split("-")[:scan_number_idx])
-            scan_number = int(float(psm_id.split("-")[scan_number_idx]))
+                    fixed_mod_idx = -1            
         else:
+            # TODO: write unit test to check if these modifications get correctly updated
             peptide = peptide.replace("[42]", "(ac)").replace("M[16]", "M(ox)")
             raw_file = "_".join(psm_id.split("_")[:-3])
             scan_number = int(psm_id.split("_")[-3])

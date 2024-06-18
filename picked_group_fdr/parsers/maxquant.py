@@ -6,7 +6,6 @@ import logging
 from typing import List
 
 from . import tsv
-from .. import helpers
 from .. import results  # TODO: get rid of this import
 from .. import writers  # TODO: get rid of this import
 
