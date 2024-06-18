@@ -124,8 +124,6 @@ def parse_percolator_out_file_to_dict(
             scan_number_idx = -4
             scan_number_idx -= peptide.count("-")
 
-            peptide = convert_to_proforma(peptide)
-            
             raw_file = "-".join(psm_id.split("-")[:scan_number_idx])
             scan_number = int(float(psm_id.split("-")[scan_number_idx]))
 
@@ -136,7 +134,9 @@ def parse_percolator_out_file_to_dict(
                 first = False
             elif fixed_mod_idx >= 0:
                 if FIXED_MODS_UNIMOD[fixed_mod_idx] not in peptide:
-                    fixed_mod_idx = -1            
+                    fixed_mod_idx = -1
+
+            peptide = convert_to_proforma(peptide)
         else:
             # TODO: write unit test to check if these modifications get correctly updated
             peptide = peptide.replace("[42]", "(ac)").replace("M[16]", "M(ox)")

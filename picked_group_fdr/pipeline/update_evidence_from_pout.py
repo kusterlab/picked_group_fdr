@@ -180,11 +180,13 @@ def update_evidence_single(
     unexplained_missing_PSMs = 0
     unexplained_peptides = list()
     rows_written = 0
+    last_rows_written = -1
     missing_raw_files = set()
     for row, psm in maxquant.parse_evidence_file_for_percolator_matching(
         reader, headers
     ):
-        if rows_written % 500000 == 0:
+        if rows_written % 500000 == 0 and last_rows_written != rows_written:
+            last_rows_written = rows_written
             logger.info(f"    Writing line {rows_written}")
 
         if len(results_dict) == 0 or is_mbr_evidence_row(psm):
@@ -413,6 +415,7 @@ def get_percolator_results(
         fixed_mods, results_dict = percolator.parse_percolator_out_file_to_dict(
             pout_file, results_dict, pout_input_type
         )
+        logger.debug(f"Found fixed modifications: {fixed_mods}")
 
     logger.info("Finished parsing percolator output files")
     logger.info("#PSMs per raw file:")
