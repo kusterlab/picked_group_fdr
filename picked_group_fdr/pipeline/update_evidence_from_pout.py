@@ -296,8 +296,8 @@ def find_percolator_psm(
         fixed_mods_tmp = fixed_mods
         if maxquant.is_heavy_labeled(psm.labeling_state):
             fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-        peptide = modifications.maxquant_mod_to_proforma(
-            psm.peptide, fixed_mods=fixed_mods_tmp
+        peptide = modifications.maxquant_mod_to_proforma(fixed_mods=fixed_mods_tmp)(
+            psm.peptide
         )
 
     perc_result = results_dict[psm.raw_file].get((psm.scannr, peptide), None)
@@ -307,8 +307,8 @@ def find_percolator_psm(
         and maxquant.has_unknown_silac_label(psm.labeling_state)
     ):
         fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-        peptide = modifications.maxquant_mod_to_proforma(
-            psm.peptide, fixed_mods=fixed_mods_tmp
+        peptide = modifications.maxquant_mod_to_proforma(fixed_mods=fixed_mods_tmp)(
+            psm.peptide
         )
         perc_result = results_dict[psm.raw_file].get((psm.scannr, peptide), None)
     return perc_result, peptide
@@ -438,10 +438,7 @@ def is_mbr_evidence_row(psm: maxquant.EvidenceRow) -> bool:
 
 
 def is_valid_prosit_peptide(peptide: str) -> bool:
-    return (
-        len(helpers.remove_modifications(peptide)) <= 30
-        and not "(ac)" in peptide
-    )
+    return len(helpers.remove_modifications(peptide)) <= 30 and not "(ac)" in peptide
 
 
 def count_below_FDR(post_err_probs: List[float], fdr_threshold: float = 0.01):

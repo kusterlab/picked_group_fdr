@@ -108,6 +108,7 @@ def parse_percolator_out_file_to_dict(
     )
 
     logger.info("Parsing Percolator output file")
+    convert_to_proforma = modifications.prosit_mod_to_proforma()
     fixed_mod_idx = -1
     first = True
     for line_idx, row in enumerate(reader):
@@ -123,7 +124,7 @@ def parse_percolator_out_file_to_dict(
             scan_number_idx = -4
             scan_number_idx -= peptide.count("-")
 
-            peptide = modifications.prosit_mod_to_proforma(peptide)
+            peptide = convert_to_proforma(peptide)
             
             raw_file = "-".join(psm_id.split("-")[:scan_number_idx])
             scan_number = int(float(psm_id.split("-")[scan_number_idx]))

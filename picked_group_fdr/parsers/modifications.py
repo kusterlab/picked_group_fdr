@@ -15,7 +15,11 @@ SILAC_HEAVY_FIXED_MODS = {
     "R": "R[UNIMOD:267]",
 }
 
-TMT_FIXED_MODS = {"C": "C[UNIMOD:4]", "^_": f"_{TMT_UNIMOD}-", "K": f"K{TMT_UNIMOD}"}
+TMT_FIXED_MODS = {
+    "C": "C[UNIMOD:4]",
+    "^_": f"_{TMT_UNIMOD}-",
+    "K": f"K{TMT_UNIMOD}",
+}
 TMTPRO_FIXED_MODS = {
     "C": "C[UNIMOD:4]",
     "^_": f"_{TMTPRO_UNIMOD}-",
@@ -45,13 +49,13 @@ MAXQUANT_VAR_MODS = {
     "(ox)": "[UNIMOD:35]",
     "(Oxidation (M))": "[UNIMOD:35]",
     "(tm)": "[UNIMOD:737]",
-    "_(tm)": f"_{TMT_UNIMOD}-",
+    "^_(tm)": f"_{TMT_UNIMOD}-",
     "K(tm)": f"K{TMT_UNIMOD}",
-    "_(TMTPro (N-term))": f"_{TMTPRO_UNIMOD}-",
+    "^_(TMTPro (N-term))": f"_{TMTPRO_UNIMOD}-",
     "K(TMTPro (K))": f"K{TMTPRO_UNIMOD}",
-    "_(iTRAQ4plex (N-term))": f"_{ITRAQ4_UNIMOD}-",
+    "^_(iTRAQ4plex (N-term))": f"_{ITRAQ4_UNIMOD}-",
     "K(iTRAQ4plex (K))": f"K{ITRAQ4_UNIMOD}",
-    "_(iTRAQ8plex (N-term))": f"_{ITRAQ8_UNIMOD}-",
+    "^_(iTRAQ8plex (N-term))": f"_{ITRAQ8_UNIMOD}-",
     "K(iTRAQ8plex (K))": f"K{ITRAQ8_UNIMOD}",
     "(ph)": "[UNIMOD:21]",
     "K(Lys8)": "K[UNIMOD:259]",
@@ -62,7 +66,7 @@ MAXQUANT_VAR_MODS = {
 
 # adapted from fundamentals/mod_string.py
 def maxquant_mod_to_proforma(
-    sequence: str, fixed_mods: Optional[Dict[str, str]] = {"C": "C[UNIMOD:4]"}
+    fixed_mods: Optional[Dict[str, str]] = {"C": "C[UNIMOD:4]"}
 ) -> List[str]:
     """
     Function to translate a MaxQuant modstring to the ProForma format
@@ -75,6 +79,7 @@ def maxquant_mod_to_proforma(
     assert all(x in MAXQUANT_VAR_MODS.values() for x in fixed_mods.values()), err_msg
 
     replacements = {**MAXQUANT_VAR_MODS, **fixed_mods}
+    replacement_values = list(replacements.values())
 
     def custom_regex_escape(key: str) -> str:
         """
@@ -84,9 +89,12 @@ def maxquant_mod_to_proforma(
         """
         for k, v in {"(": "\\(", ")": "\\)"}.items():
             key = key.replace(k, v)
-        return key
+        return f"({key})"
 
     regex = re.compile("|".join(map(custom_regex_escape, replacements.keys())))
+
+    def first_not_none_index(tup):
+        return next((i for i, x in enumerate(tup) if x is not None), -1)
 
     def find_replacement(match: re) -> str:
         """
@@ -94,16 +102,13 @@ def maxquant_mod_to_proforma(
         :param match: an re.Match object found by re.sub
         :return substitution string for the given match
         """
-        key = match.string[match.start() : match.end()]
-        if "_" in key:  # If _ is in the match we need to differentiate n and c term
-            if match.start() == 0:
-                key = f"^{key}"
-            else:
-                key = f"{key}$"
+        value_idx = first_not_none_index(match.groups())
+        return replacement_values[value_idx]
 
-        return replacements[key]
-
-    return regex.sub(find_replacement, sequence)[1:-1]
+    def replace(sequence: str):
+        return regex.sub(find_replacement, sequence)[1:-1]
+    
+    return replace
 
 
 PROSIT_VAR_MODS = {
@@ -116,7 +121,6 @@ PROSIT_VAR_MODS = {
 
 
 def prosit_mod_to_proforma(
-    sequence: str,
     fixed_mods: Optional[Dict[str, str]] = None,
     variable_mods: Optional[Dict[str, str]] = None,
 ) -> List[str]:
@@ -163,4 +167,7 @@ def prosit_mod_to_proforma(
         value_idx = first_not_none_index(match.groups())
         return replacement_values[value_idx]
 
-    return regex.sub(find_replacement, sequence)
+    def replace(sequence: str):
+        return regex.sub(find_replacement, sequence)
+    
+    return replace
