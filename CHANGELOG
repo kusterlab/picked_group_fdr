@@ -1,3 +1,8 @@
+v0.7.2
+- Add --protein_group_fdr_threshold flag to set the protein group-level FDR cutoff for the rescuing procedure and logging messages
+- Fix compatibility with Oktoberfest's new ProForma N-terminal notation
+- Improved ProForma sequence format support
+
 v0.7.1
 - Switch to modified peptide instead of peptide in fragpipe parsing functions
 - Make peptide flanking characters consistent across search engines. Fixes bug with percolator input used with --peptide_protein_map

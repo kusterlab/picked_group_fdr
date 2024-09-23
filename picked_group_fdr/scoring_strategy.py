@@ -92,10 +92,10 @@ class ProteinScoringStrategy:
         return self.score_origin.can_do_quantification()
 
     def optimize_hyperparameters(
-        self, protein_groups, protein_group_peptide_infos
+        self, protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold: float
     ) -> float:
         return self.protein_score.optimize_hyperparameters(
-            protein_groups, protein_group_peptide_infos
+            protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold
         )
 
     def calculate_score(self, score_peptide_pairs) -> float:

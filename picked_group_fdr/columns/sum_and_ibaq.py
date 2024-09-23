@@ -30,9 +30,13 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
     num_ibaq_peptides_per_protein: Dict[str, int]
 
     def __init__(
-        self, num_ibaq_peptides_per_protein: Dict[str, int]
+        self, num_ibaq_peptides_per_protein: Dict[str, int],
+        protein_group_fdr_threshold: float = 0.01,
     ):
         self.num_ibaq_peptides_per_protein = num_ibaq_peptides_per_protein
+
+        # only used for reporting number of protein groups at the given threshold
+        self.protein_group_fdr_threshold = protein_group_fdr_threshold
 
     def append_headers(
         self,
@@ -82,7 +86,7 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
             pgr.append(totalIntensity)
             pgr.extend(intensities)
 
-            if pgr.qValue < 0.01:
+            if pgr.qValue < self.protein_group_fdr_threshold:
                 proteinGroupCounts += np.array(
                     [1 if intensity > 0 else 0 for intensity in intensities]
                 )
@@ -97,7 +101,7 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
             pgr.extend([i / leadingProteinNumPeptides for i in intensities])
 
         logger.info(
-            "#Protein groups quantified (1% protein group-level FDR, summed intensity / iBAQ):"
+            f"#Protein groups quantified ({self.protein_group_fdr_threshold*100:g}% protein group-level FDR, summed intensity / iBAQ):"
         )
         for experiment, numProteinGroups in zip(
             experiment_to_idx_map.keys(),

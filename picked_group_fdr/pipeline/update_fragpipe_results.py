@@ -476,7 +476,7 @@ def write_fragpipe_combined_protein_file(
         fasta_file (str): fasta file with all protein sequences
     """
     fragpipe_writer = writers.FragPipeCombinedProteinWriter(
-        protein_groups, protein_annotations
+        protein_groups, protein_annotations, protein_group_fdr_threshold=0.01
     )
 
     protein_group_results = fragpipe_writer.append_quant_columns(

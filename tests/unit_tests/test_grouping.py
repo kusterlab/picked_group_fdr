@@ -36,7 +36,7 @@ class TestRescuedSubsetGrouping:
             peptideInfoListRescue, ""
         )
         score_type = ProteinScoringStrategy("bestPEP")
-        proteinGroupPeptideInfos = score_type.collect_peptide_scores_per_protein(
+        protein_group_peptide_infos = score_type.collect_peptide_scores_per_protein(
             protein_groups_before_rescue, peptideInfoListRescue
         )
 
@@ -44,11 +44,13 @@ class TestRescuedSubsetGrouping:
             [["proteinA"], ["proteinB"], ["proteinC"]]
         )
 
+        protein_group_fdr = 0.01
         protein_groups_after_rescue = rescued_subset_grouping.rescue_protein_groups(
             peptideInfoListRescue,
             proteinFdrResults,
+            protein_group_fdr,
             protein_groups_before_rescue,
-            proteinGroupPeptideInfos,
+            protein_group_peptide_infos,
         )
         assert protein_groups_after_rescue == ProteinGroups(
             [["proteinA", "proteinB"], ["proteinC"]]
@@ -56,7 +58,10 @@ class TestRescuedSubsetGrouping:
 
     def test_scoring_threshold(self, proteinFdrResults):
         rescued_subset_grouping = grouping.RescuedSubsetGrouping()
-        rescued_subset_grouping._calculate_rescue_score_cutoff(proteinFdrResults)
+        protein_group_fdr = 0.01
+        rescued_subset_grouping._calculate_rescue_score_cutoff(
+            proteinFdrResults, protein_group_fdr
+        )
         assert rescued_subset_grouping.score_cutoff == 0.15
 
 

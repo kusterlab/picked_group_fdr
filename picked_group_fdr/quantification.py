@@ -97,6 +97,17 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--protein_group_fdr_threshold",
+        default=0.01,
+        metavar="C",
+        type=float,
+        help="""Protein group-level FDR threshold used for computing the number of
+                protein groups at the given threshold. Note that this does not filter the
+                protein_groups_out file for the specified FDR. Use the
+                picked_group_fdr.pipeline.filter_fdr_maxquant module for this.""",
+    )
+
+    apars.add_argument(
         "--peptide_protein_map",
         default=None,
         metavar="M",

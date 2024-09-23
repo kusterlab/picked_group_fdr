@@ -71,7 +71,7 @@ def parse_method_toml(method_name: str, use_pseudo_genes: bool) -> MethodConfig:
                              (currently does not work with simulated datasets since
                              peptideToProteinMap does not contain entrapment labels)
         - NoGrouping(): No protein grouping, each protein is in its own group
-        - +Rescued: Rescue protein groups by only considering peptides below 1% protein FDR threshold
+        - +Rescued: Rescue protein groups by only considering peptides below, e.g. 1%, protein FDR threshold
 
     Args:
         method_name (str): The name of the method or path to the TOML file containing the method configuration.

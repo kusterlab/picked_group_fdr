@@ -31,6 +31,7 @@ def get_protein_groups_output_writer(
             args.lfq_min_peptide_ratios,
             args.lfq_stabilize_large_ratios,
             args.num_threads,
+            args.protein_group_fdr_threshold,
         )
     elif output_format == "maxquant":
         db = "target" if args.fasta_contains_decoys else "concat"
@@ -52,6 +53,7 @@ def get_protein_groups_output_writer(
             args.lfq_stabilize_large_ratios,
             args.num_threads,
             triqler_params,
+            args.protein_group_fdr_threshold,
         )
     
     raise ValueError(f"Unknown output format: {output_format}.")

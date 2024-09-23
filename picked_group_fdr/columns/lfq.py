@@ -33,10 +33,14 @@ class LFQIntensityColumns(ProteinGroupColumns):
         minPeptideRatiosLFQ: int,
         stabilizeLargeRatiosLFQ: bool,
         numThreads: int = 1,
+        protein_group_fdr_threshold: float = 0.01,
     ) -> None:
         self.minPeptideRatiosLFQ = minPeptideRatiosLFQ
         self.stabilizeLargeRatiosLFQ = stabilizeLargeRatiosLFQ
         self.numThreads = numThreads
+
+        # only used for reporting number of protein groups at the given threshold
+        self.protein_group_fdr_threshold = protein_group_fdr_threshold
 
     def is_valid(self, protein_group_results: results.ProteinGroupResults):
         return (
@@ -102,12 +106,12 @@ class LFQIntensityColumns(ProteinGroupColumns):
         ):
             pgr.extend(intensities)
 
-            if pgr.qValue < 0.01:
+            if pgr.qValue < self.protein_group_fdr_threshold:
                 proteinGroupCounts += np.array(
                     [1 if intensity > 0 else 0 for intensity in intensities]
                 )
 
-        logger.info("#Protein groups quantified (1% protein group-level FDR, LFQ):")
+        logger.info(f"#Protein groups quantified ({self.protein_group_fdr_threshold*100:g}% protein group-level FDR, LFQ):")
         for experiment, numProteinGroups in zip(
             experiment_to_idx_map.keys(),
             helpers.chunks(proteinGroupCounts, max(1, num_silac_channels)),

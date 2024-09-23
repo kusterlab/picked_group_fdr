@@ -189,7 +189,7 @@ def main(argv):
             protein_groups, protein_scores = zip(*score_group_tuples)
 
             reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(
-                protein_groups, protein_scores
+                protein_groups, protein_scores, args.fdr_cutoff
             )
         elif args.peptides_files:
             peptide_files, is_decoy_file = zip(
@@ -220,7 +220,9 @@ def main(argv):
             )
 
             reported_qvals, observed_qvals = fdr.calculate_peptide_fdrs(
-                score_group_tuples, score_type=BestAndromedaScore()
+                score_group_tuples,
+                score_type=BestAndromedaScore(),
+                peptide_fdr_threshold=args.fdr_cutoff,
             )
 
         plotter.label = label

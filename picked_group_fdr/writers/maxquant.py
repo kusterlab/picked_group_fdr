@@ -20,6 +20,7 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
         stabilize_large_ratios_lfq: bool,
         num_threads: int,
         params: Dict[str, Any],
+        protein_group_fdr_threshold: float = 0.01,
     ) -> None:
         self.num_ibaq_peptides_per_protein = num_ibaq_peptides_per_protein
         self.protein_annotations = protein_annotations
@@ -30,12 +31,17 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
         self.num_threads = num_threads
         self.params = params
 
+        # only used for reporting number of protein groups at the given threshold
+        self.protein_group_fdr_threshold = protein_group_fdr_threshold
+
     def get_columns(self) -> List[columns.ProteinGroupColumns]:
         output_columns = [
             columns.ProteinAnnotationsColumns(self.protein_annotations),
             columns.UniquePeptideCountColumns(),
             columns.IdentificationTypeColumns(),
-            columns.SummedIntensityAndIbaqColumns(self.num_ibaq_peptides_per_protein),
+            columns.SummedIntensityAndIbaqColumns(
+                self.num_ibaq_peptides_per_protein, self.protein_group_fdr_threshold
+            ),
             columns.SequenceCoverageColumns(self.protein_sequences),
             columns.EvidenceIdsColumns(),
             columns.TMTIntensityColumns(),
@@ -47,6 +53,7 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
                     self.min_peptide_ratios_lfq,
                     self.stabilize_large_ratios_lfq,
                     self.num_threads,
+                    self.protein_group_fdr_threshold,
                 )
             ]
         return output_columns

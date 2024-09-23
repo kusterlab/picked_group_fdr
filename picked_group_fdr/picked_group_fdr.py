@@ -134,6 +134,18 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--protein_group_fdr_threshold",
+        default=0.01,
+        metavar="C",
+        type=float,
+        help="""Protein group-level FDR threshold used for setting the peptide level 
+                cutoff in the rescuing procedure and computing the number of
+                protein groups at the given threshold. Note that this does not filter the
+                protein_groups_out file for the specified FDR. Use the
+                picked_group_fdr.pipeline.filter_fdr_maxquant module for this.""",
+    )
+
+    apars.add_argument(
         "--mq_protein_groups",
         default=None,
         metavar="PG",
@@ -223,8 +235,10 @@ def run_picked_group_fdr(args: argparse.Namespace) -> None:
 
     peptide_to_protein_maps = [None]
     if methods.requires_peptide_to_protein_map(method_configs):
-        peptide_to_protein_maps = peptide_protein_map.get_peptide_to_protein_maps_from_args(
-            args, use_pseudo_genes
+        peptide_to_protein_maps = (
+            peptide_protein_map.get_peptide_to_protein_maps_from_args(
+                args, use_pseudo_genes
+            )
         )
 
     plotter = PlotterFactory.get_plotter(args.figure_base_fn, args.plot_figures)
@@ -286,6 +300,7 @@ def run_method(
         method_config,
         plotter,
         args.keep_all_proteins,
+        args.protein_group_fdr_threshold,
     )
 
     protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
@@ -322,6 +337,7 @@ def get_protein_group_results(
     method_config: methods.MethodConfig,
     plotter: Union[Plotter, NoPlotter],
     keep_all_proteins: bool,
+    protein_group_fdr_threshold: float,
 ) -> ProteinGroupResults:
     picked_strategy, score_type, grouping_strategy = (
         method_config.picked_strategy,
@@ -345,6 +361,7 @@ def get_protein_group_results(
             protein_groups = grouping_strategy.rescue_protein_groups(
                 peptide_info_list,
                 protein_group_results,
+                protein_group_fdr_threshold,
                 protein_groups,
                 protein_group_peptide_infos,
             )
@@ -356,7 +373,9 @@ def get_protein_group_results(
         )
 
         # find optimal division factor for multPEP score
-        score_type.optimize_hyperparameters(protein_groups, protein_group_peptide_infos)
+        score_type.optimize_hyperparameters(
+            protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold
+        )
 
         if rescue_step and picked_strategy.short_description() == "pgT":
             (
@@ -375,9 +394,10 @@ def get_protein_group_results(
         )
 
         reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(
-            picked_protein_groups, protein_scores
+            picked_protein_groups, protein_scores, protein_group_fdr_threshold
         )
 
+        # peptide-level score cutoff for counting number of peptides per protein
         peptide_score_cutoff = (
             score_type.peptide_score_cutoff if rescue_step else float("inf")
         )

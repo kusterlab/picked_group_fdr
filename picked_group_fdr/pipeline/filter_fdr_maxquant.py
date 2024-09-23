@@ -31,7 +31,7 @@ def parseArgs(argv):
                          help='Output path for filtered msms.txt or evidence.txt file.')
     
     apars.add_argument('--mq_protein_groups', default=None, metavar="PG", nargs='+', required=False,
-                         help='proteinGroups.txt filtered at 100% FDR file(s)')
+                         help='proteinGroups.txt filtered at 100%% FDR file(s)')
     
     apars.add_argument('--mq_protein_groups_out', default=None, metavar="O", required=False,
                          help='Output path for filtered proteinGroups.txt.')
@@ -182,7 +182,7 @@ def getPeptidesBelowFdr(rawFiles, bestScans, fdrCutoff, level):
         postErrorProbCutoff = calculatePostErrProbCutoff(sortedPostErrorProbs, fdrCutoff)
         postErrorProbCutoffs[rawFile] = postErrorProbCutoff
         survivingPeptides.extend([(x.sequence, x.rawFile) for x in bestScans[rawFile].values() if x.postErrorProb <= postErrorProbCutoff])
-        logger.info(f"PEP at 1% {level}-level FDR for {rawFile}: {postErrorProbCutoff}")
+        logger.info(f"PEP at {fdrCutoff*100:g}% {level}-level FDR for {rawFile}: {postErrorProbCutoff}")
     survivingPeptides = set(survivingPeptides)
     
     return survivingPeptides, postErrorProbCutoffs

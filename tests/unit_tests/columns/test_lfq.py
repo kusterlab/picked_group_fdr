@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 
 from picked_group_fdr.columns.lfq import (
-    LFQIntensityColumns,
     _getLFQIntensities,
     _getMaxRatio,
     _getPeptideIntensities,

@@ -25,7 +25,7 @@ def test_performanceLFQ():
         
         proteinGroupResults.append(pgr)
     
-    lfq_columns = [LFQIntensityColumns(silacChannels=[], minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
+    lfq_columns = [LFQIntensityColumns(minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
     
     start = timer()
 
@@ -52,7 +52,7 @@ def getPeptideIntensityList(num_experiments, num_peptides):
 
 
 def getLFQIntensityColumns():
-    return LFQIntensityColumns(silacChannels=[], minPeptideRatiosLFQ=2, stabilizeLargeRatiosLFQ=False)
+    return LFQIntensityColumns(minPeptideRatiosLFQ=2, stabilizeLargeRatiosLFQ=False)
       
 
 def getExperimentToIdxMap(num_experiments):
