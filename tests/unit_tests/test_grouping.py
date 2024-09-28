@@ -37,7 +37,9 @@ class TestRescuedSubsetGrouping:
         )
         score_type = ProteinScoringStrategy("bestPEP")
         protein_group_peptide_infos = score_type.collect_peptide_scores_per_protein(
-            protein_groups_before_rescue, peptideInfoListRescue
+            protein_groups_before_rescue,
+            peptideInfoListRescue,
+            peptide_qval_cutoff=0.01,
         )
 
         assert protein_groups_before_rescue == ProteinGroups(
