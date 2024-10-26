@@ -301,6 +301,7 @@ def run_method(
         plotter,
         args.keep_all_proteins,
         args.protein_group_fdr_threshold,
+        args.psm_fdr_cutoff,
     )
 
     protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
@@ -338,6 +339,7 @@ def get_protein_group_results(
     plotter: Union[Plotter, NoPlotter],
     keep_all_proteins: bool,
     protein_group_fdr_threshold: float,
+    psm_fdr_cutoff: float,
 ) -> ProteinGroupResults:
     picked_strategy, score_type, grouping_strategy = (
         method_config.picked_strategy,
@@ -369,6 +371,7 @@ def get_protein_group_results(
         protein_group_peptide_infos = score_type.collect_peptide_scores_per_protein(
             protein_groups,
             peptide_info_list,
+            psm_fdr_cutoff,
             suppress_missing_protein_warning=rescue_step,
         )
 
