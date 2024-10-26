@@ -25,6 +25,7 @@ def is_mokapot_file(headers):
 def get_percolator_column_idxs(headers):
     if is_native_percolator_file(headers):
         id_col = tsv.get_column_index(headers, "PSMId")
+        filename_col = tsv.get_column_index(headers, "filename", is_optional=True)
         pept_col = tsv.get_column_index(headers, "peptide")
         score_col = tsv.get_column_index(headers, "score")
         qval_col = tsv.get_column_index(headers, "q-value")
@@ -32,6 +33,7 @@ def get_percolator_column_idxs(headers):
         protein_col = tsv.get_column_index(headers, "proteinIds")
     elif is_mokapot_file(headers):
         id_col = tsv.get_column_index(headers, "SpecId")
+        filename_col = tsv.get_column_index(headers, "filename", is_optional=True)
         pept_col = tsv.get_column_index(headers, "Peptide")
         score_col = tsv.get_column_index(headers, "mokapot score")
         qval_col = tsv.get_column_index(headers, "mokapot q-value")
@@ -42,7 +44,15 @@ def get_percolator_column_idxs(headers):
             "Could not determine percolator input file format. The file should either "
             "contain a column named PSMId (native percolator) or SpecId (mokapot)."
         )
-    return id_col, pept_col, score_col, qval_col, post_err_prob_col, protein_col
+    return (
+        id_col,
+        filename_col,
+        pept_col,
+        score_col,
+        qval_col,
+        post_err_prob_col,
+        protein_col,
+    )
 
 
 def parse_percolator_out_file(
@@ -53,6 +63,7 @@ def parse_percolator_out_file(
     **kwargs,
 ):
     (
+        _,
         _,
         pept_col,
         score_col,
@@ -103,8 +114,8 @@ def parse_percolator_out_file_to_dict(
     reader = tsv.get_tsv_reader(perc_out_file, delimiter)
     headers = next(reader)  # save the header
 
-    id_col, pept_col, score_col, _, post_err_prob_col, _ = get_percolator_column_idxs(
-        headers
+    id_col, filename_col, pept_col, score_col, _, post_err_prob_col, _ = (
+        get_percolator_column_idxs(headers)
     )
 
     logger.info("Parsing Percolator output file")
@@ -115,37 +126,88 @@ def parse_percolator_out_file_to_dict(
         if line_idx % 500000 == 0:
             logger.info(f"    Reading line {line_idx}")
 
-        peptide = row[pept_col][2:-2]
+        modified_sequence = row[pept_col][2:-2]
         score = float(row[score_col])
         post_err_prob = float(row[post_err_prob_col])
+        filename = ""
+        if filename_col >= 0:
+            filename = row[filename_col]
 
         psm_id = row[id_col]
         if input_type == "prosit":
-            scan_number_idx = -4
-            scan_number_idx -= peptide.count("-")
-
-            raw_file = "-".join(psm_id.split("-")[:scan_number_idx])
-            scan_number = int(float(psm_id.split("-")[scan_number_idx]))
+            raw_file, scan_number, modified_sequence = parse_prosit_psmid_and_peptide(
+                psm_id, modified_sequence, filename, convert_to_proforma
+            )
 
             if first:
                 for i, fixed_mod in enumerate(FIXED_MODS_UNIMOD):
-                    if fixed_mod in peptide:
+                    if fixed_mod in modified_sequence:
                         fixed_mod_idx = i
                 first = False
             elif fixed_mod_idx >= 0:
-                if FIXED_MODS_UNIMOD[fixed_mod_idx] not in peptide:
+                if FIXED_MODS_UNIMOD[fixed_mod_idx] not in modified_sequence:
                     fixed_mod_idx = -1
-
-            peptide = convert_to_proforma(peptide)
         else:
-            # TODO: write unit test to check if these modifications get correctly updated
-            peptide = peptide.replace("[42]", "(ac)").replace("M[16]", "M(ox)")
-            raw_file = "_".join(psm_id.split("_")[:-3])
-            scan_number = int(psm_id.split("_")[-3])
+            raw_file, scan_number, modified_sequence = (
+                parse_andromeda_psmid_and_peptide(psm_id, modified_sequence)
+            )
 
-        results_dict[raw_file][(scan_number, peptide)] = (score, post_err_prob)
+        results_dict[raw_file][(scan_number, modified_sequence)] = (
+            score,
+            post_err_prob,
+        )
 
     return FIXED_MODS_DICTS[fixed_mod_idx + 1], results_dict
+
+
+def parse_prosit_psmid_and_peptide(
+    psm_id: str, modified_sequence: str, filename: str, convert_to_proforma
+) -> tuple[str, int, str]:
+    """Parse the Prosit PSMId and peptide.
+
+    Args:
+        psm_id (str): The Prosit PSMId is dash-separated string containing
+            (raw_file, scan_number, modified_sequence, charge and optionally 
+            scan_event_number). The raw_file and modified_sequence can contain 
+            dashes themselves.
+        peptide (str): The peptide sequence.
+        convert_to_proforma (function): A function to convert the peptide to 
+            ProForma notation.
+
+    Returns:
+        tuple[str, int, str]: A tuple containing the parsed raw file, scan 
+            number, and peptide in ProForma notation.
+    """
+    # The original Prosit output files did not have a filename column, but 
+    # always included a scan event number, i.e. num_fields = 5.
+    # The new Oktoberfest output has a filename column, but the scan event 
+    # number is optional, so instead we count the number of fields using the 
+    # number of dashes in the filename column.
+    num_fields = 5
+    if len(filename) > 0:
+        num_fields = (
+            psm_id.count("-") - filename.count("-") - modified_sequence.count("-") + 1
+        )
+
+    scan_number_idx = -1 * (num_fields - 1) - modified_sequence.count("-")
+    scan_number = int(float(psm_id.split("-")[scan_number_idx]))
+
+    if len(filename) == 0:
+        filename = "-".join(psm_id.split("-")[:scan_number_idx])
+
+    modified_sequence = convert_to_proforma(modified_sequence)
+    return filename, scan_number, modified_sequence
+
+
+def parse_andromeda_psmid_and_peptide(
+    psm_id: str, modified_sequence: str
+) -> tuple[str, int, str]:
+    modified_sequence = modified_sequence.replace("[42]", "(ac)").replace(
+        "M[16]", "M(ox)"
+    )
+    filename = "_".join(psm_id.split("_")[:-3])
+    scan_number = int(psm_id.split("_")[-3])
+    return filename, scan_number, modified_sequence
 
 
 PERCOLATOR_NATIVE_HEADERS = [

@@ -106,6 +106,7 @@ def merge_pout(
 
         (
             idCol,
+            _,
             peptCol,
             scoreCol,
             qvalCol,
@@ -195,7 +196,7 @@ def write_updated_PSMs(perc_merged, psm_infos, peps, update_qvals=False):
 
     headers = percolator.PERCOLATOR_NATIVE_HEADERS
     writer.writerow(headers)
-    _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
+    _, _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
 
     sumPEP = 0.0
     counts = 0
