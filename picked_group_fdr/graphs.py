@@ -1,6 +1,6 @@
 import collections
 import itertools
-from typing import List, Set, Dict
+from typing import List
 import logging
 
 from networkx.algorithms.connectivity import build_auxiliary_node_connectivity, minimum_st_node_cut
@@ -93,7 +93,6 @@ class ConnectedProteinGraphs:
         while len(self.subgraphs) > 0:
             c = self.subgraphs.popleft()
             proteins = self._get_protein_nodes(c)
-            peptides = self._get_peptide_nodes(c)
             
             leading_protein = proteins[0]
             for protein in proteins[1:]:
@@ -104,12 +103,12 @@ class ConnectedProteinGraphs:
         return protein_groups
 
     # adapted from https://stackoverflow.com/questions/47146755/networkx-find-all-minimal-cuts-consisting-of-only-nodes-from-one-set-in-a-bipar
-    def _split_single_connected_component(self, G, A, B):    
+    def _split_single_connected_component(self, G: nx.Graph, A: List[str], B: List[str]):    
         # build auxiliary networks
         H = build_auxiliary_node_connectivity(G)
         R = build_residual_network(H, 'capacity')
 
-        # get all cuts that consist of nodes exclusively from B which disconnet
+        # get all cuts that consist of nodes exclusively from B which disconnect
         # nodes from A
         best_cut = []
         seen = []
@@ -129,13 +128,13 @@ class ConnectedProteinGraphs:
         
         return best_cut
 
-    def _get_protein_nodes(self, G):
-        return [x for x,y in G.nodes(data=True) if 'node_type' in y and y['node_type'] == "protein"]
+    def _get_protein_nodes(self, G: nx.Graph):
+        return sorted(x for x,y in G.nodes(data=True) if 'node_type' in y and y['node_type'] == "protein")
 
-    def _get_peptide_nodes(self, G):
-        return [x for x,y in G.nodes(data=True) if 'node_type' not in y or y['node_type'] != "protein"]
+    def _get_peptide_nodes(self, G: nx.Graph):
+        return sorted(x for x,y in G.nodes(data=True) if 'node_type' not in y or y['node_type'] != "protein")
 
-    def _get_subgraphs_after_cut(self, G, cut):
+    def _get_subgraphs_after_cut(self, G: nx.Graph, cut):
         G2 = G.copy()
         G2.remove_nodes_from(cut)
         return [G2.subgraph(c).copy() for c in nx.connected_components(G2)]
