@@ -1,3 +1,6 @@
+v0.7.3
+- Fix nondeterministic behavior of decouple_connected_proteins
+
 v0.7.2
 - Add --protein_group_fdr_threshold flag to set the protein group-level FDR cutoff for the rescuing procedure and logging messages
 - Fix compatibility with Oktoberfest's new ProForma N-terminal notation
