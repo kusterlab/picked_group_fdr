@@ -56,18 +56,6 @@ def parse_args(argv):
     )
 
     apars.add_argument(
-        "--mq_msms",
-        default=None,
-        metavar="M",
-        nargs="+",
-        help="""MaxQuant msms.txt file(s) (optional). Can help 
-                resolve MS1 features with multiple scans. If you
-                want to combine multiple evidence files, use 
-                spaces to separate the file paths. Not 
-                implemented yet...""",
-    )
-
-    apars.add_argument(
         "--pout_input_type",
         default="andromeda",
         metavar="SE",
@@ -118,7 +106,6 @@ def main(argv) -> None:
         args.mq_evidence,
         args.perc_results,
         args.mq_evidence_out,
-        args.mq_msms,
         args.pout_input_type,
         args.suppress_missing_peptide_warning,
     )
@@ -130,7 +117,6 @@ def update_evidence_file(
     evidence_files: List[str],
     pout_files: List[str],
     out_evidence_file: str,
-    msms_files: List[str],
     pout_input_type: str,
     suppress_missing_peptide_warning: bool,
 ) -> None:
@@ -320,7 +306,6 @@ def update_peptides_file(
     peptide_files: List[str],
     pout_files: List[str],
     out_peptide_file: str,
-    msms_files: List[str],
     pout_input_type: str,
     suppress_missing_peptide_warning: bool,
 ) -> None:
