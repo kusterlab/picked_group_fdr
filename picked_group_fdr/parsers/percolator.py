@@ -14,6 +14,13 @@ from .. import scoring_strategy
 logger = logging.getLogger(__name__)
 
 
+# tuple of (search engine score, posterior error probability)
+ScorePEPPair = Tuple[float, float]
+# tuple of (scan number, modified sequence)
+ScanPeptidePair = Tuple[int, str]
+# dictionary of raw_file => dict(scan peptide pair => percolator result)
+ResultsDict = Dict[str, Dict[ScanPeptidePair, ScorePEPPair]]
+
 def is_native_percolator_file(headers):
     return "psmid" in map(str.lower, headers)
 
@@ -104,7 +111,7 @@ def parse_percolator_out_file(
 
 def parse_percolator_out_file_to_dict(
     perc_out_file: str, results_dict: dict, input_type: str = ""
-) -> Tuple[Dict[str, str], Dict[str, Dict[Tuple[int, str], Tuple[float, float]]]]:
+) -> Tuple[Dict[str, str], ResultsDict]:
     if not os.path.isfile(perc_out_file):
         raise FileNotFoundError(
             f"Could not find percolator output file {perc_out_file}. Please check if this file exists."

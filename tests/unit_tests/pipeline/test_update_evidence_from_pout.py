@@ -2,7 +2,7 @@
 
 import pytest
 
-from picked_group_fdr.parsers.maxquant import EvidenceRow
+import picked_group_fdr.parsers.maxquant as maxquant
 from picked_group_fdr.pipeline.update_evidence_from_pout import update_evidence_single
 
 
@@ -30,7 +30,7 @@ class TestUpdateEvidenceSingle:
                 [
                     (
                         ["row1col1", "row1col2", "row1col3"],
-                        EvidenceRow(
+                        maxquant.EvidenceRow(
                             raw_file="file1.raw",
                             scannr=123,
                             peptide="_PEPTIDESEQ_",
@@ -63,6 +63,7 @@ class TestUpdateEvidenceSingle:
             first_headers,
             fixed_mods,
             results_dict,
+            maxquant.parse_evidence_file_for_percolator_matching,
             pout_input_type,
             suppress_missing_peptide_warning,
         )
@@ -93,7 +94,7 @@ class TestUpdateEvidenceSingle:
                 [
                     (
                         ["row1col1", "row1col2", "row1col3"],
-                        EvidenceRow(
+                        maxquant.EvidenceRow(
                             raw_file="file1.raw",
                             scannr=123,
                             peptide="_PEPTIDESEQ_",
@@ -126,6 +127,7 @@ class TestUpdateEvidenceSingle:
             first_headers,
             fixed_mods,
             results_dict,
+            maxquant.parse_evidence_file_for_percolator_matching,
             pout_input_type,
             suppress_missing_peptide_warning,
         )
@@ -158,6 +160,7 @@ class TestUpdateEvidenceSingle:
                 first_headers,
                 fixed_mods,
                 results_dict,
+                maxquant.parse_evidence_file_for_percolator_matching,
                 pout_input_type,
                 suppress_missing_peptide_warning,
             )

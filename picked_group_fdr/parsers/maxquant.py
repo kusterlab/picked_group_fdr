@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import _csv
 from dataclasses import dataclass
 from enum import Enum
 import logging
-from typing import List
+from typing import List, Iterator
 
 from . import tsv
 from .. import results  # TODO: get rid of this import
@@ -82,9 +83,7 @@ def parse_mq_evidence_file(
             logger.info(f"    Reading line {line_idx}")
 
         modified_peptide = row[pept_col][1:-1]
-        proteins = get_proteins(
-            modified_peptide, row[protein_col].split(";")
-        )
+        proteins = get_proteins(modified_peptide, row[protein_col].split(";"))
         if not proteins:
             continue
 
@@ -203,57 +202,104 @@ class EvidenceRow:
     labeling_state: str
 
 
-def parse_evidence_file_for_percolator_matching(reader, headers):
-    scoreCol = tsv.get_column_index(headers, "score")
-    postErrProbCol = tsv.get_column_index(headers, "pep")
+def parse_evidence_file_for_percolator_matching(
+    reader: "_csv._reader", headers: List[str]
+) -> Iterator[List[str], EvidenceRow]:
+    """Parses MaxQuant evidence.txt or msms.txt file such that the score and 
+    PEP can be updated using percolator output files.
+
+    Args:
+        reader (_csv._reader): CSV reader object for an evidence file
+        headers (List[str]): headers of the evidence file, all in lower case
+
+    Yields:
+        Iterator[List[str], EvidenceRow]: tuples of (csv reader row, Evidence row object)
+    
+    Columns needed for percolator matching:
+    - Raw file
+    - Scan number
+    - Score
+    - PEP
+    - Modified sequence
+    - Reverse
+    - Potential contaminant
+    - Labeling state (for SILAC)
+    """    
+    score_col = tsv.get_column_index(headers, "score")
+    post_err_prob_col = tsv.get_column_index(headers, "pep")
 
     # these columns are needed to retrieve the PSM
-    rawFileCol = tsv.get_column_index(headers, "raw file")
+    raw_file_col = tsv.get_column_index(headers, "raw file")
     if "ms/ms scan number" in headers:
-        scanNrCol = tsv.get_column_index(headers, "ms/ms scan number")  # evidence.txt
+        scannr_col = tsv.get_column_index(headers, "ms/ms scan number")  # evidence.txt
     else:
-        scanNrCol = tsv.get_column_index(headers, "scan number")  # msms.txt
-    peptCol = tsv.get_column_index(headers, "modified sequence")
-    idTypeCol = tsv.get_column_index(
+        scannr_col = tsv.get_column_index(headers, "scan number")  # msms.txt
+    pept_col = tsv.get_column_index(headers, "modified sequence")
+    id_type_col = tsv.get_column_index(
         headers, "type"
     )  # MULTI-MSMS MULTI-MATCH MSMS MULTI-SECPEP MULTI-MATCH-MSMS
-    reverseCol = tsv.get_column_index(headers, "reverse")
-    contaminantCol = tsv.get_column_index(headers, "potential contaminant")
-    labelingStateCol = None
+    reverse_col = tsv.get_column_index(headers, "reverse")
+    contaminant_col = tsv.get_column_index(headers, "potential contaminant")
+    labeling_state_col = None
     if "labeling state" in headers:
-        labelingStateCol = tsv.get_column_index(headers, "labeling state")
+        labeling_state_col = tsv.get_column_index(headers, "labeling state")
 
     for row in reader:
         # if scanNr is empty, it is an MBR evidence row which we encode with scanNr = -1
         scanNr = -1
-        if len(row[scanNrCol]) > 0:
-            scanNr = int(row[scanNrCol])
+        if len(row[scannr_col]) > 0:
+            scanNr = int(row[scannr_col])
 
-        labelingState = LabelingState.NOT_SILAC
-        if labelingStateCol is not None:
-            labelingState = LabelingState.UNKNOWN
-            if len(row[labelingStateCol]) > 0:
-                labelingState = int(row[labelingStateCol])
+        labeling_state = LabelingState.NOT_SILAC
+        if labeling_state_col is not None:
+            labeling_state = LabelingState.UNKNOWN
+            if len(row[labeling_state_col]) > 0:
+                labeling_state = int(row[labeling_state_col])
 
         yield row, EvidenceRow(
-            raw_file=row[rawFileCol],
+            raw_file=row[raw_file_col],
             scannr=scanNr,
-            score=float(row[scoreCol]),
-            post_err_prob=float(row[postErrProbCol]),
-            peptide=row[peptCol],
-            is_decoy=(row[reverseCol] == "+"),
-            is_contaminant=(row[contaminantCol] == "+"),
-            id_type=row[idTypeCol],
-            labeling_state=labelingState,
+            score=float(row[score_col]),
+            post_err_prob=float(row[post_err_prob_col]),
+            peptide=row[pept_col],
+            is_decoy=(row[reverse_col] == "+"),
+            is_contaminant=(row[contaminant_col] == "+"),
+            id_type=row[id_type_col],
+            labeling_state=labeling_state,
         )
 
 
-def has_unknown_silac_label(labeling_state):
+def parse_peptides_file_for_percolator_matching(
+    reader: "_csv._reader", headers: List[str]
+) -> Iterator[List[str], EvidenceRow]:
+    score_col = tsv.get_column_index(headers, "score")
+    post_err_prob_col = tsv.get_column_index(headers, "pep")
+
+    # these columns are needed to retrieve the PSM
+    pept_col = tsv.get_column_index(headers, "sequence")
+    reverse_col = tsv.get_column_index(headers, "reverse")
+    contaminant_col = tsv.get_column_index(headers, "potential contaminant")
+
+    for row in reader:
+        yield row, EvidenceRow(
+            raw_file="",
+            scannr=-1,
+            score=float(row[score_col]),
+            post_err_prob=float(row[post_err_prob_col]),
+            peptide="_" + row[pept_col] + "_",
+            is_decoy=(row[reverse_col] == "+"),
+            is_contaminant=(row[contaminant_col] == "+"),
+            id_type="Unknown",
+            labeling_state=LabelingState.NOT_SILAC,
+        )
+
+
+def has_unknown_silac_label(labeling_state: LabelingState):
     return (
         labeling_state == LabelingState.UNKNOWN
         or labeling_state == LabelingState.LIGHT_MAYBE
     )
 
 
-def is_heavy_labeled(labeling_state):
+def is_heavy_labeled(labeling_state: LabelingState):
     return labeling_state == LabelingState.HEAVY
