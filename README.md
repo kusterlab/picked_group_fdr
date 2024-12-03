@@ -11,6 +11,9 @@ Different search engine outputs are supported:
 - [Percolator](https://github.com/percolator/percolator) (no quantification)
 - [FragPipe](https://fragpipe.nesvilab.org/) (LFQ)
 - [Sage](https://github.com/lazear/sage) (LFQ)
+- [Mokapot](https://github.com/wfondrie/mokapot) (no quantification)
+- [Oktoberfest](https://github.com/wilhelm-lab/oktoberfest) (no quantification)
+- [MS2Rescore](https://github.com/compomics/ms2rescore) (no quantification)
 
 
 ## Documentation
