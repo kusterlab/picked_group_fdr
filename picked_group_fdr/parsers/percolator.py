@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 from .modifications import FIXED_MODS_DICTS, FIXED_MODS_UNIMOD
 from . import modifications
@@ -21,35 +21,56 @@ ScanPeptidePair = Tuple[int, str]
 # dictionary of raw_file => dict(scan peptide pair => percolator result)
 ResultsDict = Dict[str, Dict[ScanPeptidePair, ScorePEPPair]]
 
+
 def is_native_percolator_file(headers):
-    return "psmid" in map(str.lower, headers)
+    return "psmid" in headers
 
 
 def is_mokapot_file(headers):
-    return "specid" in map(str.lower, headers)
+    return "specid" in headers
 
 
-def get_percolator_column_idxs(headers):
+def is_ms2rescore_file(headers):
+    return "spectrum_id" in headers
+
+
+def get_percolator_column_idxs(headers: List[str]):
+    headers = list(map(str.lower, headers))
+    get_header_col = tsv.get_header_col_func(headers)
     if is_native_percolator_file(headers):
-        id_col = tsv.get_column_index(headers, "PSMId")
-        filename_col = tsv.get_column_index(headers, "filename", is_optional=True)
-        pept_col = tsv.get_column_index(headers, "peptide")
-        score_col = tsv.get_column_index(headers, "score")
-        qval_col = tsv.get_column_index(headers, "q-value")
-        post_err_prob_col = tsv.get_column_index(headers, "posterior_error_prob")
-        protein_col = tsv.get_column_index(headers, "proteinIds")
+        id_col = get_header_col("psmid", required=True)
+        filename_col = get_header_col("filename")
+        pept_col = get_header_col("peptide", required=True)
+        score_col = get_header_col("score", required=True)
+        qval_col = get_header_col("q-value", required=True)
+        post_err_prob_col = get_header_col("posterior_error_prob", required=True)
+        protein_col = get_header_col("proteinids", required=True)
     elif is_mokapot_file(headers):
-        id_col = tsv.get_column_index(headers, "SpecId")
-        filename_col = tsv.get_column_index(headers, "filename", is_optional=True)
-        pept_col = tsv.get_column_index(headers, "Peptide")
-        score_col = tsv.get_column_index(headers, "mokapot score")
-        qval_col = tsv.get_column_index(headers, "mokapot q-value")
-        post_err_prob_col = tsv.get_column_index(headers, "mokapot PEP")
-        protein_col = tsv.get_column_index(headers, "Proteins")
+        id_col = get_header_col("specid", required=True)
+        filename_col = get_header_col("filename")
+        pept_col = get_header_col("peptide", required=True)
+        score_col = get_header_col("mokapot score", required=True)
+        qval_col = get_header_col("mokapot q-value", required=True)
+        post_err_prob_col = get_header_col("mokapot pep", required=True)
+        protein_col = get_header_col("proteins", required=True)
+    elif is_ms2rescore_file(headers):
+        id_col = get_header_col("spectrum_id", required=True)
+        filename_col = get_header_col("run")
+        if "peptidoform" in headers: # peptide-level output
+            pept_col = get_header_col("peptidoform")
+            score_col = get_header_col("score", required=True)
+            qval_col = get_header_col("qvalue", required=True)
+            post_err_prob_col = get_header_col("pep", required=True)
+        else:
+            pept_col = get_header_col("peptide", required=True)
+            score_col = get_header_col("mokapot score", required=True)
+            qval_col = get_header_col("mokapot q-value", required=True)
+            post_err_prob_col = get_header_col("mokapot pep", required=True)    
+        protein_col = get_header_col("protein_list", required=True)
     else:
         raise ValueError(
             "Could not determine percolator input file format. The file should either "
-            "contain a column named PSMId (native percolator) or SpecId (mokapot)."
+            "contain a column named PSMId (native percolator), SpecId (mokapot) or spectrum_id (ms2rescore)."
         )
     return (
         id_col,
@@ -103,6 +124,8 @@ def parse_percolator_out_file(
             proteins = row[protein_col:]
         elif is_mokapot_file(headers):
             proteins = row[protein_col].split("\t")
+        elif is_ms2rescore_file(headers):
+            proteins = eval(row[protein_col])
 
         proteins = get_proteins(modified_peptide, proteins)
         if proteins:
@@ -174,21 +197,21 @@ def parse_prosit_psmid_and_peptide(
 
     Args:
         psm_id (str): The Prosit PSMId is dash-separated string containing
-            (raw_file, scan_number, modified_sequence, charge and optionally 
-            scan_event_number). The raw_file and modified_sequence can contain 
+            (raw_file, scan_number, modified_sequence, charge and optionally
+            scan_event_number). The raw_file and modified_sequence can contain
             dashes themselves.
         peptide (str): The peptide sequence.
-        convert_to_proforma (function): A function to convert the peptide to 
+        convert_to_proforma (function): A function to convert the peptide to
             ProForma notation.
 
     Returns:
-        tuple[str, int, str]: A tuple containing the parsed raw file, scan 
+        tuple[str, int, str]: A tuple containing the parsed raw file, scan
             number, and peptide in ProForma notation.
     """
-    # The original Prosit output files did not have a filename column, but 
+    # The original Prosit output files did not have a filename column, but
     # always included a scan event number, i.e. num_fields = 5.
-    # The new Oktoberfest output has a filename column, but the scan event 
-    # number is optional, so instead we count the number of fields using the 
+    # The new Oktoberfest output has a filename column, but the scan event
+    # number is optional, so instead we count the number of fields using the
     # number of dashes in the filename column.
     num_fields = 5
     if len(filename) > 0:

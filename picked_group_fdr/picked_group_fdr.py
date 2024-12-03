@@ -306,7 +306,7 @@ def run_method(
 
     protein_groups_writer = writers.MinimalProteinGroupsWriter(protein_annotations)
     post_err_probs = None
-    if args.do_quant:
+    if args.do_quant and method_config.score_type.can_do_quantification():
         (
             protein_group_results,
             protein_groups_writer,
