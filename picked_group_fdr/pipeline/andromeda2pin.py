@@ -272,18 +272,18 @@ def parseMqEvidenceFile(mqEvidenceFile, razor=False):
             + ".-"
         )
         proteins = row[proteinCol].split(";")
+        experiment = "Experiment1"
         if experimentCol >= 0:
-            experiment = row[experimentCol]
-        else:
-            experiment = "Experiment1"
+            experiment = row[experimentCol]            
 
         score = float(row[scoreCol])
         deltaScore = float(row[deltaScoreCol])
         mass = float(row[massCol])
-        deltaMass = float(row[deltaMassCol])
-
-        if np.isnan(deltaMass):
-            deltaMass = 0.0
+        deltaMass = 0.0
+        if deltaMassCol >= 0:
+            deltaMass = float(row[deltaMassCol])
+            if np.isnan(deltaMass):
+                deltaMass = 0.0
 
         if not np.isnan(score) and score > 0.0:
             yield scanNr, charge, fileName, peptide, proteins, experiment, score, deltaScore, mass, deltaMass
