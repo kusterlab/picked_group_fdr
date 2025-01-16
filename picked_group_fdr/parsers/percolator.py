@@ -99,6 +99,7 @@ def parse_percolator_out_file(
         post_err_prob_col,
         protein_col,
     ) = get_percolator_column_idxs(headers)
+    headers = list(map(str.lower, headers))
 
     if score_type.get_score_column() == "posterior_error_prob":
         score_col = post_err_prob_col
@@ -126,6 +127,8 @@ def parse_percolator_out_file(
             proteins = row[protein_col].split("\t")
         elif is_ms2rescore_file(headers):
             proteins = eval(row[protein_col])
+        else:
+            raise ValueError("Could not deduce percolator output format from headers.")
 
         proteins = get_proteins(modified_peptide, proteins)
         if proteins:
