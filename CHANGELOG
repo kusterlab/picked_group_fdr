@@ -1,3 +1,10 @@
+v0.7.4
+- Make --fasta_use_uniprot_id compatible with quantification
+- Fix problem with missing delta mass column for andromeda2pin
+- Add support for ms2rescore percolator format (#23)
+- Refactored update_evidence_from_pout
+- Remove unsupported mq_msms argument for update_evidence_from_pout
+
 v0.7.3
 - Fix nondeterministic behavior of decouple_connected_proteins
 
