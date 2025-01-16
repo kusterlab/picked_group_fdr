@@ -127,13 +127,6 @@ def parse_args(argv):
     )
 
     apars.add_argument(
-        "--fasta_use_uniprot_id",
-        help="""Parse protein identifiers in the fasta file as UniProt IDs, 
-                i.e. Q9UM47 for the protein identifier sp|Q9UM47|NOTC3_HUMAN""",
-        action="store_true",
-    )
-
-    apars.add_argument(
         "--gene_level",
         help="""Do quantification on gene-level instead of on protein group level""",
         action="store_true",
