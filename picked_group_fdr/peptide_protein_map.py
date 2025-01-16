@@ -53,6 +53,8 @@ def get_peptide_to_protein_maps_from_args(
     parse_id = digest.parse_until_first_space
     if args.gene_level and not use_pseudo_genes:
         parse_id = protein_annotation.parse_gene_name_func
+    elif args.fasta_use_uniprot_id:
+        parse_id = protein_annotation.parse_uniprot_id
 
     digestion_params_list = get_digestion_params_list(args)
     return get_peptide_to_protein_maps(

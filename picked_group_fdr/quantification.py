@@ -239,6 +239,8 @@ def do_quantification(
     parse_id = digest.parse_until_first_space
     if args.gene_level and not use_pseudo_genes:
         parse_id = protein_annotation.parse_gene_name_func
+    elif args.fasta_use_uniprot_id:
+        parse_id = protein_annotation.parse_uniprot_id
 
     protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,
