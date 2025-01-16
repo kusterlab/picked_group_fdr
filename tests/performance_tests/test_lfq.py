@@ -1,15 +1,14 @@
 import random
-import pytest
 import numpy as np
 from timeit import default_timer as timer
 
-from picked_group_fdr.columns.lfq import LFQIntensityColumns
+import picked_group_fdr.columns as columns
 from picked_group_fdr.precursor_quant import PrecursorQuant
-from picked_group_fdr.results import ProteinGroupResult
+from picked_group_fdr.results import ProteinGroupResults, ProteinGroupResult
 
 
 def test_performanceLFQ():
-    num_experiments = 600 # most experiments = 600 for prosit job 964 (Chengdong plasma samples)
+    num_experiments = 2400 # most experiments = 600 for prosit job 964 (Chengdong plasma samples)
     num_peptides = 600 # most peptides = 22500 for TTN in WP3 pipeline
     num_proteins = 10
     
@@ -25,10 +24,11 @@ def test_performanceLFQ():
         
         proteinGroupResults.append(pgr)
     
-    lfq_columns = [LFQIntensityColumns(minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
+    lfq_columns = [columns.LFQIntensityColumns(minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
     
     start = timer()
 
+    proteinGroupResults = ProteinGroupResults(proteinGroupResults)
     for experiment in range(num_experiments):
         proteinGroupResults.experiments.append(f'file{experiment}')
     
@@ -52,7 +52,7 @@ def getPeptideIntensityList(num_experiments, num_peptides):
 
 
 def getLFQIntensityColumns():
-    return LFQIntensityColumns(minPeptideRatiosLFQ=2, stabilizeLargeRatiosLFQ=False)
+    return columns.LFQIntensityColumns(minPeptideRatiosLFQ=2, stabilizeLargeRatiosLFQ=False)
       
 
 def getExperimentToIdxMap(num_experiments):
@@ -61,8 +61,16 @@ def getExperimentToIdxMap(num_experiments):
     return experimentToIdxMap
 
 
+
+# Profile with cProfile:
 if __name__ == "__main__":
-    #import cProfile
-    #cProfile.run("test_performanceLFQ()")
+    # Perform cProfile profiling (no overhead but harder to find exact bottleneck):
+    # 1. run "python -m cProfile -o program.prof tests/performance_tests/test_lfq.py"
+    # 2. run "snakeviz -H 0.0.0.0 -s program.prof"
+    
+    # Perform line-by-line profiling (significant overhead but easy to interpret):
+    # 1. add @profile decorators in lfq.py
+    # 2. run "kernprof -lv tests/performance_tests/test_lfq.py"
+    
     print("Starting LFQ performance test")
     test_performanceLFQ()

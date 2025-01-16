@@ -75,7 +75,9 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
         if self.numThreads > 1:
             processingPool = JobPool(
-                processes=self.numThreads, maxtasksperchild=10, write_progress_to_logger=True
+                processes=self.numThreads,
+                maxtasksperchild=10,
+                write_progress_to_logger=True,
             )
 
         allIntensities = list()
@@ -111,7 +113,9 @@ class LFQIntensityColumns(ProteinGroupColumns):
                     [1 if intensity > 0 else 0 for intensity in intensities]
                 )
 
-        logger.info(f"#Protein groups quantified ({self.protein_group_fdr_threshold*100:g}% protein group-level FDR, LFQ):")
+        logger.info(
+            f"#Protein groups quantified ({self.protein_group_fdr_threshold*100:g}% protein group-level FDR, LFQ):"
+        )
         for experiment, numProteinGroups in zip(
             experiment_to_idx_map.keys(),
             helpers.chunks(proteinGroupCounts, max(1, num_silac_channels)),
@@ -289,6 +293,8 @@ def _getLogMedianPeptideRatios(
     intensityMatrix[intensityMatrix == 0] = np.nan
     cols = [(idx, i, intensityMatrix[:, i]) for idx, i in enumerate(valid_columns)]
     peptideRatios, experimentPairs = list(), list()
+    # this for loop is the reason for quadratic runtime increase for more samples
+    # (30 seconds per protein for 2400 samples and 600 peptides)
     for (idx_i, i, col_i), (idx_j, j, col_j) in itertools.combinations(cols, 2):
         if valid_vals[idx_i, idx_j] < minPeptideRatiosLFQ:
             continue

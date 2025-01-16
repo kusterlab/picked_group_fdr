@@ -3,10 +3,12 @@ from __future__ import annotations
 import argparse
 from typing import Callable, Dict, List
 
+import pandas as pd
+
 from .. import digest
 from .. import protein_annotation
 from .. import writers
-from ..columns.triqler import init_triqler_params
+from ..parsers import parsers
 from ..protein_groups import ProteinGroups
 
 # for type hints only
@@ -57,3 +59,20 @@ def get_protein_groups_output_writer(
         )
     
     raise ValueError(f"Unknown output format: {output_format}.")
+
+
+def init_triqler_params(experimental_design: pd.DataFrame):
+    params = dict()
+    # TODO: make these parameters configurable from the command line
+    params["decoyPattern"] = "REV__"
+    params["groups"] = []
+    params["groupLabels"] = []
+    params["numThreads"] = 4
+    params["warningFilter"] = "ignore"
+    params["foldChangeEval"] = 0.8
+    params["returnPosteriors"] = False
+    params["minSamples"] = 5
+    if experimental_design is not None:
+        params = parsers.add_triqler_group_params(experimental_design, params)
+
+    return params
