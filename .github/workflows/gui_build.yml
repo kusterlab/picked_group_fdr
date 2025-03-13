@@ -33,10 +33,10 @@ jobs:
 
           Unzip ".\UPX\upx-3.96-win64.zip" ".\UPX\upx-3.96\"
       - name: Create conda environment
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: 3.9
-          mamba-version: 1.5.10
+          mamba-version: 1.5
           channels: conda-forge,defaults
           channel-priority: true
           activate-environment: picked_group_fdr_gui
