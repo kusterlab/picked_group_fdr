@@ -8,9 +8,9 @@ from picked_group_fdr.results import ProteinGroupResults, ProteinGroupResult
 
 
 def test_performanceLFQ():
-    num_experiments = 2400 # most experiments = 600 for prosit job 964 (Chengdong plasma samples)
+    num_experiments = 100 # most experiments = 600 for prosit job 964 (Chengdong plasma samples)
     num_peptides = 600 # most peptides = 22500 for TTN in WP3 pipeline
-    num_proteins = 10
+    num_proteins = 200
     
     proteinGroupResults = []
     for i in range(num_proteins):
@@ -24,7 +24,7 @@ def test_performanceLFQ():
         
         proteinGroupResults.append(pgr)
     
-    lfq_columns = [columns.LFQIntensityColumns(minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=1)]
+    lfq_columns = [columns.LFQIntensityColumns(minPeptideRatiosLFQ=1, stabilizeLargeRatiosLFQ=False, numThreads=2)]
     
     start = timer()
 
@@ -71,6 +71,10 @@ if __name__ == "__main__":
     # Perform line-by-line profiling (significant overhead but easy to interpret):
     # 1. add @profile decorators in lfq.py
     # 2. run "kernprof -lv tests/performance_tests/test_lfq.py"
+
+    # Perform memory profiling:
+    # 1. mprof run --include-children --backend psutil_pss --python python tests/performance_tests/test_lfq.py
+    # 2. mprof plot -o mprof_plot.png --backend agg
     
     print("Starting LFQ performance test")
     test_performanceLFQ()

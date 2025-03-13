@@ -136,3 +136,5 @@ flamegraph.svg
 *prof
 
 *.swp
+mprofile*.dat
+.qodo

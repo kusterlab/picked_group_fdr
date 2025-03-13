@@ -77,7 +77,9 @@ class LFQIntensityColumns(ProteinGroupColumns):
             processingPool = JobPool(
                 processes=self.numThreads,
                 maxtasksperchild=10,
+                max_jobs_queued=self.numThreads*3,
                 write_progress_to_logger=True,
+                total_jobs=len(protein_group_results),
             )
 
         allIntensities = list()
