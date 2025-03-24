@@ -110,7 +110,7 @@ class ProteinGroupResult:
 
     def to_list(self, format_extra_columns=None):
         if format_extra_columns is None:
-            format_extra_columns = writers.format_extra_columns
+            format_extra_columns = writers.base._format_extra_columns
         return [
             self.proteinIds,
             self.majorityProteinIds,
