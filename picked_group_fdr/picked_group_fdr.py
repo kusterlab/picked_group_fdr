@@ -344,22 +344,22 @@ def get_protein_group_results(
     """Performs protein inference and protein group-level FDR estimation.
 
     Args:
-        peptide_info_list (PeptideInfoList = Dict[str, Tuple[float, List[str]]]): 
-            Dictionary of (peptide_sequence => (peptide_search_engine_score, 
+        peptide_info_list (PeptideInfoList = Dict[str, Tuple[float, List[str]]]):
+            Dictionary of (peptide_sequence => (peptide_search_engine_score,
             [protein1, ...]).
-        mq_protein_groups_file (str, optional): Path to protein groups file in 
-            MaxQuant proteinGroups.txt format, only used if 
+        mq_protein_groups_file (str, optional): Path to protein groups file in
+            MaxQuant proteinGroups.txt format, only used if
             method_config.grouping_strategy is MQNativeGrouping. Defaults to "".
-        method_config (Union[methods.MethodConfig, None], optional): 
-            methods.MethodConfig object that specifies the protein grouping, 
-            scoring and picked strategies to use. If set to `None`, uses 
-            `RescuedSubsetGrouping`, `BestPEPScore` and `PickedGroupStrategy`. 
+        method_config (Union[methods.MethodConfig, None], optional):
+            methods.MethodConfig object that specifies the protein grouping,
+            scoring and picked strategies to use. If set to `None`, uses
+            `RescuedSubsetGrouping`, `BestPEPScore` and `PickedGroupStrategy`.
             Defaults to None.
         plotter (Union[Plotter, NoPlotter, None], optional): Plotter object for
             plotting FDR calibration curves if given entrapment search results.
             If set to `None`, `NoPlotter` (i.e. no plots are generated) is used.
             Defaults to None.
-        keep_all_proteins (bool, optional): Keep proteins that do not have 
+        keep_all_proteins (bool, optional): Keep proteins that do not have
             peptides below `psm_fdr_cutoff`. Defaults to False.
         protein_group_fdr_threshold (float, optional): Protein group-level FDR
             threshold to aim for in rescuing procedure. Note that this does not
@@ -368,7 +368,7 @@ def get_protein_group_results(
             the number of peptides for each protein group. Defaults to 0.01.
 
     Raises:
-        NotImplementedError: Raised if an invalid combination of 
+        NotImplementedError: Raised if an invalid combination of
             method.MethodConfig is passed.
 
     Returns:
@@ -378,11 +378,13 @@ def get_protein_group_results(
             of peptides.
     """
     if method_config is None:
-        method_config = methods.parse_method_toml(method_name="picked_protein_group", use_pseudo_genes=False)
-    
+        method_config = methods.parse_method_toml(
+            method_name="picked_protein_group", use_pseudo_genes=False
+        )
+
     if plotter is None:
         plotter = NoPlotter()
-    
+
     picked_strategy, score_type, grouping_strategy = (
         method_config.picked_strategy,
         method_config.score_type,

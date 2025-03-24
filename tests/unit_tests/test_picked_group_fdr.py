@@ -1,7 +1,9 @@
 import pytest
 import argparse
 from unittest.mock import patch
-from picked_group_fdr.picked_group_fdr import parse_args, run_picked_group_fdr
+
+from picked_group_fdr import picked_group_fdr
+from picked_group_fdr.results import ProteinGroupResult
 
 
 def test_run_picked_group_fdr():
@@ -38,7 +40,7 @@ def test_run_picked_group_fdr():
     ) as mock_logger:
 
         # Call the function
-        run_picked_group_fdr(args)
+        picked_group_fdr.run_picked_group_fdr(args)
 
         # Assert that the necessary functions were called with the correct arguments
         mock_get_annotations.assert_called_once_with("example.fasta", False, True)
@@ -74,6 +76,29 @@ def test_run_picked_group_fdr():
         )
 
 
+class TestGetProteinGroupResults:
+    def test_get_protein_group_results_with_defaults(self):
+        results = picked_group_fdr.get_protein_group_results(
+            {"PEPA": (1e-5, ["PROTA", "PROTB"])}
+        )
+
+        assert results.protein_group_results == [
+            ProteinGroupResult(
+                proteinIds="PROTB;PROTA",
+                majorityProteinIds="PROTB;PROTA",
+                peptideCountsUnique="1;1",
+                bestPeptide="PEPA",
+                numberOfProteins=2,
+                qValue=0.5,
+                score=5.0,
+                reverse="",
+                potentialContaminant="",
+                precursorQuants=[],
+                extraColumns=[],
+            )
+        ]
+
+
 @pytest.fixture
 def arg_parser():
     """Fixture to create ArgumentParser instance."""
@@ -86,107 +111,107 @@ class TestParseArgs:
     def test_parse_args_with_mq_evidence(self, arg_parser):
         """Test parse_args with mq_evidence argument."""
         argv = ["--mq_evidence", "file1.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.mq_evidence == ["file1.txt"]
 
     def test_parse_args_with_perc_evidence(self, arg_parser):
         """Test parse_args with perc_evidence argument."""
         argv = ["--perc_evidence", "file2.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.perc_evidence == ["file2.txt"]
 
     def test_parse_args_with_fragpipe_psm(self, arg_parser):
         """Test parse_args with fragpipe_psm argument."""
         argv = ["--fragpipe_psm", "file3.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.fragpipe_psm == ["file3.txt"]
 
     def test_parse_args_with_combined_ion(self, arg_parser):
         """Test parse_args with combined_ion argument."""
         argv = ["--combined_ion", "file4.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.combined_ion == ["file4.txt"]
 
     def test_parse_args_with_sage_results(self, arg_parser):
         """Test parse_args with sage_results argument."""
         argv = ["--sage_results", "file5.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.sage_results == ["file5.txt"]
 
     def test_parse_args_with_sage_lfq_tsv(self, arg_parser):
         """Test parse_args with sage_lfq_tsv argument."""
         argv = ["--sage_lfq_tsv", "file6.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.sage_lfq_tsv == ["file6.txt"]
 
     def test_parse_args_with_protein_groups_out(self, arg_parser):
         """Test parse_args with protein_groups_out argument."""
         argv = ["--protein_groups_out", "output.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.protein_groups_out == "output.txt"
 
     def test_parse_args_with_output_format(self, arg_parser):
         """Test parse_args with output_format argument."""
         argv = ["--output_format", "fragpipe"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.output_format == "fragpipe"
 
     def test_parse_args_with_fasta(self, arg_parser):
         """Test parse_args with fasta argument."""
         argv = ["--fasta", "fasta_file.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.fasta == ["fasta_file.txt"]
 
     def test_parse_args_with_mq_protein_groups(self, arg_parser):
         """Test parse_args with mq_protein_groups argument."""
         argv = ["--mq_protein_groups", "mq_protein_groups.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.mq_protein_groups == "mq_protein_groups.txt"
 
     def test_parse_args_with_methods(self, arg_parser):
         """Test parse_args with methods argument."""
         argv = ["--methods", "method1"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.methods == "method1"
 
     def test_parse_args_with_peptide_protein_map(self, arg_parser):
         """Test parse_args with peptide_protein_map argument."""
         argv = ["--peptide_protein_map", "map_file.txt"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.peptide_protein_map == ["map_file.txt"]
 
     def test_parse_args_with_keep_all_proteins(self, arg_parser):
         """Test parse_args with keep_all_proteins argument."""
         argv = ["--keep_all_proteins"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.keep_all_proteins
 
     def test_parse_args_with_gene_level(self, arg_parser):
         """Test parse_args with gene_level argument."""
         argv = ["--gene_level"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.gene_level
 
     def test_parse_args_with_do_quant(self, arg_parser):
         """Test parse_args with do_quant argument."""
         argv = ["--do_quant"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.do_quant
 
     def test_parse_args_with_suppress_missing_peptide_warning(self, arg_parser):
         """Test parse_args with suppress_missing_peptide_warning argument."""
         argv = ["--suppress_missing_peptide_warning"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.suppress_missing_peptide_warning
 
     def test_parse_args_with_figure_base_fn(self, arg_parser):
         """Test parse_args with figure_base_fn argument."""
         argv = ["--figure_base_fn", "figure_base"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.figure_base_fn == "figure_base"
 
     def test_parse_args_with_plot_figures(self, arg_parser):
         """Test parse_args with plot_figures argument."""
         argv = ["--plot_figures"]
-        args = parse_args(argv)
+        args = picked_group_fdr.parse_args(argv)
         assert args.plot_figures
