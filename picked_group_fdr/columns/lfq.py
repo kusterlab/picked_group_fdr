@@ -79,6 +79,7 @@ class LFQIntensityColumns(ProteinGroupColumns):
                 maxtasksperchild=10,
                 max_jobs_queued=self.numThreads*3,
                 write_progress_to_logger=True,
+                print_progress_every=100,
                 total_jobs=len(protein_group_results),
             )
 
