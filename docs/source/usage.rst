@@ -5,7 +5,7 @@ Always make sure that you have run your database search with 100% protein-level 
 Instructions on how to do this are given in the respective search engine sections.
 
 Users unfamiliar with the command line and Python are advised to use the :ref:`Graphical user interface (GUI)`.
-For more flexibility, use the :ref:`Command line` or a :ref:`Python script / jupyter notebook`.
+For more flexibility, use the :ref:`Command line` or call functions directly in :ref:`Python`.
 
 Graphical user interface (GUI)
 ------------------------------
@@ -104,9 +104,32 @@ MaxQuant results
          --method picked_protein_group_mq_input \
          --protein_groups_out percolator/proteinGroups.txt
 
+Python
+------
 
-Python script / jupyter notebook
---------------------------------
+Protein inference
+^^^^^^^^^^^^^^^^^
+
+To only run the protein inference functionality on a list of identified peptides with associated 
+proteins, call the ``picked_group_fdr.get_protein_group_results`` function on a 
+dictionary of ``peptide_sequence => (peptide_posterior_error_prob, [protein1, ...])``:
+
+.. code:: python
+
+   from picked_group_fdr import picked_group_fdr
+
+   results = picked_group_fdr.get_protein_group_results(
+      {"PEPA": (1e-5, ["PROTA", "PROTB"])}
+   )
+
+   print(results.protein_group_results)
+   # prints [ProteinGroupResult(proteinIds='PROTB;PROTA', majorityProteinIds='PROTB;PROTA', 
+   #         peptideCountsUnique='1;1', bestPeptide='PEPA', numberOfProteins=2, qValue=0.5, 
+   #         score=5.0, reverse='', potentialContaminant='', precursorQuants=[], extraColumns=[])]
+
+
+Python pipeline / jupyter notebook
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The PickedGroupFDR Python module exposes a number of convenient methods for calling the different tools inside a Python script. 
 Here, this functionality is demonstrated using a Jupyter notebook available at https://github.com/kusterlab/picked_group_fdr/tree/main/data/book_chapter/coon_analysis.ipynb:

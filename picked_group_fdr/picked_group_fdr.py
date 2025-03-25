@@ -345,7 +345,7 @@ def get_protein_group_results(
 
     Args:
         peptide_info_list (PeptideInfoList = Dict[str, Tuple[float, List[str]]]):
-            Dictionary of (peptide_sequence => (peptide_search_engine_score,
+            Dictionary of (peptide_sequence) => (peptide_search_engine_score,
             [protein1, ...]).
         mq_protein_groups_file (str, optional): Path to protein groups file in
             MaxQuant proteinGroups.txt format, only used if
