@@ -128,6 +128,9 @@ dictionary of ``peptide_sequence => (peptide_posterior_error_prob, [protein1, ..
    #         score=5.0, reverse='', potentialContaminant='', precursorQuants=[], extraColumns=[])]
 
 
+This functionality is also demonstrated in a more complete manner in a Jupyter notebook available at 
+https://github.com/kusterlab/picked_group_fdr/tree/main/data/protein_inference_example/protein_inference_and_fdr.ipynb
+
 Python pipeline / jupyter notebook
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
