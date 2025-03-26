@@ -201,7 +201,7 @@ def main(argv):
                     if l == label
                 ]
             )
-            peptides, proteins, _, peptide_scores = zip(
+            _, proteins, _, peptide_scores = zip(
                 *list(
                     parsers.parse_peptides_files_multiple(
                         peptide_files,
@@ -213,7 +213,7 @@ def main(argv):
                 )
             )
 
-            score_group_tuples = list(zip(peptide_scores, peptides, proteins))
+            score_group_tuples = list(zip(peptide_scores, proteins))
             np.random.shuffle(score_group_tuples)
             score_group_tuples = sorted(
                 score_group_tuples, key=lambda x: x[0], reverse=True
