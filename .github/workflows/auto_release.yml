@@ -27,7 +27,7 @@ jobs:
       - name: Generate tag name
         id: generate_tage_name
         run: |
-          echo "TAG_NAME=$(echo "$VERSION" | sed -E 's/^([0-9]+)\.([0-9]+)\.([0-9]+)/rel-\1-\02-\3/')" >> $GITHUB_ENV
+          echo "TAG_NAME=$(echo "$VERSION" | awk -F. '{printf "rel-%d-%02d-%d", $1, $2, $3}')" >> $GITHUB_ENV
       - name: Extract release notes from CHANGELOG
         id: extract_notes
         run: |
@@ -53,4 +53,4 @@ jobs:
           name: v${{ env.VERSION }}
           body: ${{ env.RELEASE_NOTES }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT }} # use PAT token instead of GITHUB_TOKEN to trigger additional workflows, see https://github.com/orgs/community/discussions/27028
