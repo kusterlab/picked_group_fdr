@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 
 from picked_group_fdr.columns.lfq import (
-    LFQIntensityColumns,
     _getLFQIntensities,
     _getMaxRatio,
     _getPeptideIntensities,
@@ -169,7 +168,7 @@ class TestGetPeptideIntensities:
                 postErrProbCutoff,
                 numSilacChannels,
                 numExperiments,
-            )[0][("_APEPTIDE_", 2)],
+            )[0][("APEPTIDE", 2)],
             [25.0, 10.0, 5.0],
         )
 
@@ -185,4 +184,4 @@ class TestCalculateRatios:
 
 @pytest.fixture
 def peptideIntensities():
-    return {("_APEPTIDE_", 2): [25.0, 10.0, 5.0]}
+    return {("APEPTIDE", 2): [25.0, 10.0, 5.0]}

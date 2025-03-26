@@ -10,8 +10,11 @@ class TestMultPEPScore:
         self, proteinGroupsSimple, proteinGroupPeptideInfosSimple
     ):
         score_type = MultPEPScore()
+        protein_group_fdr_threshold = 0.01
         score_type.optimize_hyperparameters(
-            proteinGroupsSimple, proteinGroupPeptideInfosSimple
+            proteinGroupsSimple,
+            proteinGroupPeptideInfosSimple,
+            protein_group_fdr_threshold,
         )
 
         np.testing.assert_almost_equal(score_type.div, 1e-4)

@@ -13,8 +13,19 @@ python3 -um picked_group_fdr --mq_evidence ${DATA_DIR}/evidence.txt \
     --min-length 6 \
     --protein_groups_out ${RESULT_DIR}/proteinGroups.txt \
     --method picked_protein_group_mq_input \
-    --do_quant
+    --do_quant | tee ${RESULT_DIR}/proteinGroups.log
 diff ${RESULT_DIR}/proteinGroups.txt ${RESULT_DIR}/proteinGroups.reference.txt
+
+# MaxQuant input 5% FDR
+python3 -um picked_group_fdr --mq_evidence ${DATA_DIR}/evidence.txt \
+    --fasta ${DATA_DIR}/db.fasta \
+    --enzyme trypsinp \
+    --min-length 6 \
+    --protein_groups_out ${RESULT_DIR}/proteinGroups_5pct_fdr.txt \
+    --protein_group_fdr_threshold 0.05 \
+    --method picked_protein_group_mq_input \
+    --do_quant | tee ${RESULT_DIR}/proteinGroups_5pct_fdr.log
+diff ${RESULT_DIR}/proteinGroups_5pct_fdr.txt ${RESULT_DIR}/proteinGroups_5pct_fdr.reference.txt
 
 # Percolator input
 python3 -um picked_group_fdr \

@@ -69,18 +69,18 @@ def test_remove_decoy_proteins_from_target_peptides():
     ) == ["proteinA"]
 
 
-class TestCleanPeptide:
+class TestRemoveModifications:
     def test_clean_peptide_flanks(self):
-        assert helpers.clean_peptide("_APEPTIDE_") == "APEPTIDE"
+        assert helpers.remove_modifications("APEPTIDE") == "APEPTIDE"
 
     def test_clean_peptide_mods_square_brackets(self):
-        assert helpers.clean_peptide("_APEPT[AMODIFICATION]IDE_") == "APEPTIDE"
+        assert helpers.remove_modifications("APEPT[AMODIFICATION]IDE") == "APEPTIDE"
 
     def test_clean_peptide_mods_parentheses(self):
-        assert helpers.clean_peptide("_APEPT(AMODIFICATION)IDE_") == "APEPTIDE"
+        assert helpers.remove_modifications("APEPT(AMODIFICATION)IDE") == "APEPTIDE"
 
     def test_clean_peptide_mods_nested_parentheses(self):
-        assert helpers.clean_peptide("_APEPT(Oxidation (M))IDE_") == "APEPTIDE"
+        assert helpers.remove_modifications("APEPT(Oxidation (M))IDE") == "APEPTIDE"
 
 
 def test_chunks():

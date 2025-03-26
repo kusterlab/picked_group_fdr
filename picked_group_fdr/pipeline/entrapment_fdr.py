@@ -189,7 +189,7 @@ def main(argv):
             protein_groups, protein_scores = zip(*score_group_tuples)
 
             reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(
-                protein_groups, protein_scores
+                protein_groups, protein_scores, args.fdr_cutoff
             )
         elif args.peptides_files:
             peptide_files, is_decoy_file = zip(
@@ -201,7 +201,7 @@ def main(argv):
                     if l == label
                 ]
             )
-            peptides, proteins, _, peptide_scores = zip(
+            _, proteins, _, peptide_scores = zip(
                 *list(
                     parsers.parse_peptides_files_multiple(
                         peptide_files,
@@ -213,14 +213,16 @@ def main(argv):
                 )
             )
 
-            score_group_tuples = list(zip(peptide_scores, peptides, proteins))
+            score_group_tuples = list(zip(peptide_scores, proteins))
             np.random.shuffle(score_group_tuples)
             score_group_tuples = sorted(
                 score_group_tuples, key=lambda x: x[0], reverse=True
             )
 
             reported_qvals, observed_qvals = fdr.calculate_peptide_fdrs(
-                score_group_tuples, score_type=BestAndromedaScore()
+                score_group_tuples,
+                score_type=BestAndromedaScore(),
+                peptide_fdr_threshold=args.fdr_cutoff,
             )
 
         plotter.label = label

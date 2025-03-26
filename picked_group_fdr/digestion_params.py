@@ -173,3 +173,10 @@ def add_digestion_arguments(apars):
         help="Set this flag if your fasta file already contains decoy protein sequences.",
         action="store_true",
     )
+
+    apars.add_argument(
+        "--fasta_use_uniprot_id",
+        help="""Parse protein identifiers in the fasta file as UniProt IDs, 
+                i.e. Q9UM47 for the protein identifier sp|Q9UM47|NOTC3_HUMAN""",
+        action="store_true",
+    )

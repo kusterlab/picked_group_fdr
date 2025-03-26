@@ -1,3 +1,42 @@
+v0.7.8
+- Added option to keep decoys in peptide-level FDR calculation
+- Added example notebook for protein inference
+
+v0.7.7
+- Added unit test for get_protein_group_results()
+- Added default arguments and docstring to get_protein_group_results()
+- Reduce logging frequency for MaxLFQ
+- Fix column formatting function reference
+
+v0.7.6
+- Fix GUI build
+- Remove explicit llvmlite dependency
+
+v0.7.5
+- Update job-pool to v0.3.0
+- Allow for numpy v2.0
+
+v0.7.4
+- Make --fasta_use_uniprot_id compatible with quantification
+- Fix problem with missing delta mass column for andromeda2pin
+- Add support for ms2rescore percolator format (#23)
+- Refactored update_evidence_from_pout
+- Remove unsupported mq_msms argument for update_evidence_from_pout
+
+v0.7.3
+- Fix nondeterministic behavior of decouple_connected_proteins
+
+v0.7.2
+- Add --protein_group_fdr_threshold flag to set the protein group-level FDR cutoff for the rescuing procedure and logging messages
+- Fix compatibility with Oktoberfest's new ProForma N-terminal notation
+- Improved ProForma sequence format support
+- Support new oktoberfest psmid with optional scan event number
+- Use --psm_fdr_cutoff for "Peptide counts (unique)" column
+
+v0.7.1
+- Switch to modified peptide instead of peptide in fragpipe parsing functions
+- Make peptide flanking characters consistent across search engines. Fixes bug with percolator input used with --peptide_protein_map
+
 v0.7.0
 - Less strict llvmlite dependency
 - Add functionality to requantify fragpipe combined_protein.tsv

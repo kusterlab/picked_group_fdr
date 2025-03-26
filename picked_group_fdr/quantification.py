@@ -97,6 +97,17 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--protein_group_fdr_threshold",
+        default=0.01,
+        metavar="C",
+        type=float,
+        help="""Protein group-level FDR threshold used for computing the number of
+                protein groups at the given threshold. Note that this does not filter the
+                protein_groups_out file for the specified FDR. Use the
+                picked_group_fdr.pipeline.filter_fdr_maxquant module for this.""",
+    )
+
+    apars.add_argument(
         "--peptide_protein_map",
         default=None,
         metavar="M",
@@ -113,13 +124,6 @@ def parse_args(argv):
         help="""Fasta file(s) to create mapping from peptides to proteins.
                 This should not contain the decoy sequences, unless you set the 
                 --fasta_contains_decoys flag.""",
-    )
-
-    apars.add_argument(
-        "--fasta_use_uniprot_id",
-        help="""Parse protein identifiers in the fasta file as UniProt IDs, 
-                i.e. Q9UM47 for the protein identifier sp|Q9UM47|NOTC3_HUMAN""",
-        action="store_true",
     )
 
     apars.add_argument(
@@ -219,12 +223,17 @@ def do_quantification(
     logger.info("Preparing for quantification")
 
     score_origin = score_type.score_origin.long_description().lower()
-    if args.output_format == "auto" and score_origin in ["maxquant", "fragpipe"]:
-        args.output_format = score_origin
+    if args.output_format == "auto":
+        if score_origin in ["maxquant", "fragpipe"]:
+            args.output_format = score_origin
+        else:
+            args.output_format = "maxquant"
 
     parse_id = digest.parse_until_first_space
     if args.gene_level and not use_pseudo_genes:
         parse_id = protein_annotation.parse_gene_name_func
+    elif args.fasta_use_uniprot_id:
+        parse_id = protein_annotation.parse_uniprot_id
 
     protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,

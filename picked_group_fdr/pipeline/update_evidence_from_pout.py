@@ -3,7 +3,8 @@ import sys
 import os
 import collections
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Set, Callable, Iterator
+from dataclasses import dataclass, field
 
 from .. import __version__, __copyright__
 from .. import helpers
@@ -56,18 +57,6 @@ def parse_args(argv):
     )
 
     apars.add_argument(
-        "--mq_msms",
-        default=None,
-        metavar="M",
-        nargs="+",
-        help="""MaxQuant msms.txt file(s) (optional). Can help 
-                resolve MS1 features with multiple scans. If you
-                want to combine multiple evidence files, use 
-                spaces to separate the file paths. Not 
-                implemented yet...""",
-    )
-
-    apars.add_argument(
         "--pout_input_type",
         default="andromeda",
         metavar="SE",
@@ -110,31 +99,30 @@ def main(argv) -> None:
         )
         return
 
-    update_func = update_evidence_file
-    if args.mq_input_type == "peptides":
-        update_func = update_peptides_file
-
-    update_func(
+    update_evidence_files(
         args.mq_evidence,
         args.perc_results,
         args.mq_evidence_out,
-        args.mq_msms,
+        args.mq_input_type,
         args.pout_input_type,
         args.suppress_missing_peptide_warning,
     )
 
-    os.rename(args.mq_evidence_out + ".tmp", args.mq_evidence_out)
 
-
-def update_evidence_file(
+def update_evidence_files(
     evidence_files: List[str],
     pout_files: List[str],
     out_evidence_file: str,
-    msms_files: List[str],
+    mq_input_type: str,
     pout_input_type: str,
     suppress_missing_peptide_warning: bool,
 ) -> None:
     fixed_mods, results_dict = get_percolator_results(pout_files, pout_input_type)
+    parser_func = maxquant.parse_evidence_file_for_percolator_matching
+    if mq_input_type == "peptides":
+        fixed_mods = dict()
+        results_dict = convert_PSM_dict_to_peptide_dict(results_dict)
+        parser_func = maxquant.parse_peptides_file_for_percolator_matching
 
     logger.info("Writing updated combined evidence file")
     writer = tsv.get_tsv_writer(out_evidence_file + ".tmp")
@@ -146,11 +134,79 @@ def update_evidence_file(
             first_headers,
             fixed_mods,
             results_dict,
+            parser_func,
             pout_input_type,
             suppress_missing_peptide_warning,
         )
 
+    os.rename(out_evidence_file + ".tmp", out_evidence_file)
+
     logger.info(f"Results written to {out_evidence_file}")
+
+
+@dataclass
+class EvidenceUpdateStats:
+    mq_peps: List[Tuple[float, str]] = field(default_factory=list)
+    prosit_peps: List[Tuple[float, str]] = field(default_factory=list)
+    unexplained_missing_psms: int = 0
+    unexplained_peptides: List[str] = field(default_factory=list)
+    rows_written: int = 0
+    last_written_row: int = -1
+
+    def log_progress(self):
+        if (
+            self.rows_written % 500000 == 0
+            and self.rows_written != self.last_written_row
+        ):
+            logger.info(f"    Writing line {self.rows_written}")
+            self.last_written_row = self.rows_written
+
+    def add_missing_peptide(self, peptide: str) -> None:
+        if self.unexplained_missing_psms < 10:
+            self.unexplained_peptides.append(peptide)
+        self.unexplained_missing_psms += 1
+
+    def calculate_unexplained_percentage(self) -> int:
+        if self.rows_written > 0:
+            return int(self.unexplained_missing_psms / self.rows_written * 100)
+        return 0
+
+    def log_unexplained_peptides_summary(self) -> None:
+        unexplained_percentage = self.calculate_unexplained_percentage()
+        logger.info(
+            f"Unexplained missing PSMs in Percolator results: {self.unexplained_missing_psms} out of {self.rows_written} ({unexplained_percentage}%)"
+        )
+        if self.unexplained_missing_psms > 0:
+            logger.info(
+                "If this percentage is low (<5%), it is probably the result of second peptide hits."
+            )
+            logger.info("\tFirst 10 missing peptides:")
+            for peptide in self.unexplained_peptides:
+                logger.info("\t" + peptide)
+
+    def log_summary(self, pout_input_type: str) -> None:
+        self.log_unexplained_peptides_summary()
+
+        logger.info("#MQ identifications:")
+        self.count_below_FDR(self.mq_peps)
+
+        logger.info(f"#{pout_input_type} identifications:")
+        self.count_below_FDR(self.prosit_peps)
+
+    @staticmethod
+    def count_below_FDR(
+        post_err_probs: List[Tuple[float, str]], fdr_threshold: float = 0.01
+    ):
+        post_err_probs = sorted(post_err_probs)
+        counts = collections.defaultdict(int)
+        summed_PEP = 0.0
+        for i, (pep, id_type) in enumerate(post_err_probs):
+            summed_PEP += pep
+            if summed_PEP / (i + 1) > fdr_threshold:
+                for k, v in sorted(counts.items()):
+                    logger.info(f"  {k}: {v}")
+                break
+            counts[id_type] += 1
 
 
 def update_evidence_single(
@@ -158,99 +214,120 @@ def update_evidence_single(
     writer: "_csv._writer",
     first_headers: List[str],
     fixed_mods: Dict[str, str],
-    results_dict: Dict[str, Dict[Tuple[int, str], Tuple[float, float]]],
+    results_dict: percolator.ResultsDict,
+    parser_func: Callable[
+        ["_csv._reader", List[str]], Iterator[Tuple[List[str], maxquant.EvidenceRow]]
+    ],
     pout_input_type: str,
     suppress_missing_peptide_warning: bool,
 ) -> List[str]:
     logger.info(f"Processing {evidence_file}")
-    reader = tsv.get_tsv_reader(evidence_file)
 
-    headers_original = next(reader)  # save the header
-    headers = list(map(lambda x: x.lower(), headers_original))
+    reader = tsv.get_tsv_reader(evidence_file)
+    headers = initialize_headers(reader, first_headers, writer)
+
+    # these columns can be updated
+    score_col = tsv.get_column_index(headers, "score")
+    post_err_prob_col = tsv.get_column_index(headers, "pep")
+
+    stats = EvidenceUpdateStats()
+    missing_raw_files = set()
+
+    for row, psm in parser_func(reader, headers):
+        stats.log_progress()
+
+        if skip_row_due_to_mbr_or_empty_results_dict(psm, results_dict):
+            write_row(writer, row, stats)
+            continue
+
+        if raw_file_missing(psm, results_dict, missing_raw_files):
+            continue
+
+        if not psm.is_decoy:
+            stats.mq_peps.append((psm.post_err_prob, psm.id_type))
+
+        perc_result, peptide = find_percolator_psm(
+            psm, fixed_mods, results_dict, pout_input_type
+        )
+
+        if not perc_result:
+            if is_unexplainable_missing_psm(psm, peptide, pout_input_type):
+                stats.add_missing_peptide(psm.peptide)
+                if not suppress_missing_peptide_warning:
+                    logger.debug(
+                        f"Missing PSM: {psm.raw_file}, {peptide}, {psm.scannr}"
+                    )
+            continue
+
+        process_percolator_result(
+            psm, perc_result, score_col, post_err_prob_col, row, stats
+        )
+        write_row(writer, row, stats)
+
+    stats.log_summary(pout_input_type)
+    return headers
+
+
+def initialize_headers(
+    reader: "_csv._reader", first_headers: List[str], writer: "_csv._writer"
+) -> List[str]:
+    headers_original = next(reader)
+    headers = [header.lower() for header in headers_original]
+
     if len(first_headers) == 0:
         writer.writerow(headers_original)
     elif headers != first_headers:
         warn_for_header_difference(first_headers, headers)
 
-    # these columns will be updated
-    score_col = tsv.get_column_index(headers, "score")
-    post_err_prob_col = tsv.get_column_index(headers, "pep")
-
-    mq_PEPs, prosit_PEPs = list(), list()
-    unexplained_missing_PSMs = 0
-    unexplained_peptides = list()
-    rows_written = 0
-    missing_raw_files = set()
-    for row, psm in maxquant.parse_evidence_file_for_percolator_matching(
-        reader, headers
-    ):
-        if rows_written % 500000 == 0:
-            logger.info(f"    Writing line {rows_written}")
-
-        if len(results_dict) == 0 or is_mbr_evidence_row(psm):
-            rows_written += 1
-            writer.writerow(row)
-            continue
-
-        if len(results_dict[psm.raw_file]) == 0:
-            if psm.raw_file not in missing_raw_files:
-                logger.warning(
-                    f"Found no PSMs for {psm.raw_file} in percolator result files"
-                )
-                missing_raw_files.add(psm.raw_file)
-            continue
-
-        if not psm.is_decoy:
-            mq_PEPs.append((psm.post_err_prob, psm.id_type))
-
-        perc_result, peptide = find_percolator_psm(
-            psm, fixed_mods, results_dict, pout_input_type
-        )
-        if not perc_result:
-            if is_unexplainable_missing_psm(psm, peptide, pout_input_type):
-                unexplained_missing_PSMs += 1
-                if not suppress_missing_peptide_warning:
-                    logger.debug("Unexplained missing PSM:")
-                if unexplained_missing_PSMs <= 10:
-                    unexplained_peptides.append(psm.peptide)
-            if not suppress_missing_peptide_warning:
-                logger.debug(
-                    f"Missing PSM in percolator output: {psm.raw_file}, {peptide}, {psm.scannr}"
-                )
-            continue
-
-        perc_score, perc_post_err_prob = perc_result
-        if not psm.is_decoy:
-            prosit_PEPs.append((perc_post_err_prob, psm.id_type))
-
-        row[score_col] = perc_score
-        row[post_err_prob_col] = perc_post_err_prob
-
-        rows_written += 1
-        writer.writerow(row)
-
-    unexplained_percentage = int(unexplained_missing_PSMs / rows_written * 100)
-    logger.info(
-        f"Unexplained missing PSMs in Percolator results: {unexplained_missing_PSMs} out of {rows_written} ({unexplained_percentage}%)"
-    )
-    if unexplained_missing_PSMs > 0:
-        logger.info(
-            "If this percentage is low (<5%), it is probably the result of second peptide hits."
-        )
-        logger.info("\tFirst 10 missing peptides:")
-        for peptide in unexplained_peptides:
-            logger.info("\t" + peptide)
-
-    logger.info("#MQ identifications:")
-    count_below_FDR(mq_PEPs)
-
-    logger.info(f"#{pout_input_type} identifications:")
-    count_below_FDR(prosit_PEPs)
-
     return headers
 
 
-def warn_for_header_difference(first_headers, headers):
+def skip_row_due_to_mbr_or_empty_results_dict(
+    psm: maxquant.EvidenceRow, results_dict: percolator.ResultsDict
+) -> bool:
+    return len(results_dict) == 0 or is_mbr_evidence_row(psm)
+
+
+def raw_file_missing(
+    psm: maxquant.EvidenceRow,
+    results_dict: percolator.ResultsDict,
+    missing_raw_files: Set[str],
+) -> bool:
+    if len(results_dict.get(psm.raw_file, {})) == 0:
+        if psm.raw_file not in missing_raw_files:
+            logger.warning(
+                f"Found no PSMs for {psm.raw_file} in percolator result files"
+            )
+            missing_raw_files.add(psm.raw_file)
+        return True
+    return False
+
+
+def process_percolator_result(
+    psm: maxquant.EvidenceRow,
+    perc_result: percolator.ScorePEPPair,
+    score_col: int,
+    post_err_prob_col: int,
+    row: List[str],
+    stats: EvidenceUpdateStats,
+) -> None:
+    perc_score, perc_post_err_prob = perc_result
+
+    if not psm.is_decoy:
+        stats.prosit_peps.append((perc_post_err_prob, psm.id_type))
+
+    row[score_col] = perc_score
+    row[post_err_prob_col] = perc_post_err_prob
+
+
+def write_row(
+    writer: "_csv._writer", row: List[str], stats: EvidenceUpdateStats
+) -> None:
+    writer.writerow(row)
+    stats.rows_written += 1
+
+
+def warn_for_header_difference(first_headers: List[str], headers: List[str]):
     logger.warning("Current column names are different from the first evidence file")
     logger.info("Column\tFirstHeaders\tCurrentHeaders")
     logger.info(
@@ -264,7 +341,9 @@ def warn_for_header_difference(first_headers, headers):
     )
 
 
-def is_unexplainable_missing_psm(psm, peptide, pout_input_type):
+def is_unexplainable_missing_psm(
+    psm: maxquant.EvidenceRow, peptide: str, pout_input_type: str
+):
     return (
         not psm.is_contaminant
         and psm.score > 0.0
@@ -275,9 +354,9 @@ def is_unexplainable_missing_psm(psm, peptide, pout_input_type):
 def find_percolator_psm(
     psm: maxquant.EvidenceRow,
     fixed_mods: Dict[str, str],
-    results_dict: Dict[str, Dict[Tuple[int, str], Tuple[float, float]]],
+    results_dict: percolator.ResultsDict,
     pout_input_type: str,
-) -> Tuple[Tuple[float, float], str]:
+) -> Tuple[percolator.ScorePEPPair, str]:
     """Finds percolator PSM corresponding to a row in the evidence.txt file.
 
     Special care is needed for SILAC experiments. Prosit explicitly annotates
@@ -291,8 +370,8 @@ def find_percolator_psm(
         fixed_mods_tmp = fixed_mods
         if maxquant.is_heavy_labeled(psm.labeling_state):
             fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-        peptide = modifications.maxquant_mod_to_unimod_single(
-            psm.peptide, fixed_mods=fixed_mods_tmp
+        peptide = modifications.maxquant_mod_to_proforma(fixed_mods=fixed_mods_tmp)(
+            psm.peptide
         )
 
     perc_result = results_dict[psm.raw_file].get((psm.scannr, peptide), None)
@@ -302,105 +381,16 @@ def find_percolator_psm(
         and maxquant.has_unknown_silac_label(psm.labeling_state)
     ):
         fixed_mods_tmp = modifications.SILAC_HEAVY_FIXED_MODS
-        peptide = modifications.maxquant_mod_to_unimod_single(
-            psm.peptide, fixed_mods=fixed_mods_tmp
+        peptide = modifications.maxquant_mod_to_proforma(fixed_mods=fixed_mods_tmp)(
+            psm.peptide
         )
         perc_result = results_dict[psm.raw_file].get((psm.scannr, peptide), None)
     return perc_result, peptide
 
 
-def update_peptides_file(
-    peptide_files: List[str],
-    pout_files: List[str],
-    out_peptide_file: str,
-    msms_files: List[str],
-    pout_input_type: str,
-    suppress_missing_peptide_warning: bool,
-) -> None:
-    _, results_dict = get_percolator_results(pout_files, pout_input_type)
-
-    peptide_results_dict = convert_PSM_dict_to_peptide_dict(results_dict)
-
-    logger.info("Writing updated peptides file")
-    writer = tsv.get_tsv_writer(out_peptide_file + ".tmp")
-    first = True
-    mq_PEPs, prosit_PEPs = list(), list()
-    unexplained_missing_peptides = 0
-    unexplained_peptides = list()
-    for peptide_file in peptide_files:
-        logger.info(f"Processing {peptide_file}")
-        reader = tsv.get_tsv_reader(peptide_file)
-        headers_original = next(reader)  # save the header
-        headers = list(map(lambda x: x.lower(), headers_original))
-
-        if first:
-            first = False
-            writer.writerow(headers_original)
-            first_headers = headers
-        elif headers != first_headers:
-            logger.warning(
-                "Current column names are different from the first evidence file"
-            )
-            logger.info("Column\tFirstHeaders\tCurrentHeaders")
-            logger.info(
-                "\n".join(
-                    [
-                        str(i + 1) + "\t" + x + "\t" + y
-                        for i, (x, y) in enumerate(zip(first_headers, headers))
-                        if x != y
-                    ]
-                )
-            )
-
-        score_col = tsv.get_column_index(headers, "score")
-        post_err_prob_col = tsv.get_column_index(headers, "pep")
-
-        peptide_col = tsv.get_column_index(headers, "sequence")
-        reverse_col = tsv.get_column_index(headers, "reverse")
-
-        for row in reader:
-            if len(pout_files) > 0:
-                peptide = row[peptide_col]
-                is_decoy = row[reverse_col] == "+"
-
-                perc_result = peptide_results_dict.get(peptide, None)
-
-                if not is_decoy:
-                    mq_PEPs.append((float(row[post_err_prob_col]), "Unknown"))
-                    if not perc_result and (
-                        pout_input_type != "prosit" or is_valid_prosit_peptide(peptide)
-                    ):  # mysterious missing PSMs
-                        unexplained_missing_peptides += 1
-                        if unexplained_missing_peptides <= 10:
-                            unexplained_peptides.append(row[peptide_col])
-
-                if perc_result:
-                    if not is_decoy:
-                        prosit_PEPs.append((perc_result[1], "Unknown"))
-                    row[score_col] = perc_result[0]
-                    row[post_err_prob_col] = perc_result[1]
-
-            writer.writerow(row)
-
-    logger.info(
-        f"Unexplained missing peptides in Percolator results: {unexplained_missing_peptides}"
-    )
-    if unexplained_missing_peptides > 0:
-        logger.info("\tFirst 10 missing peptides:")
-        for peptide in unexplained_peptides:
-            logger.info("\t" + peptide)
-    logger.info(f"Results written to {out_peptide_file}")
-
-    logger.info("MQ")
-    count_below_FDR(mq_PEPs)
-
-    logger.info(pout_input_type)
-    count_below_FDR(prosit_PEPs)
-
-
 def get_percolator_results(
     pout_files: List[str], pout_input_type: str
-) -> Tuple[Dict[str, str], Dict[str, Dict[Tuple[int, str], Tuple[float, float]]]]:
+) -> Tuple[Dict[str, str], percolator.ResultsDict]:
     results_dict = collections.defaultdict(dict)
     fixed_mods = None
     for pout_file in pout_files:
@@ -408,6 +398,7 @@ def get_percolator_results(
         fixed_mods, results_dict = percolator.parse_percolator_out_file_to_dict(
             pout_file, results_dict, pout_input_type
         )
+        logger.debug(f"Found fixed modifications: {fixed_mods}")
 
     logger.info("Finished parsing percolator output files")
     logger.info("#PSMs per raw file:")
@@ -417,14 +408,18 @@ def get_percolator_results(
 
 
 def convert_PSM_dict_to_peptide_dict(
-    results_dict: Dict[str, Dict[Tuple[int, str], Tuple[float, float]]],
-) -> Dict[str, Tuple[float, float]]:
+    results_dict: percolator.ResultsDict,
+) -> percolator.ResultsDict:
     peptide_results_dict = dict()
     for _, results in results_dict.items():
-        for (_, peptide), (score, PEP) in results.items():
-            peptide = helpers.clean_peptide(peptide, remove_flanks=False)
+        for (_, modified_peptide), (score, PEP) in results.items():
+            peptide = helpers.remove_modifications(modified_peptide)
             curr_score, curr_PEP = peptide_results_dict.get(peptide, (-1e10, 1e10))
-            peptide_results_dict[peptide] = (max(curr_score, score), min(curr_PEP, PEP))
+            # raw file = "" and scannr = -1 are hard coded values when parsing the peptides.txt file
+            peptide_results_dict[""][(-1, peptide)] = (
+                max(curr_score, score),
+                min(curr_PEP, PEP),
+            )
     return peptide_results_dict
 
 
@@ -433,23 +428,7 @@ def is_mbr_evidence_row(psm: maxquant.EvidenceRow) -> bool:
 
 
 def is_valid_prosit_peptide(peptide: str) -> bool:
-    return (
-        len(helpers.clean_peptide(peptide, remove_flanks=False)) <= 30
-        and not "(ac)" in peptide
-    )
-
-
-def count_below_FDR(post_err_probs: List[float], fdr_threshold: float = 0.01):
-    post_err_probs = sorted(post_err_probs)
-    counts = collections.defaultdict(int)
-    summed_PEP = 0.0
-    for i, (pep, id_type) in enumerate(post_err_probs):
-        summed_PEP += pep
-        if summed_PEP / (i + 1) > fdr_threshold:
-            for k, v in sorted(counts.items()):
-                logger.info(f"  {k}: {v}")
-            break
-        counts[id_type] += 1
+    return len(helpers.remove_modifications(peptide)) <= 30 and not "(ac)" in peptide
 
 
 if __name__ == "__main__":

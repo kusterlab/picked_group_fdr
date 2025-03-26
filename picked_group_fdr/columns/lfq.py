@@ -33,10 +33,14 @@ class LFQIntensityColumns(ProteinGroupColumns):
         minPeptideRatiosLFQ: int,
         stabilizeLargeRatiosLFQ: bool,
         numThreads: int = 1,
+        protein_group_fdr_threshold: float = 0.01,
     ) -> None:
         self.minPeptideRatiosLFQ = minPeptideRatiosLFQ
         self.stabilizeLargeRatiosLFQ = stabilizeLargeRatiosLFQ
         self.numThreads = numThreads
+
+        # only used for reporting number of protein groups at the given threshold
+        self.protein_group_fdr_threshold = protein_group_fdr_threshold
 
     def is_valid(self, protein_group_results: results.ProteinGroupResults):
         return (
@@ -71,7 +75,12 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
         if self.numThreads > 1:
             processingPool = JobPool(
-                processes=self.numThreads, maxtasksperchild=10, write_progress_to_logger=True
+                processes=self.numThreads,
+                maxtasksperchild=10,
+                max_jobs_queued=self.numThreads*3,
+                write_progress_to_logger=True,
+                print_progress_every=100,
+                total_jobs=len(protein_group_results),
             )
 
         allIntensities = list()
@@ -102,12 +111,14 @@ class LFQIntensityColumns(ProteinGroupColumns):
         ):
             pgr.extend(intensities)
 
-            if pgr.qValue < 0.01:
+            if pgr.qValue < self.protein_group_fdr_threshold:
                 proteinGroupCounts += np.array(
                     [1 if intensity > 0 else 0 for intensity in intensities]
                 )
 
-        logger.info("#Protein groups quantified (1% protein group-level FDR, LFQ):")
+        logger.info(
+            f"#Protein groups quantified ({self.protein_group_fdr_threshold*100:g}% protein group-level FDR, LFQ):"
+        )
         for experiment, numProteinGroups in zip(
             experiment_to_idx_map.keys(),
             helpers.chunks(proteinGroupCounts, max(1, num_silac_channels)),
@@ -285,6 +296,8 @@ def _getLogMedianPeptideRatios(
     intensityMatrix[intensityMatrix == 0] = np.nan
     cols = [(idx, i, intensityMatrix[:, i]) for idx, i in enumerate(valid_columns)]
     peptideRatios, experimentPairs = list(), list()
+    # this for loop is the reason for quadratic runtime increase for more samples
+    # (30 seconds per protein for 2400 samples and 600 peptides)
     for (idx_i, i, col_i), (idx_j, j, col_j) in itertools.combinations(cols, 2):
         if valid_vals[idx_i, idx_j] < minPeptideRatiosLFQ:
             continue

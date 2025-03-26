@@ -40,7 +40,7 @@ class ProteinScoringStrategy:
     best_peptide_score_per_protein: Dict[str, float]
 
     def __init__(
-        self, score_description, mq_protein_groups_file="", peptide_qval_cutoff=0.01
+        self, score_description, mq_protein_groups_file=""
     ):
         if "multPEP" in score_description:
             self.protein_score = MultPEPScore()
@@ -55,7 +55,6 @@ class ProteinScoringStrategy:
 
         self.use_razor = "razor" in score_description
         self.use_shared_peptides = "with_shared" in score_description
-        self.peptide_qval_cutoff = peptide_qval_cutoff
 
         if "Perc" in score_description:
             # Add "remap" to the score_type if the fasta database used for protein grouping is different from the one used by Percolator
@@ -92,10 +91,10 @@ class ProteinScoringStrategy:
         return self.score_origin.can_do_quantification()
 
     def optimize_hyperparameters(
-        self, protein_groups, protein_group_peptide_infos
+        self, protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold: float
     ) -> float:
         return self.protein_score.optimize_hyperparameters(
-            protein_groups, protein_group_peptide_infos
+            protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold
         )
 
     def calculate_score(self, score_peptide_pairs) -> float:
@@ -171,6 +170,7 @@ class ProteinScoringStrategy:
         self,
         protein_groups: ProteinGroups,
         peptide_info_list: PeptideInfoList,
+        peptide_qval_cutoff: float,
         suppress_missing_protein_warning: bool = False,
     ) -> ProteinGroupPeptideInfos:
         """Groups peptides with associated scores by protein
@@ -220,7 +220,7 @@ class ProteinScoringStrategy:
                 post_err_probs.append(score)
 
         self.peptide_score_cutoff = fdr.calc_post_err_prob_cutoff(
-            post_err_probs, self.peptide_qval_cutoff
+            post_err_probs, peptide_qval_cutoff
         )
         logger.info(
             f"#Precursors: Shared peptides = {shared_peptides}; Unique peptides = {unique_peptides}"

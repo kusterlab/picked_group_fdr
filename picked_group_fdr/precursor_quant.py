@@ -6,6 +6,13 @@ import numpy as np
 
 @dataclass
 class PrecursorQuant:
+    """Represents a quantified precursor.
+
+    The peptide sequence can contain modifications in parentheses or square
+    brackets but has no flanking characters, e.g. AP(ox)EPTIDE.
+
+    assigned_mods and observed_mods fields are only used for FragPipe input.
+    """    
     peptide: str
     charge: int
     experiment: str

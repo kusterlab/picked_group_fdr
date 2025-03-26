@@ -22,11 +22,16 @@ def get_delimiter(filename: str):
         return "\t"
 
 
-def get_column_index(headers: List[str], column_name: str):
+def get_column_index(
+    headers: List[str], column_name: str, is_optional: bool = False
+) -> int:
     if column_name not in headers:
-        raise ValueError(
-            f"Column {column_name} is missing. Please check your input file."
-        )
+        if is_optional:
+            return -1
+        else:
+            raise ValueError(
+                f"Column {column_name} is missing. Please check your input file."
+            )
     return headers.index(column_name)
 
 

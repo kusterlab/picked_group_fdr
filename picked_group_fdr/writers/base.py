@@ -62,7 +62,7 @@ class ProteinGroupsWriter:
             f"PEP-cutoff corresponding to {psm_fdr_cutoff*100:g}% PSM-level FDR: {post_err_prob_cutoff}"
         )
 
-        _print_num_peptides_at_fdr(post_err_probs, post_err_prob_cutoff)
+        _print_num_peptides_at_fdr(post_err_probs, post_err_prob_cutoff, psm_fdr_cutoff)
 
         logger.info("Filtering for identified precursors")
         # precursor = (peptide, charge) tuple
@@ -115,7 +115,9 @@ def _retain_only_identified_precursors(
     ]
 
 
-def _print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float):
+def _print_num_peptides_at_fdr(
+    post_err_probs: List, post_err_prob_cutoff: float, psm_fdr_cutoff: float
+):
     surviving_mod_peptides = set(
         [x[3] for x in post_err_probs if x[0] <= post_err_prob_cutoff]
     )
@@ -132,7 +134,9 @@ def _print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float
             peptides_per_rawfile_mbr[rawfile].append(peptide)
             peptides_per_experiment_mbr[experiment].append(peptide)
 
-    logger.info("Precursor counts per rawfile (1% PSM-level FDR):")
+    logger.info(
+        f"Precursor counts per rawfile ({psm_fdr_cutoff*100:g}% PSM-level FDR):"
+    )
     for rawfile, peptides in sorted(peptides_per_rawfile.items()):
         num_peptides = len(set(peptides))
         num_peptides_with_mbr = len(set(peptides + peptides_per_rawfile_mbr[rawfile]))
@@ -140,7 +144,9 @@ def _print_num_peptides_at_fdr(post_err_probs: List, post_err_prob_cutoff: float
             f"    {rawfile}: {num_peptides} {'(' + str(num_peptides_with_mbr) + ' with MBR)' if num_peptides_with_mbr > num_peptides else ''}"
         )
 
-    logger.info("Precursor counts per experiment (1% PSM-level FDR):")
+    logger.info(
+        f"Precursor counts per experiment ({psm_fdr_cutoff*100:g}% PSM-level FDR):"
+    )
     for experiment, peptides in sorted(peptides_per_experiment.items()):
         num_peptides = len(set(peptides))
         num_peptides_with_mbr = len(

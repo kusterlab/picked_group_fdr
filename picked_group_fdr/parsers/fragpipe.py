@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 """psm.tsv columns:
 1 Spectrum
 2 Spectrum File
-3 Peptide
-4 Modified Peptide
+3 Peptide  # example: KEVPKQQAAYR (does not contain modifications)
+4 Modified Peptide  # example: APHAM[147]DRDWKESVASK
 5 Prev AA
 6 Next AA
 7 Peptide Length
@@ -62,6 +62,7 @@ def parse_fragpipe_psm_file(
     **kwargs,
 ):
     pept_col = tsv.get_column_index(headers, "Peptide")
+    modpept_col = tsv.get_column_index(headers, "Modified Peptide")
     score_col = tsv.get_column_index(
         headers, "SpectralSim"
     )  # could also use Hyperscore
@@ -78,6 +79,9 @@ def parse_fragpipe_psm_file(
             logger.info(f"    Reading line {line_idx}")
 
         peptide = row[pept_col]
+        if len(row[modpept_col]) > 0:
+            peptide = row[modpept_col]
+
         experiment = 1
         score = float(row[score_col])
         if score_type.get_score_column() == "pep":
@@ -110,6 +114,7 @@ def parse_fragpipe_psm_file_for_peptide_remapping(reader, headers):
 
 def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
     pept_col = tsv.get_column_index(headers, "Peptide")
+    modpept_col = tsv.get_column_index(headers, "Modified Peptide")
     charge_col = tsv.get_column_index(headers, "Charge")
     post_err_prob_col = tsv.get_column_index(headers, "PeptideProphet Probability")
     protein_col = tsv.get_column_index(headers, "Protein")
@@ -123,6 +128,8 @@ def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
             logger.info(f"    Reading line {line_idx}")
 
         peptide = row[pept_col]
+        if len(row[modpept_col]) > 0:
+            peptide = row[modpept_col]
         charge = int(row[charge_col])
         post_err_prob = 1 - float(row[post_err_prob_col]) + 1e-16
         assigned_mods = row[assigned_mods_col]
@@ -137,6 +144,7 @@ def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
 
 def parse_fragpipe_combined_ion_file(reader, headers):
     pept_col = tsv.get_column_index(headers, "Peptide Sequence")
+    modpept_col = tsv.get_column_index(headers, "Modified Sequence")
     charge_col = tsv.get_column_index(headers, "Charge")
     protein_col = tsv.get_column_index(headers, "Protein")
     other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
@@ -153,6 +161,8 @@ def parse_fragpipe_combined_ion_file(reader, headers):
             logger.info(f"    Reading line {line_idx}")
 
         peptide = row[pept_col]
+        if len(row[modpept_col]) > 0:
+            peptide = row[modpept_col]
         charge = int(row[charge_col])
         assigned_mods = row[assigned_mods_col]
 

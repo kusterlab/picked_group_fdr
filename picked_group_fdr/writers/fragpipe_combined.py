@@ -48,6 +48,7 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
         min_peptide_ratios_lfq: int = 1,
         stabilize_large_ratios_lfq: bool = True,
         num_threads: int = 1,
+        protein_group_fdr_threshold: float = 0.01,
     ) -> None:
         self.protein_groups = protein_groups
         self.protein_annotations = protein_annotations
@@ -55,6 +56,9 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
         self.min_peptide_ratios_lfq = min_peptide_ratios_lfq
         self.stabilize_large_ratios_lfq = stabilize_large_ratios_lfq
         self.num_threads = num_threads
+
+        # only used for reporting number of protein groups at the given threshold
+        self.protein_group_fdr_threshold = protein_group_fdr_threshold
 
     def get_header_dict(
         self, protein_group_results: results.ProteinGroupResults
@@ -118,7 +122,9 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
             columns.TopPeptideProbabilityColumns(),
             columns.UniquePeptideCountColumns(),
             columns.SpectralCountColumns(),
-            columns.SummedIntensityAndIbaqColumns(num_ibaq_peptides_per_protein),
+            columns.SummedIntensityAndIbaqColumns(
+                num_ibaq_peptides_per_protein, self.protein_group_fdr_threshold
+            ),
             columns.IndistinguishableProteinsColumns(),
         ]
         if not self.skip_lfq:
@@ -127,6 +133,7 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
                     self.min_peptide_ratios_lfq,
                     self.stabilize_large_ratios_lfq,
                     self.num_threads,
+                    self.protein_group_fdr_threshold,
                 )
             ]
         return output_columns

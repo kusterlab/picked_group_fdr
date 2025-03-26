@@ -72,15 +72,13 @@ def remove_decoy_proteins_from_target_peptides(proteins: List[str]) -> List[str]
     return new_proteins
 
 
-def clean_peptide(peptide: str, remove_flanks: bool = True):
+def remove_modifications(modified_peptide: str):
     """
-    Removes modifications in [] or () as well as the _ that MaxQuant puts in front and after the sequence
+    Removes modifications in [] or ()
 
     Warning! Dirty hack: last removal of ) is needed because some MQ versions have nested parentheses for modifications
     """
-    if remove_flanks:
-        peptide = peptide[1:-1]
-    return re.sub(r"\[[^]]*\]", "", re.sub(r"\([^)]*\)", "", peptide)).replace(")", "")
+    return re.sub(r"\[[^]]*\]", "", re.sub(r"\([^)]*\)", "", modified_peptide)).replace(")", "")
 
 
 def chunks(lst: List, n: int):

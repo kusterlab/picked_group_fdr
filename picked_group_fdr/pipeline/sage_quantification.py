@@ -2,8 +2,6 @@ import sys
 import os
 import logging
 
-
-
 from .. import __version__, __copyright__
 from .. import digest
 from .. import writers
@@ -13,6 +11,7 @@ from ..quantification import add_quant_arguments
 from ..parsers import maxquant
 from ..quant.sage import add_precursor_quants_multiple
 from ..protein_groups import ProteinGroups
+from ..scoring_strategy import ProteinScoringStrategy
 
 # hacky way to get package logger when running as module
 logger = logging.getLogger(__package__ + "." + __file__)
@@ -79,6 +78,23 @@ def parseArgs(argv):
                 format) and "fragpipe" (combined_protein.tsv format).""",
     )
 
+    apars.add_argument(
+        "--protein_group_fdr_threshold",
+        default=0.01,
+        metavar="C",
+        type=float,
+        help="""Protein group-level FDR threshold used for computing the number of
+                protein groups at the given threshold. Note that this does not filter the
+                protein_groups_out file for the specified FDR. Use the
+                picked_group_fdr.pipeline.filter_fdr_maxquant module for this.""",
+    )
+
+    apars.add_argument(
+        "--suppress_missing_peptide_warning",
+        help="Suppress missing peptide warning when mapping peptides to proteins.",
+        action="store_true",
+    )
+
     add_quant_arguments(apars)
     digest.add_digestion_arguments(apars)
 
@@ -111,14 +127,18 @@ def main(argv):
     protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
     protein_groups.create_index()
 
+    score_type = ProteinScoringStrategy("no_remap bestPEP")
+
     protein_group_results, post_err_probs = add_precursor_quants_multiple(
         args.sage_results,
         args.sage_lfq_tsv,
         protein_groups,
         protein_group_results,
         peptide_to_protein_maps=None,
-        file_list_file=args.file_list_file,
+        experimental_design=None,
         discard_shared_peptides=discard_shared_peptides,
+        score_type=score_type,
+        suppress_missing_peptide_warning=args.suppress_missing_peptide_warning,
     )
 
     protein_groups_writer = writers.get_protein_groups_output_writer(
@@ -136,7 +156,9 @@ def main(argv):
 
     protein_groups_writer.write(protein_group_results, args.protein_groups_out)
 
-    logger.info(f"Protein group results have been written to: {args.protein_groups_out}")
+    logger.info(
+        f"Protein group results have been written to: {args.protein_groups_out}"
+    )
 
 
 if __name__ == "__main__":

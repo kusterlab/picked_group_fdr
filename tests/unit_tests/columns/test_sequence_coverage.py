@@ -80,22 +80,22 @@ def proteinSequences():
 def peptideIntensityListMultiplePeptidesSequenceCoverage():
     peptideIntensityList = list()
     peptideIntensityList.append(
-        PrecursorQuant("_APEPTIDE(ox)_", 2, "file1", 1, 25.0, 0.001, [], [], 1)
+        PrecursorQuant("APEPTIDE(ox)", 2, "file1", 1, 25.0, 0.001, [], [], 1)
     )
     peptideIntensityList.append(
-        PrecursorQuant("_APEPTIDE_", 2, "file2", 1, 10.0, 0.001, [], [], 1)
+        PrecursorQuant("APEPTIDE", 2, "file2", 1, 10.0, 0.001, [], [], 1)
     )
     peptideIntensityList.append(
-        PrecursorQuant("_APEPTIDE_", 2, "file3", 1, 5.0, 0.001, [], [], 1)
+        PrecursorQuant("APEPTIDE", 2, "file3", 1, 5.0, 0.001, [], [], 1)
     )
     peptideIntensityList.append(
-        PrecursorQuant("_ABPEPTIDE_", 2, "file1", 1, 15.0, 0.001, [], [], 1)
+        PrecursorQuant("ABPEPTIDE", 2, "file1", 1, 15.0, 0.001, [], [], 1)
     )
     peptideIntensityList.append(
-        PrecursorQuant("_A(ox)ABPEPTIDE_", 2, "file2", 1, 0.0, 0.001, [], [], 1)
+        PrecursorQuant("A(ox)ABPEPTIDE", 2, "file2", 1, 0.0, 0.001, [], [], 1)
     )  # only identified by MS/MS; no MS1 feature available
     peptideIntensityList.append(
-        PrecursorQuant("_DEAAAA_", 2, "file3", 1, 5.0, 0.001, [], [], 1)
+        PrecursorQuant("DEAAAA", 2, "file3", 1, 5.0, 0.001, [], [], 1)
     )  # tests overlap
 
     return peptideIntensityList

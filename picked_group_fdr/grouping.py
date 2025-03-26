@@ -47,7 +47,9 @@ class ProteinGroupingStrategy(ABC):
         self,
         peptide_info_list: PeptideInfoList,
         protein_group_results: ProteinGroupResults,
+        protein_group_fdr_threshold: float,
         old_protein_groups: ProteinGroups,
+        old_protein_group_peptide_infos,
     ) -> ProteinGroups:
         pass
 
@@ -151,10 +153,13 @@ class RescuedGrouping:
         self,
         peptide_info_list: PeptideInfoList,
         protein_group_results: ProteinGroupResults,
+        protein_group_fdr_threshold: float,
         old_protein_groups: ProteinGroups,
         old_protein_group_peptide_infos,
     ) -> ProteinGroups:
-        self._calculate_rescue_score_cutoff(protein_group_results)
+        self._calculate_rescue_score_cutoff(
+            protein_group_results, protein_group_fdr_threshold
+        )
         peptide_info_list_filtered = self._filter_peptide_list_by_score_cutoff(
             peptide_info_list
         )
@@ -190,7 +195,7 @@ class RescuedGrouping:
         """
 
         logger.info(
-            "Redoing protein grouping using peptides below equivalent 1% protein FDR threshold"
+            "Redoing protein grouping using peptides below equivalent protein FDR threshold"
         )
 
         observed_peptides = ObservedPeptides()
@@ -243,17 +248,21 @@ class RescuedGrouping:
         }
 
     def _calculate_rescue_score_cutoff(
-        self, protein_group_results: ProteinGroupResults
+        self,
+        protein_group_results: ProteinGroupResults,
+        protein_group_fdr_threshold: float,
     ):
-        """Calculate PEP corresponding to 1% protein-level FDR.
+        """Calculate PEP corresponding to protein_group_fdr_threshold.
         N.B. this only works if the protein score is bestPEP!"""
         identified_protein_scores = [
-            pfr.score for pfr in protein_group_results if pfr.qValue < 0.01
+            pfr.score
+            for pfr in protein_group_results
+            if pfr.qValue < protein_group_fdr_threshold
         ]
 
         if len(identified_protein_scores) == 0:
             logger.warning(
-                "Could not calculate rescuing threshold as no proteins were found below 1% FDR. Setting rescuing threshold to worst scoring protein's score."
+                f"Could not calculate rescuing threshold as no proteins were found below {protein_group_fdr_threshold*100:g}% FDR. Setting rescuing threshold to worst scoring protein's score."
             )
             identified_protein_scores = [pfr.score for pfr in protein_group_results]
 

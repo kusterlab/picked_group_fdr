@@ -106,6 +106,7 @@ def merge_pout(
 
         (
             idCol,
+            _,
             peptCol,
             scoreCol,
             qvalCol,
@@ -123,11 +124,8 @@ def merge_pout(
                     f"Processing row {i}: #Missing peptides: {missingPeptides}, #Matched peptides: {matchedPeptides}"
                 )
 
-            # removeFlanks=True only removes a single character (MaxQuant convention)
             # convert peptide string to upper case, since prosit converts modified amino acids to lower case
-            peptide = helpers.clean_peptide(
-                row[peptCol][2:-2].upper(), remove_flanks=False
-            )
+            peptide = helpers.remove_modifications(row[peptCol][2:-2].upper())
 
             if len(peptideToProteinMap) > 0:
                 proteins = digest.get_proteins(peptideToProteinMap, peptide)
@@ -198,7 +196,7 @@ def write_updated_PSMs(perc_merged, psm_infos, peps, update_qvals=False):
 
     headers = percolator.PERCOLATOR_NATIVE_HEADERS
     writer.writerow(headers)
-    _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
+    _, _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
 
     sumPEP = 0.0
     counts = 0
