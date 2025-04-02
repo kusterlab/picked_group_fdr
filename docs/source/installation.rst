@@ -23,4 +23,5 @@ Alternatively, you can install directly from this repository:
 .. code:: shell
 
    git clone https://github.com/kusterlab/picked_group_fdr.git
+   cd picked_group_fdr
    pip install .

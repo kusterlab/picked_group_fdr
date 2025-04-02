@@ -1,11 +1,12 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 from datetime import datetime
 
 import numpy as np
 
 from . import helpers
 from . import entrapment
+from . import scoring
 
 
 logger = logging.getLogger(__name__)
@@ -79,35 +80,45 @@ def calculate_protein_fdrs(
     return reported_qvals, observed_qvals
 
 
-def calculate_peptide_fdrs(peptide_scores, score_type, peptide_fdr_threshold: float):
+def calculate_peptide_fdrs(
+    peptide_scores: List[Tuple[float, List[str]]],
+    score_type: Union[scoring.ProteinScore, None] = None,
+    peptide_fdr_threshold: float = 0.01,
+    keep_decoys: bool = False,
+):
+    if score_type is None:
+        score_type = scoring.BestAndromedaScore()
+
     decoy_scores, entrapment_scores, pool_scores = list(), list(), list()
     fdrs = list()
     reported_fdr, observed_fdr = 0, 0
     sum_post_err_prob = np.nextafter(0, 1)
-    for score, _, proteins in peptide_scores:
+    for score, proteins in peptide_scores:
         if helpers.is_contaminant(proteins):
             continue
 
         if helpers.is_decoy(proteins):
             decoy_scores.append(score)
+            if not keep_decoys:
+                continue
+        elif entrapment.is_entrapment(proteins):
+            entrapment_scores.append(score)
         else:
-            if entrapment.is_entrapment(proteins):
-                entrapment_scores.append(score)
-            else:
-                pool_scores.append(score)
-            if "PEPavg" in score_type.long_description():
-                sum_post_err_prob += score
-                reported_fdr = sum_post_err_prob / (
-                    len(entrapment_scores) + len(pool_scores)
-                )
-            else:
-                reported_fdr = (len(decoy_scores) + 1) / (
-                    len(pool_scores) + len(entrapment_scores) + 1
-                )
-            observed_fdr = (len(entrapment_scores) + 1) / (
+            pool_scores.append(score)
+
+        if "PEPavg" in score_type.long_description():
+            sum_post_err_prob += score
+            reported_fdr = sum_post_err_prob / (
+                len(entrapment_scores) + len(pool_scores)
+            )
+        else:
+            reported_fdr = (len(decoy_scores) + 1) / (
                 len(pool_scores) + len(entrapment_scores) + 1
             )
-            fdrs.append((reported_fdr, observed_fdr))
+        observed_fdr = (len(entrapment_scores) + 1) / (
+            len(pool_scores) + len(entrapment_scores) + 1
+        )
+        fdrs.append((reported_fdr, observed_fdr))
         # print(score, reported_fdr, observed_fdr, helpers.is_decoy(proteins), entrapment.is_entrapment(proteins), sep='\t')
 
     num_decoys = len(decoy_scores)

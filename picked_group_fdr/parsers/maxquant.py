@@ -139,21 +139,21 @@ def parse_mq_protein_groups_file(
     if mq_protein_groups_file.endswith(".csv"):
         delimiter = ","
 
-    reader = tsv.get_tsv_reader(mq_protein_groups_file, delimiter)
-    headers = next(reader)
+    with tsv.get_tsv_reader(mq_protein_groups_file, delimiter) as reader:
+        headers = next(reader)
 
-    cols = {
-        x: headers.index(x)
-        for x in writers.PROTEIN_GROUP_HEADERS + additional_headers
-        if x in headers
-    }
+        cols = {
+            x: headers.index(x)
+            for x in writers.PROTEIN_GROUP_HEADERS + additional_headers
+            if x in headers
+        }
 
-    logger.info("Parsing MaxQuant proteinGroups.txt file")
-    protein_group_results = []
-    for row in reader:
-        protein_group_results.append(
-            parse_mq_protein_groups_file_row(row, cols, additional_headers)
-        )
+        logger.info("Parsing MaxQuant proteinGroups.txt file")
+        protein_group_results = []
+        for row in reader:
+            protein_group_results.append(
+                parse_mq_protein_groups_file_row(row, cols, additional_headers)
+            )
 
     protein_group_results = results.ProteinGroupResults(protein_group_results)
     protein_group_results.append_headers(additional_headers)

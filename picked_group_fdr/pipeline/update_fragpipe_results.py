@@ -194,78 +194,78 @@ def update_fragpipe_psm_file(
         str: path to updated psm.tsv file
     """
     delimiter = tsv.get_delimiter(fragpipe_psm_file)
-    reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
-    headers = next(reader)
+    with tsv.get_tsv_reader(fragpipe_psm_file, delimiter) as reader:
+        headers = next(reader)
 
-    # these columns will be overwritten
-    protein_col = tsv.get_column_index(headers, "Protein")
-    protein_id_col = tsv.get_column_index(headers, "Protein ID")
-    entry_name_col = tsv.get_column_index(headers, "Entry Name")
-    gene_col = tsv.get_column_index(headers, "Gene")
-    description_col = tsv.get_column_index(headers, "Protein Description")
-    mapped_genes_col = tsv.get_column_index(headers, "Mapped Genes")
-    other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
+        # these columns will be overwritten
+        protein_col = tsv.get_column_index(headers, "Protein")
+        protein_id_col = tsv.get_column_index(headers, "Protein ID")
+        entry_name_col = tsv.get_column_index(headers, "Entry Name")
+        gene_col = tsv.get_column_index(headers, "Gene")
+        description_col = tsv.get_column_index(headers, "Protein Description")
+        mapped_genes_col = tsv.get_column_index(headers, "Mapped Genes")
+        other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
 
-    fragpipe_psm_file_out = fragpipe_psm_file + ".tmp"
-    if output_folder is not None:
-        output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
-        Path(output_folder).mkdir(parents=True, exist_ok=True)
-        fragpipe_psm_file_out = f"{output_folder}/{Path(fragpipe_psm_file).name}.tmp"
+        fragpipe_psm_file_out = fragpipe_psm_file + ".tmp"
+        if output_folder is not None:
+            output_folder = f"{output_folder}/{Path(fragpipe_psm_file).parts[-2]}"
+            Path(output_folder).mkdir(parents=True, exist_ok=True)
+            fragpipe_psm_file_out = f"{output_folder}/{Path(fragpipe_psm_file).name}.tmp"
 
-    missing_peptides_in_protein_groups = 0
-    peptides_not_mapping_to_leading_protein = 0
-    shared_peptide_precursors, unique_peptide_precursors = 0, 0
+        missing_peptides_in_protein_groups = 0
+        peptides_not_mapping_to_leading_protein = 0
+        shared_peptide_precursors, unique_peptide_precursors = 0, 0
 
-    writer = tsv.get_tsv_writer(fragpipe_psm_file_out)
-    writer.writerow(headers)
-    for row, proteins in fragpipe.parse_fragpipe_psm_file_for_peptide_remapping(
-        reader, headers
-    ):
-        row_protein_groups = protein_groups.get_protein_groups(proteins)
+        with tsv.get_tsv_writer(fragpipe_psm_file_out) as writer:
+            writer.writerow(headers)
+            for row, proteins in fragpipe.parse_fragpipe_psm_file_for_peptide_remapping(
+                reader, headers
+            ):
+                row_protein_groups = protein_groups.get_protein_groups(proteins)
 
-        if helpers.is_missing_in_protein_groups(row_protein_groups):
-            if not suppress_missing_peptide_warning:
-                logger.debug(
-                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                if helpers.is_missing_in_protein_groups(row_protein_groups):
+                    if not suppress_missing_peptide_warning:
+                        logger.debug(
+                            f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                        )
+                    missing_peptides_in_protein_groups += 1
+                    continue
+
+                if discard_shared_peptides and helpers.is_shared_peptide(row_protein_groups):
+                    shared_peptide_precursors += 1
+                    continue
+
+                unique_peptide_precursors += 1
+
+                leading_protein = row_protein_groups[0][0]
+                if leading_protein not in proteins:
+                    peptides_not_mapping_to_leading_protein += 1
+                    continue
+
+                row[protein_col] = leading_protein
+                protein_annotation = protein_annotations.get(
+                    leading_protein,
+                    ProteinAnnotation(id=leading_protein, fasta_header=leading_protein),
                 )
-            missing_peptides_in_protein_groups += 1
-            continue
+                row[protein_id_col] = protein_annotation.uniprot_id
+                row[entry_name_col] = protein_annotation.entry_name
+                row[gene_col] = protein_annotation.gene_name
+                row[description_col] = protein_annotation.description
 
-        if discard_shared_peptides and helpers.is_shared_peptide(row_protein_groups):
-            shared_peptide_precursors += 1
-            continue
-
-        unique_peptide_precursors += 1
-
-        leading_protein = row_protein_groups[0][0]
-        if leading_protein not in proteins:
-            peptides_not_mapping_to_leading_protein += 1
-            continue
-
-        row[protein_col] = leading_protein
-        protein_annotation = protein_annotations.get(
-            leading_protein,
-            ProteinAnnotation(id=leading_protein, fasta_header=leading_protein),
-        )
-        row[protein_id_col] = protein_annotation.uniprot_id
-        row[entry_name_col] = protein_annotation.entry_name
-        row[gene_col] = protein_annotation.gene_name
-        row[description_col] = protein_annotation.description
-
-        other_genes = [
-            protein_annotations.get(
-                p,
-                ProteinAnnotation(id=leading_protein, fasta_header=leading_protein),
-            ).gene_name
-            for p in proteins
-            if p != leading_protein
-        ]
-        other_genes = [g for g in other_genes if g is not None and len(g) > 0]
-        row[mapped_genes_col] = ", ".join(other_genes)
-        row[other_proteins_col] = ", ".join(
-            [p for p in proteins if p != leading_protein]
-        )
-        writer.writerow(row)
+                other_genes = [
+                    protein_annotations.get(
+                        p,
+                        ProteinAnnotation(id=leading_protein, fasta_header=leading_protein),
+                    ).gene_name
+                    for p in proteins
+                    if p != leading_protein
+                ]
+                other_genes = [g for g in other_genes if g is not None and len(g) > 0]
+                row[mapped_genes_col] = ", ".join(other_genes)
+                row[other_proteins_col] = ", ".join(
+                    [p for p in proteins if p != leading_protein]
+                )
+                writer.writerow(row)
 
     if missing_peptides_in_protein_groups > 0:
         logger.debug(

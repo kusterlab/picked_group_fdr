@@ -31,50 +31,50 @@ def add_precursor_quants(
     protein_group_results.experiments.append(experiment)
 
     delimiter = tsv.get_delimiter(fragpipe_psm_file)
-    reader = tsv.get_tsv_reader(fragpipe_psm_file, delimiter)
-    headers = next(reader)
+    with tsv.get_tsv_reader(fragpipe_psm_file, delimiter) as reader:
+        headers = next(reader)
 
-    post_err_probs = []
-    for (
-        peptide,
-        charge,
-        post_err_prob,
-        assigned_mods,
-        observed_mods,
-        proteins,
-    ) in fragpipe.parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
-        protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
+        post_err_probs = []
+        for (
+            peptide,
+            charge,
+            post_err_prob,
+            assigned_mods,
+            observed_mods,
+            proteins,
+        ) in fragpipe.parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
+            protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
-        if helpers.is_missing_in_protein_groups(protein_group_idxs):
-            if not suppress_missing_peptide_warning:
-                logger.debug(
-                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+            if helpers.is_missing_in_protein_groups(protein_group_idxs):
+                if not suppress_missing_peptide_warning:
+                    logger.debug(
+                        f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                    )
+                continue
+
+            if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
+                continue
+
+            if not helpers.is_decoy(proteins):
+                post_err_probs.append((post_err_prob, experiment, experiment, peptide))
+
+            for protein_group_idx in protein_group_idxs:
+                precursor_quant = PrecursorQuant(
+                    peptide=peptide,
+                    charge=charge,
+                    experiment=experiment,
+                    fraction=-1,
+                    intensity=np.nan,
+                    post_err_prob=post_err_prob,
+                    tmt_intensities=None,  # TODO: add TMT support
+                    silac_intensities=None,  # TODO: add SILAC support
+                    evidence_id=-1,
+                    assigned_mods=assigned_mods,
+                    observed_mods=observed_mods,
                 )
-            continue
-
-        if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
-            continue
-
-        if not helpers.is_decoy(proteins):
-            post_err_probs.append((post_err_prob, experiment, experiment, peptide))
-
-        for protein_group_idx in protein_group_idxs:
-            precursor_quant = PrecursorQuant(
-                peptide=peptide,
-                charge=charge,
-                experiment=experiment,
-                fraction=-1,
-                intensity=np.nan,
-                post_err_prob=post_err_prob,
-                tmt_intensities=None,  # TODO: add TMT support
-                silac_intensities=None,  # TODO: add SILAC support
-                evidence_id=-1,
-                assigned_mods=assigned_mods,
-                observed_mods=observed_mods,
-            )
-            protein_group_results[protein_group_idx].precursorQuants.append(
-                precursor_quant
-            )
+                protein_group_results[protein_group_idx].precursorQuants.append(
+                    precursor_quant
+                )
     return protein_group_results, post_err_probs
 
 
@@ -104,71 +104,71 @@ def update_precursor_quants_single(
     suppress_missing_peptide_warning: bool,
 ):
     delimiter = tsv.get_delimiter(combined_ion_file)
-    reader = tsv.get_tsv_reader(combined_ion_file, delimiter)
-    headers = next(reader)
+    with tsv.get_tsv_reader(combined_ion_file, delimiter) as reader:
+        headers = next(reader)
 
-    for (
-        peptide,
-        charge,
-        assigned_mods,
-        proteins,
-        intensities,
-    ) in fragpipe.parse_fragpipe_combined_ion_file(reader, headers):
-        protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
+        for (
+            peptide,
+            charge,
+            assigned_mods,
+            proteins,
+            intensities,
+        ) in fragpipe.parse_fragpipe_combined_ion_file(reader, headers):
+            protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
-        if helpers.is_missing_in_protein_groups(protein_group_idxs):
-            if not suppress_missing_peptide_warning:
-                logger.debug(
-                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-                )
-            continue
+            if helpers.is_missing_in_protein_groups(protein_group_idxs):
+                if not suppress_missing_peptide_warning:
+                    logger.debug(
+                        f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                    )
+                continue
 
-        if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
-            continue
+            if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
+                continue
 
-        for protein_group_idx in protein_group_idxs:
-            precursors_to_update: Dict[str, Tuple[float, int]] = {}
-            for pq_idx, pq in enumerate(
-                protein_group_results[protein_group_idx].precursorQuants
-            ):
-                if (
-                    pq.peptide == peptide
-                    and pq.charge == charge
-                    and pq.assigned_mods == assigned_mods
+            for protein_group_idx in protein_group_idxs:
+                precursors_to_update: Dict[str, Tuple[float, int]] = {}
+                for pq_idx, pq in enumerate(
+                    protein_group_results[protein_group_idx].precursorQuants
                 ):
                     if (
-                        pq.post_err_prob
-                        < precursors_to_update.get(pq.experiment, (1.01, np.nan))[0]
+                        pq.peptide == peptide
+                        and pq.charge == charge
+                        and pq.assigned_mods == assigned_mods
                     ):
-                        precursors_to_update[pq.experiment] = (pq.post_err_prob, pq_idx)
+                        if (
+                            pq.post_err_prob
+                            < precursors_to_update.get(pq.experiment, (1.01, np.nan))[0]
+                        ):
+                            precursors_to_update[pq.experiment] = (pq.post_err_prob, pq_idx)
 
-            for experiment, intensity in intensities:
-                if intensity == 0.0:
-                    continue
+                for experiment, intensity in intensities:
+                    if intensity == 0.0:
+                        continue
 
-                if experiment in precursors_to_update:
-                    pq_idx = precursors_to_update[experiment][1]
-                    protein_group_results[protein_group_idx].precursorQuants[
-                        pq_idx
-                    ].intensity = intensity
-                else:
-                    # match-between-runs hit
-                    precursor_quant = PrecursorQuant(
-                        peptide=peptide,
-                        charge=charge,
-                        experiment=experiment,
-                        fraction=-1,
-                        intensity=intensity,
-                        post_err_prob=np.nan,
-                        tmt_intensities=None,  # TODO: add TMT support
-                        silac_intensities=None,  # TODO: add SILAC support
-                        evidence_id=-1,
-                        assigned_mods=assigned_mods,
-                        observed_mods="",
-                    )
-                    protein_group_results[protein_group_idx].precursorQuants.append(
-                        precursor_quant
-                    )
+                    if experiment in precursors_to_update:
+                        pq_idx = precursors_to_update[experiment][1]
+                        protein_group_results[protein_group_idx].precursorQuants[
+                            pq_idx
+                        ].intensity = intensity
+                    else:
+                        # match-between-runs hit
+                        precursor_quant = PrecursorQuant(
+                            peptide=peptide,
+                            charge=charge,
+                            experiment=experiment,
+                            fraction=-1,
+                            intensity=intensity,
+                            post_err_prob=np.nan,
+                            tmt_intensities=None,  # TODO: add TMT support
+                            silac_intensities=None,  # TODO: add SILAC support
+                            evidence_id=-1,
+                            assigned_mods=assigned_mods,
+                            observed_mods="",
+                        )
+                        protein_group_results[protein_group_idx].precursorQuants.append(
+                            precursor_quant
+                        )
     return protein_group_results
 
 

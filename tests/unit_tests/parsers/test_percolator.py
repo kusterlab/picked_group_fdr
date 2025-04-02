@@ -3,6 +3,7 @@
 import collections
 
 import pytest
+from contextlib import nullcontext
 
 from picked_group_fdr.parsers.percolator import (
     parse_percolator_out_file_to_dict,
@@ -21,18 +22,27 @@ class TestParsePercolatorOutFileToDict:
         mocker.patch("picked_group_fdr.parsers.tsv.get_delimiter", return_value="\t")
         mocker.patch(
             "picked_group_fdr.parsers.tsv.get_tsv_reader",
-            return_value=iter(
-                [
+            return_value=nullcontext(
+                iter(
                     [
-                        "PSMId",
-                        "peptide",
-                        "score",
-                        "q-value",
-                        "posterior_error_prob",
-                        "proteinIds",
-                    ],
-                    ["file1_1_1_1", "_.PEPTIDE._", "0.9", "0.01", "0.001", "protein1"],
-                ]
+                        [
+                            "PSMId",
+                            "peptide",
+                            "score",
+                            "q-value",
+                            "posterior_error_prob",
+                            "proteinIds",
+                        ],
+                        [
+                            "file1_1_1_1",
+                            "_.PEPTIDE._",
+                            "0.9",
+                            "0.01",
+                            "0.001",
+                            "protein1",
+                        ],
+                    ]
+                )
             ),
         )
 
@@ -53,25 +63,27 @@ class TestParsePercolatorOutFileToDict:
         mocker.patch("picked_group_fdr.parsers.tsv.get_delimiter", return_value="\t")
         mocker.patch(
             "picked_group_fdr.parsers.tsv.get_tsv_reader",
-            return_value=iter(
-                [
+            return_value=nullcontext(
+                iter(
                     [
-                        "PSMId",
-                        "peptide",
-                        "score",
-                        "q-value",
-                        "posterior_error_prob",
-                        "proteinIds",
-                    ],
-                    [
-                        "file1-123-PEPTIDE-1-1",
-                        "_.PEPTIDE._",
-                        "0.9",
-                        "0.01",
-                        "0.001",
-                        "protein1",
-                    ],
-                ]
+                        [
+                            "PSMId",
+                            "peptide",
+                            "score",
+                            "q-value",
+                            "posterior_error_prob",
+                            "proteinIds",
+                        ],
+                        [
+                            "file1-123-PEPTIDE-1-1",
+                            "_.PEPTIDE._",
+                            "0.9",
+                            "0.01",
+                            "0.001",
+                            "protein1",
+                        ],
+                    ]
+                )
             ),
         )
 
@@ -92,25 +104,27 @@ class TestParsePercolatorOutFileToDict:
         mocker.patch("picked_group_fdr.parsers.tsv.get_delimiter", return_value="\t")
         mocker.patch(
             "picked_group_fdr.parsers.tsv.get_tsv_reader",
-            return_value=iter(
-                [
+            return_value=nullcontext(
+                iter(
                     [
-                        "PSMId",
-                        "peptide",
-                        "score",
-                        "q-value",
-                        "posterior_error_prob",
-                        "proteinIds",
-                    ],
-                    [
-                        "file1-123-[UNIMOD:730]PEPTIDE-1-1",
-                        "_.[UNIMOD:730]PEPTIDE._",
-                        "0.9",
-                        "0.01",
-                        "0.001",
-                        "protein1",
-                    ],
-                ]
+                        [
+                            "PSMId",
+                            "peptide",
+                            "score",
+                            "q-value",
+                            "posterior_error_prob",
+                            "proteinIds",
+                        ],
+                        [
+                            "file1-123-[UNIMOD:730]PEPTIDE-1-1",
+                            "_.[UNIMOD:730]PEPTIDE._",
+                            "0.9",
+                            "0.01",
+                            "0.001",
+                            "protein1",
+                        ],
+                    ]
+                )
             ),
         )
 
@@ -135,25 +149,27 @@ class TestParsePercolatorOutFileToDict:
         mocker.patch("picked_group_fdr.parsers.tsv.get_delimiter", return_value="\t")
         mocker.patch(
             "picked_group_fdr.parsers.tsv.get_tsv_reader",
-            return_value=iter(
-                [
+            return_value=nullcontext(
+                iter(
                     [
-                        "PSMId",
-                        "peptide",
-                        "score",
-                        "q-value",
-                        "posterior_error_prob",
-                        "proteinIds",
-                    ],
-                    [
-                        "file1-123-[UNIMOD:730]-PEPTIDE-1-1",
-                        "_.[UNIMOD:730]-PEPTIDE._",
-                        "0.9",
-                        "0.01",
-                        "0.001",
-                        "protein1",
-                    ],
-                ]
+                        [
+                            "PSMId",
+                            "peptide",
+                            "score",
+                            "q-value",
+                            "posterior_error_prob",
+                            "proteinIds",
+                        ],
+                        [
+                            "file1-123-[UNIMOD:730]-PEPTIDE-1-1",
+                            "_.[UNIMOD:730]-PEPTIDE._",
+                            "0.9",
+                            "0.01",
+                            "0.001",
+                            "protein1",
+                        ],
+                    ]
+                )
             ),
         )
 
@@ -190,7 +206,7 @@ class TestParsePrositPsmidAndPeptide:
         assert raw_file == "file1_with-multiple-dashes"
         assert scan_number == 123
         assert converted_peptide == "[UNIMOD:730]-PEPTIDE"
-    
+
     def test_with_scan_event_without_filename(self):
         psm_id = "file1_with-multiple-dashes-123-[UNIMOD:730]-PEPTIDE-1-1"
         peptide = "[UNIMOD:730]-PEPTIDE"

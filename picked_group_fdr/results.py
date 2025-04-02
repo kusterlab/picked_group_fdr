@@ -110,7 +110,7 @@ class ProteinGroupResult:
 
     def to_list(self, format_extra_columns=None):
         if format_extra_columns is None:
-            format_extra_columns = writers.format_extra_columns
+            format_extra_columns = writers.base._format_extra_columns
         return [
             self.proteinIds,
             self.majorityProteinIds,
@@ -183,20 +183,20 @@ class ProteinGroupResults:
         header_dict: Optional[Dict[str, str]] = None,
         format_extra_columns: Callable = None,
     ) -> None:
-        writer = tsv.get_tsv_writer(output_file)
-        if header_dict is None:
-            writer.writerow(self.headers)
-        else:
-            writer.writerow(header_dict.keys())
+        with tsv.get_tsv_writer(output_file) as writer:
+            if header_dict is None:
+                writer.writerow(self.headers)
+            else:
+                writer.writerow(header_dict.keys())
 
-        for protein_row in self.protein_group_results:
-            out_row = protein_row.to_list(format_extra_columns)
-            if header_dict is not None:
-                out_row = [
-                    out_row[self.headers.index(original_col_name)]
-                    for original_col_name in header_dict.values()
-                ]
-            writer.writerow(out_row)
+            for protein_row in self.protein_group_results:
+                out_row = protein_row.to_list(format_extra_columns)
+                if header_dict is not None:
+                    out_row = [
+                        out_row[self.headers.index(original_col_name)]
+                        for original_col_name in header_dict.values()
+                    ]
+                writer.writerow(out_row)
 
     def remove_protein_groups_without_precursors(self) -> None:
         filtered_protein_group_results = list()

@@ -95,15 +95,14 @@ def filterProteinGroupsAtFDR(proteinGroupFiles, outputFile, fdrCutoff):
             raise ValueError("ERROR: could not detect file extension .txt in the input file")
         
         logger.info(f"Writing filtered protein groups results to: {outputFile}")
-        writer = tsv.get_tsv_writer(outputFile)
-        reader = tsv.get_tsv_reader(proteinGroupFile)
-        header = next(reader)
-        writer.writerow(header)
-        
-        qvalCol = header.index('Q-value')
-        for row in reader:
-            if float(row[qvalCol]) <= fdrCutoff:
-                writer.writerow(row)
+        with tsv.get_tsv_writer(outputFile) as writer, tsv.get_tsv_reader(proteinGroupFile) as reader:
+            header = next(reader)
+            writer.writerow(header)
+            
+            qvalCol = header.index('Q-value')
+            for row in reader:
+                if float(row[qvalCol]) <= fdrCutoff:
+                    writer.writerow(row)
         
         logger.info("Finished writing")
 
@@ -119,53 +118,53 @@ def filterAtFDR(msmsFiles, msmsOutputFile, fdrCutoff, psmLevelFDR, precursorLeve
     rawFiles = set()
     for msmsFile in msmsFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = tsv.get_tsv_reader(msmsFile)
-        headersOrig = next(reader) # save the header
-        headers = list(map(lambda x : x.lower(), headersOrig))
-        
-        postErrorProbCol = headers.index('pep')
-        seqCol = headers.index('sequence')
-        reverseCol = headers.index('reverse')
-        
-        rawFileCol = None
-        if 'raw file' in headers and perRawFileFDR:
-            rawFileCol = headers.index('raw file')
+        with tsv.get_tsv_reader(msmsFile) as reader:
+            headersOrig = next(reader) # save the header
+            headers = list(map(lambda x : x.lower(), headersOrig))
             
-        scanNrCol = headers.index('sequence')
-        if 'scan number' in headers:
-            scanNrCol = headers.index('scan number')
-        
-        chargeCol = None
-        if 'charge' in headers:
-            chargeCol = headers.index('charge')
-        
-        for i, row in enumerate(reader):
-            if i % 500000 == 0:
-                logger.info(f"Processing line {i}")
+            postErrorProbCol = headers.index('pep')
+            seqCol = headers.index('sequence')
+            reverseCol = headers.index('reverse')
             
-            isDecoy = False
-            if row[reverseCol] == '+':
-                isDecoy = True
+            rawFileCol = None
+            if 'raw file' in headers and perRawFileFDR:
+                rawFileCol = headers.index('raw file')
+                
+            scanNrCol = headers.index('sequence')
+            if 'scan number' in headers:
+                scanNrCol = headers.index('scan number')
             
-            postErrorProb = float(row[postErrorProbCol])
-            sequence = row[seqCol]
-            precCharge = int(row[chargeCol]) if chargeCol else 2
-            rawFile = row[rawFileCol] if rawFileCol else ""
-            scanNr = row[scanNrCol]
+            chargeCol = None
+            if 'charge' in headers:
+                chargeCol = headers.index('charge')
             
-            key1 = sequence
-            if precursorLevelFDR:
-                key1 = (sequence, precCharge)
-            elif psmLevelFDR:
-                key1 = scanNr
-            
-            key = key1
-            if perRawFileFDR:
-                key = (key1, rawFile)
-            rawFiles.add(rawFile)
-            
-            if not np.isnan(postErrorProb) and postErrorProb < bestScans[rawFile][key].postErrorProb:
-                bestScans[rawFile][key] = Scan(postErrorProb, rawFile, scanNr, sequence, precCharge, isDecoy)
+            for i, row in enumerate(reader):
+                if i % 500000 == 0:
+                    logger.info(f"Processing line {i}")
+                
+                isDecoy = False
+                if row[reverseCol] == '+':
+                    isDecoy = True
+                
+                postErrorProb = float(row[postErrorProbCol])
+                sequence = row[seqCol]
+                precCharge = int(row[chargeCol]) if chargeCol else 2
+                rawFile = row[rawFileCol] if rawFileCol else ""
+                scanNr = row[scanNrCol]
+                
+                key1 = sequence
+                if precursorLevelFDR:
+                    key1 = (sequence, precCharge)
+                elif psmLevelFDR:
+                    key1 = scanNr
+                
+                key = key1
+                if perRawFileFDR:
+                    key = (key1, rawFile)
+                rawFiles.add(rawFile)
+                
+                if not np.isnan(postErrorProb) and postErrorProb < bestScans[rawFile][key].postErrorProb:
+                    bestScans[rawFile][key] = Scan(postErrorProb, rawFile, scanNr, sequence, precCharge, isDecoy)
     
     logger.info(f"Filtering best scan per {level}")
     
@@ -190,39 +189,39 @@ def getPeptidesBelowFdr(rawFiles, bestScans, fdrCutoff, level):
 
 def writeMsmsOutput(msmsOutputFile, headersOrig, msmsFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR):
     logger.info("Writing msms.txt output file")
-    writer = tsv.get_tsv_writer(msmsOutputFile)
-    writer.writerow(headersOrig)
-    
-    survivingPSMs = 0
-    for msmsFile in msmsFiles:
-        logger.info(f"Processing {msmsFile}")
-        reader = tsv.get_tsv_reader(msmsFile)
-        headersOrig = next(reader)
-        headers = list(map(lambda x : x.lower(), headersOrig))
+    with tsv.get_tsv_writer(msmsOutputFile) as writer:
+        writer.writerow(headersOrig)
         
-        if 'raw file' in headers and perRawFileFDR:
-            rawFileCol = headers.index('raw file')
-        else:
-            rawFileCol = None
-        seqCol = headers.index('sequence')
-        postErrorProbCol = headers.index('pep')
-        for i, row in enumerate(reader):
-            if i % 500000 == 0:
-                logger.info(f"Processing line {i}")
-            
-            postErrorProb = float(row[postErrorProbCol])
-            sequence = row[seqCol]
-            rawFile = row[rawFileCol] if rawFileCol else ""
-            
-            key = (sequence, rawFile)
-            postErrorProbCutoff = postErrorProbCutoffs[rawFile]
-            
-            # this PEP comparison lets NaN values set by MBR pass on purpose. Therefore, we also need to check if the peptide actually has been identified in at least one run
-            if postErrorProb > postErrorProbCutoff or key not in survivingPeptides:
-                continue
-            
-            survivingPSMs += 1
-            writer.writerow(row)
+        survivingPSMs = 0
+        for msmsFile in msmsFiles:
+            logger.info(f"Processing {msmsFile}")
+            with tsv.get_tsv_reader(msmsFile) as reader:
+                headersOrig = next(reader)
+                headers = list(map(lambda x : x.lower(), headersOrig))
+                
+                if 'raw file' in headers and perRawFileFDR:
+                    rawFileCol = headers.index('raw file')
+                else:
+                    rawFileCol = None
+                seqCol = headers.index('sequence')
+                postErrorProbCol = headers.index('pep')
+                for i, row in enumerate(reader):
+                    if i % 500000 == 0:
+                        logger.info(f"Processing line {i}")
+                    
+                    postErrorProb = float(row[postErrorProbCol])
+                    sequence = row[seqCol]
+                    rawFile = row[rawFileCol] if rawFileCol else ""
+                    
+                    key = (sequence, rawFile)
+                    postErrorProbCutoff = postErrorProbCutoffs[rawFile]
+                    
+                    # this PEP comparison lets NaN values set by MBR pass on purpose. Therefore, we also need to check if the peptide actually has been identified in at least one run
+                    if postErrorProb > postErrorProbCutoff or key not in survivingPeptides:
+                        continue
+                    
+                    survivingPSMs += 1
+                    writer.writerow(row)
     
     logger.info(f"Written {survivingPSMs} rows")
 
@@ -259,44 +258,44 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
     rawFiles = set()
     for msmsFile in percInputFiles:
         logger.info(f"Processing {msmsFile}")
-        reader = tsv.get_tsv_reader(msmsFile)
-        headersOrig = next(reader) # save the header
-        headers = list(map(lambda x : x.lower(), headersOrig))
-        
-        postErrorProbCol = headers.index('posterior_error_prob')
-        seqCol = headers.index('peptide')
-        proteinsCol = headers.index('proteinids')
-        psmIdCol = headers.index('psmid')
-        
-        for i, row in enumerate(reader):
-            if i % 500000 == 0:
-                logger.info(f"Processing line {i}")
+        with tsv.get_tsv_reader(msmsFile) as reader:
+            headersOrig = next(reader) # save the header
+            headers = list(map(lambda x : x.lower(), headersOrig))
             
-            isDecoy = False
-            if helpers.is_decoy(row[proteinsCol:]):
-                isDecoy = True
+            postErrorProbCol = headers.index('posterior_error_prob')
+            seqCol = headers.index('peptide')
+            proteinsCol = headers.index('proteinids')
+            psmIdCol = headers.index('psmid')
             
-            postErrorProb = float(row[postErrorProbCol])
-            sequence = row[seqCol]
-            
-            psmId = row[psmIdCol].split("_")
-            rawFile = "_".join(psmId[:-3])
-            precCharge = int(psmId[-2])
-            scanNr = int(psmId[-3])
-            
-            key1 = sequence
-            if precursorLevelFDR:
-                key1 = (sequence, precCharge)
-            elif psmLevelFDR:
-                key1 = scanNr
-            
-            key = key1
-            if perRawFileFDR:
-                key = (key1, rawFile)
-            rawFiles.add(rawFile)
-            
-            if not np.isnan(postErrorProb) and postErrorProb < bestScans[rawFile][key].postErrorProb:
-                bestScans[rawFile][key] = Scan(postErrorProb, rawFile, scanNr, sequence, precCharge, isDecoy)
+            for i, row in enumerate(reader):
+                if i % 500000 == 0:
+                    logger.info(f"Processing line {i}")
+                
+                isDecoy = False
+                if helpers.is_decoy(row[proteinsCol:]):
+                    isDecoy = True
+                
+                postErrorProb = float(row[postErrorProbCol])
+                sequence = row[seqCol]
+                
+                psmId = row[psmIdCol].split("_")
+                rawFile = "_".join(psmId[:-3])
+                precCharge = int(psmId[-2])
+                scanNr = int(psmId[-3])
+                
+                key1 = sequence
+                if precursorLevelFDR:
+                    key1 = (sequence, precCharge)
+                elif psmLevelFDR:
+                    key1 = scanNr
+                
+                key = key1
+                if perRawFileFDR:
+                    key = (key1, rawFile)
+                rawFiles.add(rawFile)
+                
+                if not np.isnan(postErrorProb) and postErrorProb < bestScans[rawFile][key].postErrorProb:
+                    bestScans[rawFile][key] = Scan(postErrorProb, rawFile, scanNr, sequence, precCharge, isDecoy)
     
     logger.info(f"Filtering best scan per {level}")
     
@@ -306,41 +305,41 @@ def filterAtFDRPerc(percInputFiles, percOutputFile, fdrCutoff, psmLevelFDR, prec
 
 def writePercOutput(percOutputFile, headersOrig, percInputFiles, postErrorProbCutoffs, survivingPeptides, perRawFileFDR):
     logger.info("Writing percolator output file")
-    writer = tsv.get_tsv_writer(percOutputFile)
-    writer.writerow(headersOrig)
-    
-    survivingPSMs = 0
-    for msmsFile in percInputFiles:
-        logger.info(f"Processing {msmsFile}")
-        reader = tsv.get_tsv_reader(msmsFile)
-        headersOrig = next(reader)
-        headers = list(map(lambda x : x.lower(), headersOrig))
+    with tsv.get_tsv_writer(percOutputFile) as writer:
+        writer.writerow(headersOrig)
         
-        seqCol = headers.index('peptide')
-        postErrorProbCol = headers.index('posterior_error_prob')
-        psmIdCol = headers.index('psmid')
-        
-        for i, row in enumerate(reader):
-            if i % 500000 == 0:
-                logger.info(f"Processing line {i}")
-            
-            postErrorProb = float(row[postErrorProbCol])
-            sequence = row[seqCol]
-            
-            psmId = row[psmIdCol].split("_")
-            rawFile = "_".join(psmId[:-3])
-            precCharge = int(psmId[-2])
-            scanNr = int(psmId[-3])
-            
-            key = (sequence, rawFile)
-            postErrorProbCutoff = postErrorProbCutoffs[rawFile]
-            
-            # this PEP comparison lets NaN values set by MBR pass on purpose. Therefore, we also need to check if the peptide actually has been identified in at least one run
-            if postErrorProb > postErrorProbCutoff or key not in survivingPeptides:
-                continue
-            
-            survivingPSMs += 1
-            writer.writerow(row)
+        survivingPSMs = 0
+        for msmsFile in percInputFiles:
+            logger.info(f"Processing {msmsFile}")
+            with tsv.get_tsv_reader(msmsFile) as reader:
+                headersOrig = next(reader)
+                headers = list(map(lambda x : x.lower(), headersOrig))
+                
+                seqCol = headers.index('peptide')
+                postErrorProbCol = headers.index('posterior_error_prob')
+                psmIdCol = headers.index('psmid')
+                
+                for i, row in enumerate(reader):
+                    if i % 500000 == 0:
+                        logger.info(f"Processing line {i}")
+                    
+                    postErrorProb = float(row[postErrorProbCol])
+                    sequence = row[seqCol]
+                    
+                    psmId = row[psmIdCol].split("_")
+                    rawFile = "_".join(psmId[:-3])
+                    precCharge = int(psmId[-2])
+                    scanNr = int(psmId[-3])
+                    
+                    key = (sequence, rawFile)
+                    postErrorProbCutoff = postErrorProbCutoffs[rawFile]
+                    
+                    # this PEP comparison lets NaN values set by MBR pass on purpose. Therefore, we also need to check if the peptide actually has been identified in at least one run
+                    if postErrorProb > postErrorProbCutoff or key not in survivingPeptides:
+                        continue
+                    
+                    survivingPSMs += 1
+                    writer.writerow(row)
     
     logger.info(f"Written {survivingPSMs} rows")
 
