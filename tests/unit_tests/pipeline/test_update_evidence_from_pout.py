@@ -1,6 +1,7 @@
 # Generation assisted by CodiumAI
 
 import pytest
+from contextlib import nullcontext
 
 import picked_group_fdr.parsers.maxquant as maxquant
 from picked_group_fdr.pipeline.update_evidence_from_pout import update_evidence_single
@@ -13,11 +14,13 @@ class TestUpdateEvidenceSingle:
         mock_writer = mocker.patch("csv.writer")
         mocker.patch(
             "picked_group_fdr.parsers.tsv.get_tsv_reader",
-            return_value=iter(
-                [
-                    ["Header1", "Header2", "Header3"],
-                    ["row1col1", "row1col2", "row1col3"],
-                ]
+            return_value=nullcontext(
+                iter(
+                    [
+                        ["Header1", "Header2", "Header3"],
+                        ["row1col1", "row1col2", "row1col3"],
+                    ]
+                )
             ),
         )
         # the first index is for the score column, the second for PEP
@@ -51,7 +54,10 @@ class TestUpdateEvidenceSingle:
         first_headers = ["Header1", "Header2", "Header3"]
         fixed_mods = {"C": "C[UNIMOD:4]"}
         results_dict = {
-            "file1.raw": {(123, "PEPTIDESEQ"): (0.1, 0.01), (2, "peptide2"): (0.2, 0.02)}
+            "file1.raw": {
+                (123, "PEPTIDESEQ"): (0.1, 0.01),
+                (2, "peptide2"): (0.2, 0.02),
+            }
         }
         pout_input_type = "andromeda"
         suppress_missing_peptide_warning = False
@@ -71,17 +77,21 @@ class TestUpdateEvidenceSingle:
         # Assertions
         mock_writer.writerow.assert_any_call([0.1, 0.01, "row1col3"])
         assert updated_headers == ["header1", "header2", "header3"]
-    
-    def test_correctly_processes_evidence_file_and_writes_updated_rows_prosit_input(self, mocker):
+
+    def test_correctly_processes_evidence_file_and_writes_updated_rows_prosit_input(
+        self, mocker
+    ):
         # Mock the necessary components
         mock_writer = mocker.patch("csv.writer")
         mocker.patch(
             "picked_group_fdr.parsers.tsv.get_tsv_reader",
-            return_value=iter(
-                [
-                    ["Header1", "Header2", "Header3"],
-                    ["row1col1", "row1col2", "row1col3"],
-                ]
+            return_value=nullcontext(
+                iter(
+                    [
+                        ["Header1", "Header2", "Header3"],
+                        ["row1col1", "row1col2", "row1col3"],
+                    ]
+                )
             ),
         )
         # the first index is for the score column, the second for PEP
@@ -113,9 +123,12 @@ class TestUpdateEvidenceSingle:
         # Initialize the necessary variables
         evidence_file = "path/to/evidence_file.txt"
         first_headers = ["Header1", "Header2", "Header3"]
-        fixed_mods = {'C': 'C[UNIMOD:4]', 'K': 'K[UNIMOD:730]', '^_': '_[UNIMOD:730]-'}
+        fixed_mods = {"C": "C[UNIMOD:4]", "K": "K[UNIMOD:730]", "^_": "_[UNIMOD:730]-"}
         results_dict = {
-            "file1.raw": {(123, "[UNIMOD:730]-PEPTIDESEQ"): (0.1, 0.01), (2, "peptide2"): (0.2, 0.02)}
+            "file1.raw": {
+                (123, "[UNIMOD:730]-PEPTIDESEQ"): (0.1, 0.01),
+                (2, "peptide2"): (0.2, 0.02),
+            }
         }
         pout_input_type = "prosit"
         suppress_missing_peptide_warning = False

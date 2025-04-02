@@ -144,51 +144,51 @@ def parse_percolator_out_file_to_dict(
         )
 
     delimiter = tsv.get_delimiter(perc_out_file)
-    reader = tsv.get_tsv_reader(perc_out_file, delimiter)
-    headers = next(reader)  # save the header
+    with tsv.get_tsv_reader(perc_out_file, delimiter) as reader:
+        headers = next(reader)  # save the header
 
-    id_col, filename_col, pept_col, score_col, _, post_err_prob_col, _ = (
-        get_percolator_column_idxs(headers)
-    )
-
-    logger.info("Parsing Percolator output file")
-    convert_to_proforma = modifications.prosit_mod_to_proforma()
-    fixed_mod_idx = -1
-    first = True
-    for line_idx, row in enumerate(reader):
-        if line_idx % 500000 == 0:
-            logger.info(f"    Reading line {line_idx}")
-
-        modified_sequence = row[pept_col][2:-2]
-        score = float(row[score_col])
-        post_err_prob = float(row[post_err_prob_col])
-        filename = ""
-        if filename_col >= 0:
-            filename = row[filename_col]
-
-        psm_id = row[id_col]
-        if input_type == "prosit":
-            raw_file, scan_number, modified_sequence = parse_prosit_psmid_and_peptide(
-                psm_id, modified_sequence, filename, convert_to_proforma
-            )
-
-            if first:
-                for i, fixed_mod in enumerate(FIXED_MODS_UNIMOD):
-                    if fixed_mod in modified_sequence:
-                        fixed_mod_idx = i
-                first = False
-            elif fixed_mod_idx >= 0:
-                if FIXED_MODS_UNIMOD[fixed_mod_idx] not in modified_sequence:
-                    fixed_mod_idx = -1
-        else:
-            raw_file, scan_number, modified_sequence = (
-                parse_andromeda_psmid_and_peptide(psm_id, modified_sequence)
-            )
-
-        results_dict[raw_file][(scan_number, modified_sequence)] = (
-            score,
-            post_err_prob,
+        id_col, filename_col, pept_col, score_col, _, post_err_prob_col, _ = (
+            get_percolator_column_idxs(headers)
         )
+
+        logger.info("Parsing Percolator output file")
+        convert_to_proforma = modifications.prosit_mod_to_proforma()
+        fixed_mod_idx = -1
+        first = True
+        for line_idx, row in enumerate(reader):
+            if line_idx % 500000 == 0:
+                logger.info(f"    Reading line {line_idx}")
+
+            modified_sequence = row[pept_col][2:-2]
+            score = float(row[score_col])
+            post_err_prob = float(row[post_err_prob_col])
+            filename = ""
+            if filename_col >= 0:
+                filename = row[filename_col]
+
+            psm_id = row[id_col]
+            if input_type == "prosit":
+                raw_file, scan_number, modified_sequence = parse_prosit_psmid_and_peptide(
+                    psm_id, modified_sequence, filename, convert_to_proforma
+                )
+
+                if first:
+                    for i, fixed_mod in enumerate(FIXED_MODS_UNIMOD):
+                        if fixed_mod in modified_sequence:
+                            fixed_mod_idx = i
+                    first = False
+                elif fixed_mod_idx >= 0:
+                    if FIXED_MODS_UNIMOD[fixed_mod_idx] not in modified_sequence:
+                        fixed_mod_idx = -1
+            else:
+                raw_file, scan_number, modified_sequence = (
+                    parse_andromeda_psmid_and_peptide(psm_id, modified_sequence)
+                )
+
+            results_dict[raw_file][(scan_number, modified_sequence)] = (
+                score,
+                post_err_prob,
+            )
 
     return FIXED_MODS_DICTS[fixed_mod_idx + 1], results_dict
 

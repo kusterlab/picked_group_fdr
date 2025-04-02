@@ -7,6 +7,7 @@ import itertools
 import collections
 import logging
 from typing import Dict, Iterator, List, Optional
+from contextlib import contextmanager
 
 from .digestion_params import (
     DigestionParams,
@@ -59,49 +60,46 @@ def main(argv):  # pragma: no cover
     digestion_params_list = get_digestion_params_list(args)
 
     if args.prosit_input:
-        writer = get_tsv_writer(args.prosit_input, delimiter=",")
-        writer.writerow(
-            "modified_sequence,collision_energy,precursor_charge".split(",")
-        )
-
         prosit_input_file_with_proteins = args.prosit_input.replace(
             ".csv", "_with_proteins.csv"
         )
-        writer_with_proteins = get_tsv_writer(
+        with get_tsv_writer(args.prosit_input, delimiter=",") as writer, get_tsv_writer(
             prosit_input_file_with_proteins, delimiter=","
-        )
-        writer_with_proteins.writerow(
-            "modified_sequence,collision_energy,precursor_charge,protein".split(",")
-        )
+        ) as writer_with_proteins:
+            writer.writerow(
+                "modified_sequence,collision_energy,precursor_charge".split(",")
+            )
+            writer_with_proteins.writerow(
+                "modified_sequence,collision_energy,precursor_charge,protein".split(",")
+            )
 
-        for peptide, proteins in get_peptide_to_protein_map_from_params(
-            args.fasta, digestion_params_list
-        ).items():
-            if not is_valid_prosit_peptide(peptide):
-                continue
+            for peptide, proteins in get_peptide_to_protein_map_from_params(
+                args.fasta, digestion_params_list
+            ).items():
+                if not is_valid_prosit_peptide(peptide):
+                    continue
 
-            for charge in [2, 3, 4]:
-                writer.writerow([peptide, 30, charge])
-                writer_with_proteins.writerow([peptide, 30, charge, proteins[0]])
+                for charge in [2, 3, 4]:
+                    writer.writerow([peptide, 30, charge])
+                    writer_with_proteins.writerow([peptide, 30, charge, proteins[0]])
 
     if args.peptide_protein_map:
         with open(args.peptide_protein_map + ".params.txt", "w") as f:
             f.write(" ".join(sys.argv))
 
-        writer = get_tsv_writer(args.peptide_protein_map, delimiter="\t")
-        for peptide, proteins in get_peptide_to_protein_map_from_params(
-            args.fasta, digestion_params_list
-        ).items():
-            writer.writerow([peptide, ";".join(proteins)])
+        with get_tsv_writer(args.peptide_protein_map, delimiter="\t") as writer:
+            for peptide, proteins in get_peptide_to_protein_map_from_params(
+                args.fasta, digestion_params_list
+            ).items():
+                writer.writerow([peptide, ";".join(proteins)])
 
     if args.ibaq_map:
-        writer = get_tsv_writer(args.ibaq_map, delimiter="\t")
-
         num_peptides_per_protein = get_num_ibaq_peptides_per_protein(
             args.fasta, digestion_params_list
         )
-        for protein, num_peptides in num_peptides_per_protein.items():
-            writer.writerow([protein, num_peptides])
+        with get_tsv_writer(args.ibaq_map, delimiter="\t") as writer:
+            for protein, num_peptides in num_peptides_per_protein.items():
+                writer.writerow([protein, num_peptides])
 
 
 def parse_args():  # pragma: no cover
@@ -499,19 +497,19 @@ def get_peptide_to_protein_map_from_file(
         logger.info("Hash key not supported yet, continuing without hash key...")
         use_hash_key = False
     peptide_to_protein_map = collections.defaultdict(list)
-    reader = get_tsv_reader(peptide_to_protein_map_file)
-    for i, row in enumerate(reader):
-        if (i + 1) % 1000000 == 0:
-            logger.info(f"Processing peptide {i+1}")
+    with get_tsv_reader(peptide_to_protein_map_file) as reader:
+        for i, row in enumerate(reader):
+            if (i + 1) % 1000000 == 0:
+                logger.info(f"Processing peptide {i+1}")
 
-        peptide, proteins = row[0], row[1].split(";")
-        if use_hash_key:
-            raise NotImplementedError("Hash key not supported yet...")
-            hash_key = peptide[:6]
-        else:
-            hash_key = peptide
-        for protein in proteins:
-            peptide_to_protein_map[hash_key].append(protein)
+            peptide, proteins = row[0], row[1].split(";")
+            if use_hash_key:
+                raise NotImplementedError("Hash key not supported yet...")
+                hash_key = peptide[:6]
+            else:
+                hash_key = peptide
+            for protein in proteins:
+                peptide_to_protein_map[hash_key].append(protein)
     return peptide_to_protein_map
 
 
@@ -559,7 +557,9 @@ def get_ibaq_peptide_to_protein_map(
     )
 
 
-def get_num_ibaq_peptides_per_protein_from_args(args, peptide_to_protein_maps, **kwargs):
+def get_num_ibaq_peptides_per_protein_from_args(
+    args, peptide_to_protein_maps, **kwargs
+):
     digestion_params_list = get_digestion_params_list(args)
     if args.fasta:
         logger.info("In silico protein digest for iBAQ")
@@ -637,22 +637,18 @@ def has_miscleavage(seq, pre=["K", "R"], not_post=["P"], post=[]):
     return False
 
 
-def get_tsv_reader(filename, delimiter="\t"):
-    # Python 3
-    if sys.version_info[0] >= 3:
-        return csv.reader(open(filename, "r", newline=""), delimiter=delimiter)
-    # Python 2
-    else:
-        return csv.reader(open(filename, "rb"), delimiter=delimiter)
+@contextmanager
+def get_tsv_reader(filename: str, delimiter: str = "\t"):
+    with open(filename, "r", newline="", encoding="utf-8-sig") as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        yield reader
 
 
-def get_tsv_writer(filename, delimiter="\t"):
-    # Python 3
-    if sys.version_info[0] >= 3:
-        return csv.writer(open(filename, "w", newline=""), delimiter=delimiter)
-    # Python 2
-    else:
-        return csv.writer(open(filename, "wb"), delimiter=delimiter)
+@contextmanager
+def get_tsv_writer(filename: str, delimiter: str = "\t"):
+    with open(filename, "w", newline="") as file:
+        writer = csv.writer(file, delimiter=delimiter)
+        yield writer
 
 
 if __name__ == "__main__":

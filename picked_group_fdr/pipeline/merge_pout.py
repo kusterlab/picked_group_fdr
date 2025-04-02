@@ -101,75 +101,75 @@ def merge_pout(
     seenPeptides = dict()
     missingPeptides, matchedPeptides = 0, 0
     for poutFile in perc_results:
-        poutReader = tsv.get_tsv_reader(poutFile)
-        headers = next(poutReader)
+        with tsv.get_tsv_reader(poutFile) as poutReader:
+            headers = next(poutReader)
 
-        (
-            idCol,
-            _,
-            peptCol,
-            scoreCol,
-            qvalCol,
-            postErrProbCol,
-            proteinCol,
-        ) = percolator.get_percolator_column_idxs(headers)
+            (
+                idCol,
+                _,
+                peptCol,
+                scoreCol,
+                qvalCol,
+                postErrProbCol,
+                proteinCol,
+            ) = percolator.get_percolator_column_idxs(headers)
 
-        sumPEP = 0.0
-        matchedBefore = matchedPeptides
-        logger.info(f"Parsing {poutFile}")
-        # TODO: merge with parsers.parsePercolatorOutFile()
-        for i, row in enumerate(poutReader):
-            if i % 1000000 == 0:
-                logger.info(
-                    f"Processing row {i}: #Missing peptides: {missingPeptides}, #Matched peptides: {matchedPeptides}"
-                )
+            sumPEP = 0.0
+            matchedBefore = matchedPeptides
+            logger.info(f"Parsing {poutFile}")
+            # TODO: merge with parsers.parsePercolatorOutFile()
+            for i, row in enumerate(poutReader):
+                if i % 1000000 == 0:
+                    logger.info(
+                        f"Processing row {i}: #Missing peptides: {missingPeptides}, #Matched peptides: {matchedPeptides}"
+                    )
 
-            # convert peptide string to upper case, since prosit converts modified amino acids to lower case
-            peptide = helpers.remove_modifications(row[peptCol][2:-2].upper())
+                # convert peptide string to upper case, since prosit converts modified amino acids to lower case
+                peptide = helpers.remove_modifications(row[peptCol][2:-2].upper())
 
-            if len(peptideToProteinMap) > 0:
-                proteins = digest.get_proteins(peptideToProteinMap, peptide)
-            elif percolator.is_native_percolator_file(headers):
-                proteins = row[proteinCol:]
-            elif percolator.is_mokapot_file(headers):
-                proteins = row[proteinCol].split("\t")
+                if len(peptideToProteinMap) > 0:
+                    proteins = digest.get_proteins(peptideToProteinMap, peptide)
+                elif percolator.is_native_percolator_file(headers):
+                    proteins = row[proteinCol:]
+                elif percolator.is_mokapot_file(headers):
+                    proteins = row[proteinCol].split("\t")
 
-            isDecoy = helpers.is_decoy(proteins)
+                isDecoy = helpers.is_decoy(proteins)
 
-            if isDecoy:
-                qValue = float(row[qvalCol])
-            else:
-                # for targets, estimate "high resolution" q-value based on PEPs
-                sumPEP += float(row[postErrProbCol])
-                qValue = sumPEP / (i + 1)
-
-            if qValue < seenPeptides.get(peptide, (1.0, []))[0]:
-                if len(proteins) > 0:
-                    row = [
-                        row[idCol],
-                        row[scoreCol],
-                        row[qvalCol],
-                        row[postErrProbCol],
-                        "-." + peptide + ".-",
-                    ] + proteins
-                    matchedPeptides += 1
-                    seenPeptides[peptide] = (qValue, row, isDecoy)
+                if isDecoy:
+                    qValue = float(row[qvalCol])
                 else:
-                    if (
-                        not helpers.is_contaminant(proteins)
-                        and not suppress_missing_peptide_warning
-                    ):
-                        logger.debug(
-                            f"Could not find peptide {peptide} in fasta file, check your database and if the correct digestion parameters were specified"
-                        )
-                    missingPeptides += 1
+                    # for targets, estimate "high resolution" q-value based on PEPs
+                    sumPEP += float(row[postErrProbCol])
+                    qValue = sumPEP / (i + 1)
 
-        logger.info(
-            f"Processing row {i}: #Missing peptides: {missingPeptides}, #Matched peptides: {matchedPeptides}"
-        )
+                if qValue < seenPeptides.get(peptide, (1.0, []))[0]:
+                    if len(proteins) > 0:
+                        row = [
+                            row[idCol],
+                            row[scoreCol],
+                            row[qvalCol],
+                            row[postErrProbCol],
+                            "-." + peptide + ".-",
+                        ] + proteins
+                        matchedPeptides += 1
+                        seenPeptides[peptide] = (qValue, row, isDecoy)
+                    else:
+                        if (
+                            not helpers.is_contaminant(proteins)
+                            and not suppress_missing_peptide_warning
+                        ):
+                            logger.debug(
+                                f"Could not find peptide {peptide} in fasta file, check your database and if the correct digestion parameters were specified"
+                            )
+                        missingPeptides += 1
 
-        if matchedBefore == matchedPeptides:
-            logger.warning(f"No new peptides added by {poutFile}")
+            logger.info(
+                f"Processing row {i}: #Missing peptides: {missingPeptides}, #Matched peptides: {matchedPeptides}"
+            )
+
+            if matchedBefore == matchedPeptides:
+                logger.warning(f"No new peptides added by {poutFile}")
 
     psm_infos = sorted(seenPeptides.values())
     peps = get_peptide_PEPs(psm_infos)
@@ -192,21 +192,20 @@ def get_peptide_PEPs(psm_infos):
 
 
 def write_updated_PSMs(perc_merged, psm_infos, peps, update_qvals=False):
-    writer = tsv.get_tsv_writer(perc_merged + ".tmp")
+    with tsv.get_tsv_writer(perc_merged + ".tmp") as writer:
+        headers = percolator.PERCOLATOR_NATIVE_HEADERS
+        writer.writerow(headers)
+        _, _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
 
-    headers = percolator.PERCOLATOR_NATIVE_HEADERS
-    writer.writerow(headers)
-    _, _, _, _, qvalCol, _, _ = percolator.get_percolator_column_idxs(headers)
-
-    sumPEP = 0.0
-    counts = 0
-    for (_, row, isDecoy), pep in zip(psm_infos, peps):
-        if update_qvals:
-            if not isDecoy:
-                sumPEP += pep
-                counts += 1
-            row[qvalCol] = sumPEP / counts
-        writer.writerow(row)
+        sumPEP = 0.0
+        counts = 0
+        for (_, row, isDecoy), pep in zip(psm_infos, peps):
+            if update_qvals:
+                if not isDecoy:
+                    sumPEP += pep
+                    counts += 1
+                row[qvalCol] = sumPEP / counts
+            writer.writerow(row)
 
     os.rename(perc_merged + ".tmp", perc_merged)
 
