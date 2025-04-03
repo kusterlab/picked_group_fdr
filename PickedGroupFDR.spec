@@ -67,5 +67,5 @@ coll = COLLECT(exe,
                a.datas,
                strip=False,
                upx=True,
-               upx_exclude=['_uarray.pyd'],
+               upx_exclude=['_uarray.*pyd'],
                name='PickedGroupFDR')
