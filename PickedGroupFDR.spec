@@ -9,7 +9,7 @@ block_cipher = None
 a = Analysis(['gui.py'],
              pathex=[],
              binaries=[(llvmlite_dll, '.')],
-             datas=[('matplotlib_mock', 'matplotlib_mock'), ('picked_group_fdr/methods', 'picked_group-fdr/methods'), ('./pyproject.toml', '.')],
+             datas=[('matplotlib_mock', 'matplotlib_mock'), ('picked_group_fdr/methods', 'picked_group_fdr/methods'), ('./pyproject.toml', '.')],
              hiddenimports=['sklearn.utils._cython_blas',
                             'sklearn.utils._typedefs',
                             'sklearn.utils._heap',
