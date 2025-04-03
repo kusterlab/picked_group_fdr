@@ -1,3 +1,9 @@
+v0.8.1
+- Use context managers for get_tsv_reader/writer
+
+v0.8.0
+- Version yanked due to mistake in pyproject.toml
+
 v0.7.9
 - Update job-pool to fix issue with applyAsync callback
 
