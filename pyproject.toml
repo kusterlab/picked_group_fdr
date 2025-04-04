@@ -11,6 +11,10 @@ keywords = ["mass spectrometry", "protein inference", "proteomics"]
 include = [
   "LICENSE",
 ]
+packages = [
+    {include = "picked_group_fdr"},
+    {include = "tests", format = "sdist"},
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
