@@ -1,18 +1,23 @@
 import csv
 from typing import List
+from contextlib import contextmanager
 
 # csv.field_size_limit(sys.maxsize)
 csv.field_size_limit(2147483647)
 
 
+@contextmanager
 def get_tsv_reader(filename: str, delimiter: str = "\t"):
-    return csv.reader(
-        open(filename, "r", newline="", encoding="utf-8-sig"), delimiter=delimiter
-    )
+    with open(filename, "r", newline="", encoding="utf-8-sig") as f:
+        reader = csv.reader(f, delimiter=delimiter)
+        yield reader
 
 
+@contextmanager
 def get_tsv_writer(filename: str, delimiter: str = "\t"):
-    return csv.writer(open(filename, "w", newline=""), delimiter=delimiter)
+    with open(filename, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=delimiter)
+        yield writer
 
 
 def get_delimiter(filename: str):

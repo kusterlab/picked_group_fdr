@@ -44,30 +44,30 @@ def parse_peptides_file_single(
     """
     delimiter = tsv.get_delimiter(peptides_file)
 
-    reader = tsv.get_tsv_reader(peptides_file, delimiter)
-    headers = next(reader)  # save the header
+    with tsv.get_tsv_reader(peptides_file, delimiter) as reader:
+        headers = next(reader)  # save the header
 
-    peptide_col = tsv.get_column_index(headers, peptide_column)
-    score_col = tsv.get_column_index(headers, score_column)
-    if not is_decoy_file:
-        protein_col = tsv.get_column_index(headers, protein_column)
+        peptide_col = tsv.get_column_index(headers, peptide_column)
+        score_col = tsv.get_column_index(headers, score_column)
+        if not is_decoy_file:
+            protein_col = tsv.get_column_index(headers, protein_column)
 
-    experiment = "Experiment1"
+        experiment = "Experiment1"
 
-    logger.info(f"Parsing peptides file: {peptides_file}")
-    for row in reader:
-        proteins = []
-        if is_decoy_file:
-            proteins = ["REV__protein"]
-        elif len(row[protein_col]) > 0:
-            proteins = list(map(str.strip, row[protein_col].split(";")))
+        logger.info(f"Parsing peptides file: {peptides_file}")
+        for row in reader:
+            proteins = []
+            if is_decoy_file:
+                proteins = ["REV__protein"]
+            elif len(row[protein_col]) > 0:
+                proteins = list(map(str.strip, row[protein_col].split(";")))
 
-        score = -100.0
-        if len(row[score_col]) > 0:
-            score = float(row[score_col])
-            if np.isnan(score):
-                continue
-        yield row[peptide_col], proteins, experiment, score
+            score = -100.0
+            if len(row[score_col]) > 0:
+                score = float(row[score_col])
+                if np.isnan(score):
+                    continue
+            yield row[peptide_col], proteins, experiment, score
 
 
 def add_triqler_group_params(experimental_design: pd.DataFrame, params: Dict):

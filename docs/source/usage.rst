@@ -20,14 +20,20 @@ On Windows (no installation required):
 
 On all platforms (Windows, Linux, OSX, etc.):
 
-1. :doc:`Install the Picked Group FDR Python package <installation>`.
+1. Clone and install this repository
+    .. code:: shell
+
+        git clone https://github.com/kusterlab/picked_group_fdr.git
+        cd picked_group_fdr
+        pip install .
+
 2. Install ``PyQt5`` with ``pip``:
 
     .. code:: shell
         
         pip install PyQt5
 
-3. Start the GUI with:
+3. Start the GUI from the repo directory with:
 
     .. code:: shell
 

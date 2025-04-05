@@ -701,12 +701,12 @@ testing = ["Django", "attrs", "colorama", "docopt", "pytest (<7.0.0)"]
 
 [[package]]
 name = "job-pool"
-version = "0.3.0"
+version = "0.3.2"
 description = "Enhanced Job Pool for Python Multiprocessing"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "job_pool-0.3.0-py3-none-any.whl", hash = "sha256:0b66f3dad0e645f59c94c57c74e0224ed2fb75c5554169d376217b8ac89b3dc9"},
+    {file = "job_pool-0.3.2-py3-none-any.whl", hash = "sha256:faa547a328599b16f7fe80d1dc291a2b2fa8db1f2347317c82a39f1a867f6275"},
 ]
 
 [package.dependencies]
@@ -2199,4 +2199,4 @@ gui = ["pyqt5"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "6b2b2e11c6fd8e1b66c6ef52bef0e04c1193a0b41855a618b1720f4075719fb6"
+content-hash = "42ba7cdb0f30370c546845a2636c51591c4284fcbafcbc2e960b79d8eef54bd1"

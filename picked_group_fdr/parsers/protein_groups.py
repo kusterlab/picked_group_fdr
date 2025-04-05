@@ -29,21 +29,21 @@ def parse_protein_groups_file_single(
     """
     delimiter = tsv.get_delimiter(protein_groups_file)
 
-    reader = tsv.get_tsv_reader(protein_groups_file, delimiter)
-    headers = next(reader)  # save the header
+    with tsv.get_tsv_reader(protein_groups_file, delimiter) as reader:
+        headers = next(reader)  # save the header
 
-    score_col = tsv.get_column_index(headers, score_column)
-    protein_col = tsv.get_column_index(headers, protein_column)
+        score_col = tsv.get_column_index(headers, score_column)
+        protein_col = tsv.get_column_index(headers, protein_column)
 
-    logger.info(f"Parsing proteinGroups file: {protein_groups_file}")
-    for row in reader:
-        proteins = list(map(str.strip, row[protein_col].split(";")))
-        if is_decoy_file:
-            proteins = [f"REV__{p}" for p in proteins]
-        score = -100.0
-        if len(row[score_col]) > 0:
-            score = float(row[score_col])
-        yield proteins, score
+        logger.info(f"Parsing proteinGroups file: {protein_groups_file}")
+        for row in reader:
+            proteins = list(map(str.strip, row[protein_col].split(";")))
+            if is_decoy_file:
+                proteins = [f"REV__{p}" for p in proteins]
+            score = -100.0
+            if len(row[score_col]) > 0:
+                score = float(row[score_col])
+            yield proteins, score
 
 
 def parse_protein_groups_file_multiple(

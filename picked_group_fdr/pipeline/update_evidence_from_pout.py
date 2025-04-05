@@ -125,19 +125,19 @@ def update_evidence_files(
         parser_func = maxquant.parse_peptides_file_for_percolator_matching
 
     logger.info("Writing updated combined evidence file")
-    writer = tsv.get_tsv_writer(out_evidence_file + ".tmp")
-    first_headers = []
-    for evidence_file in evidence_files:
-        first_headers = update_evidence_single(
-            evidence_file,
-            writer,
-            first_headers,
-            fixed_mods,
-            results_dict,
-            parser_func,
-            pout_input_type,
-            suppress_missing_peptide_warning,
-        )
+    with tsv.get_tsv_writer(out_evidence_file + ".tmp") as writer:
+        first_headers = []
+        for evidence_file in evidence_files:
+            first_headers = update_evidence_single(
+                evidence_file,
+                writer,
+                first_headers,
+                fixed_mods,
+                results_dict,
+                parser_func,
+                pout_input_type,
+                suppress_missing_peptide_warning,
+            )
 
     os.rename(out_evidence_file + ".tmp", out_evidence_file)
 
@@ -223,46 +223,46 @@ def update_evidence_single(
 ) -> List[str]:
     logger.info(f"Processing {evidence_file}")
 
-    reader = tsv.get_tsv_reader(evidence_file)
-    headers = initialize_headers(reader, first_headers, writer)
+    with tsv.get_tsv_reader(evidence_file) as reader:
+        headers = initialize_headers(reader, first_headers, writer)
 
-    # these columns can be updated
-    score_col = tsv.get_column_index(headers, "score")
-    post_err_prob_col = tsv.get_column_index(headers, "pep")
+        # these columns can be updated
+        score_col = tsv.get_column_index(headers, "score")
+        post_err_prob_col = tsv.get_column_index(headers, "pep")
 
-    stats = EvidenceUpdateStats()
-    missing_raw_files = set()
+        stats = EvidenceUpdateStats()
+        missing_raw_files = set()
 
-    for row, psm in parser_func(reader, headers):
-        stats.log_progress()
+        for row, psm in parser_func(reader, headers):
+            stats.log_progress()
 
-        if skip_row_due_to_mbr_or_empty_results_dict(psm, results_dict):
+            if skip_row_due_to_mbr_or_empty_results_dict(psm, results_dict):
+                write_row(writer, row, stats)
+                continue
+
+            if raw_file_missing(psm, results_dict, missing_raw_files):
+                continue
+
+            if not psm.is_decoy:
+                stats.mq_peps.append((psm.post_err_prob, psm.id_type))
+
+            perc_result, peptide = find_percolator_psm(
+                psm, fixed_mods, results_dict, pout_input_type
+            )
+
+            if not perc_result:
+                if is_unexplainable_missing_psm(psm, peptide, pout_input_type):
+                    stats.add_missing_peptide(psm.peptide)
+                    if not suppress_missing_peptide_warning:
+                        logger.debug(
+                            f"Missing PSM: {psm.raw_file}, {peptide}, {psm.scannr}"
+                        )
+                continue
+
+            process_percolator_result(
+                psm, perc_result, score_col, post_err_prob_col, row, stats
+            )
             write_row(writer, row, stats)
-            continue
-
-        if raw_file_missing(psm, results_dict, missing_raw_files):
-            continue
-
-        if not psm.is_decoy:
-            stats.mq_peps.append((psm.post_err_prob, psm.id_type))
-
-        perc_result, peptide = find_percolator_psm(
-            psm, fixed_mods, results_dict, pout_input_type
-        )
-
-        if not perc_result:
-            if is_unexplainable_missing_psm(psm, peptide, pout_input_type):
-                stats.add_missing_peptide(psm.peptide)
-                if not suppress_missing_peptide_warning:
-                    logger.debug(
-                        f"Missing PSM: {psm.raw_file}, {peptide}, {psm.scannr}"
-                    )
-            continue
-
-        process_percolator_result(
-            psm, perc_result, score_col, post_err_prob_col, row, stats
-        )
-        write_row(writer, row, stats)
 
     stats.log_summary(pout_input_type)
     return headers
