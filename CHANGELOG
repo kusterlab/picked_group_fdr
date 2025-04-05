@@ -1,3 +1,6 @@
+v0.8.2
+- Fix GUI build
+
 v0.8.1
 - Use context managers for get_tsv_reader/writer
 

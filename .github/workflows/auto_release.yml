@@ -54,3 +54,15 @@ jobs:
           body: ${{ env.RELEASE_NOTES }}
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }} # use PAT token instead of GITHUB_TOKEN to trigger additional workflows, see https://github.com/orgs/community/discussions/27028
+      
+      - name: Create pull request to main
+        run: |
+          gh pr create --title "Merge develop into main (v${{ env.VERSION }})" --body "Merging develop into main after v${{ env.VERSION }} release." --base main --head develop
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+
+      - name: Merge pull request into main
+        run: |
+          gh pr merge --auto --merge
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
