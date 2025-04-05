@@ -9,7 +9,7 @@ jobs:
       matrix:
         python-version: ['3.9', '3.10']
         poetry-version: [1.8.3]
-        os: ${{ github.ref == 'refs/heads/main' && \[ubuntu-latest, macos-latest, windows-latest\] || \[ubuntu-latest\] }}
+        os: ${{ fromJson(github.ref == 'refs/heads/main' && '["ubuntu-latest", "macos-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
     env:
       OS: ${{ matrix.os }}
       PYTHON: ${{ matrix.python-version }}
