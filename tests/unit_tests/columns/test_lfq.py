@@ -126,7 +126,13 @@ class TestGetLFQIntensities:
     ):
         np.testing.assert_almost_equal(
             _getLFQIntensities(
-                peptideIntensityListSilac, experimentToIdxMap, 0.1, 1, False, 3
+                precursor_list=peptideIntensityListSilac,
+                experiment_to_idx_map=experimentToIdxMap,
+                post_err_prob_cutoff=0.1,
+                min_peptide_ratios_lfq=1,
+                stabilize_large_ratios_lfq=False,
+                fast_lfq_graph=None,
+                num_silac_channels=3,
             ),
             [13.0, 17.0, 5.0, 3.0, 4.0, 3.0, 1.5, 2.5, 1.0],
         )

@@ -32,6 +32,7 @@ def get_protein_groups_output_writer(
             args.skip_lfq,
             args.lfq_min_peptide_ratios,
             args.lfq_stabilize_large_ratios,
+            args.fast_lfq,
             args.num_threads,
             args.protein_group_fdr_threshold,
         )
@@ -53,6 +54,7 @@ def get_protein_groups_output_writer(
             args.skip_lfq,
             args.lfq_min_peptide_ratios,
             args.lfq_stabilize_large_ratios,
+            args.fast_lfq,
             args.num_threads,
             triqler_params,
             args.protein_group_fdr_threshold,

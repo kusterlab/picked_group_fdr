@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import collections
 import itertools
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import logging
 
+import networkx as nx
 import numpy as np
 from scipy.sparse.linalg import lsqr
 from scipy.sparse import csr_matrix
@@ -15,6 +16,7 @@ from .. import helpers
 from .base import ProteinGroupColumns
 from .sum_and_ibaq import _get_intensities, get_silac_channels
 from .peptide_count import _unique_peptide_counts_per_experiment
+from . import fastlfq
 
 # imports for typing
 from .. import results
@@ -25,19 +27,28 @@ logger = logging.getLogger(__name__)
 
 
 class LFQIntensityColumns(ProteinGroupColumns):
-    minPeptideRatiosLFQ: int
-    stabilizeLargeRatiosLFQ: bool
+    min_peptide_ratios_lfq: int
+    stabilize_large_ratios_lfq: bool
+    fast_lfq: bool
 
     def __init__(
         self,
-        minPeptideRatiosLFQ: int,
-        stabilizeLargeRatiosLFQ: bool,
-        numThreads: int = 1,
+        min_peptide_ratios_lfq: int,
+        stabilize_large_ratios_lfq: bool,
+        fast_lfq: bool = False,
+        fast_lfq_min_neighbors: int = 3,
+        fast_lfq_avg_neighbors: int = 6,
+        fast_lfq_min_samples: int = 10,
+        num_threads: int = 1,
         protein_group_fdr_threshold: float = 0.01,
     ) -> None:
-        self.minPeptideRatiosLFQ = minPeptideRatiosLFQ
-        self.stabilizeLargeRatiosLFQ = stabilizeLargeRatiosLFQ
-        self.numThreads = numThreads
+        self.min_peptide_ratios_lfq = min_peptide_ratios_lfq
+        self.stabilize_large_ratios_lfq = stabilize_large_ratios_lfq
+        self.fast_lfq = fast_lfq
+        self.fast_lfq_min_neighbors = fast_lfq_min_neighbors
+        self.fast_lfq_avg_neighbors = fast_lfq_avg_neighbors
+        self.fast_lfq_min_samples = fast_lfq_min_samples
+        self.num_threads = num_threads
 
         # only used for reporting number of protein groups at the given threshold
         self.protein_group_fdr_threshold = protein_group_fdr_threshold
@@ -55,9 +66,9 @@ class LFQIntensityColumns(ProteinGroupColumns):
         silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
         for experiment in protein_group_results.experiments:
             if protein_group_results.num_silac_channels > 0:
-                for silacChannel in silac_channels:
+                for silac_channel in silac_channels:
                     protein_group_results.append_header(
-                        "LFQ Intensity " + silacChannel + " " + experiment
+                        "LFQ Intensity " + silac_channel + " " + experiment
                     )
             else:
                 protein_group_results.append_header("LFQ Intensity " + experiment)
@@ -73,11 +84,25 @@ class LFQIntensityColumns(ProteinGroupColumns):
         silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
         num_silac_channels = len(silac_channels)
 
-        if self.numThreads > 1:
+        fast_lfq_graph = None
+        if self.fast_lfq:
+            peptides_by_sample = collections.defaultdict(set)
+            for pgr in protein_group_results:
+                for pq in pgr.precursorQuants:
+                    peptides_by_sample[pq.experiment].add(pq.peptide)
+            fast_lfq_graph = fastlfq.build_graph(peptides_by_sample)
+            fast_lfq_graph = fastlfq.prune_graph(
+                fast_lfq_graph,
+                min_neighbors=self.fast_lfq_min_neighbors,
+                avg_neighbors=self.fast_lfq_avg_neighbors,
+            )
+            # fastlfq.export_to_vis_js(fast_lfq_graph)
+
+        if self.num_threads > 1:
             processingPool = JobPool(
-                processes=self.numThreads,
+                processes=self.num_threads,
                 maxtasksperchild=10,
-                max_jobs_queued=self.numThreads*3,
+                max_jobs_queued=self.num_threads * 3,
                 write_progress_to_logger=True,
                 print_progress_every=100,
                 total_jobs=len(protein_group_results),
@@ -89,18 +114,20 @@ class LFQIntensityColumns(ProteinGroupColumns):
                 pgr.precursorQuants,
                 experiment_to_idx_map,
                 post_err_prob_cutoff,
-                self.minPeptideRatiosLFQ,
-                self.stabilizeLargeRatiosLFQ,
+                self.min_peptide_ratios_lfq,
+                self.stabilize_large_ratios_lfq,
+                fast_lfq_graph,
+                self.fast_lfq_min_samples,
                 num_silac_channels,
             ]
-            if self.numThreads > 1:
+            if self.num_threads > 1:
                 processingPool.applyAsync(_getLFQIntensities, args)
             else:
                 if i % 100 == 0:
                     logger.info(f"Processing protein {i}/{len(protein_group_results)}")
                 allIntensities.append(_getLFQIntensities(*args))
 
-        if self.numThreads > 1:
+        if self.num_threads > 1:
             allIntensities = processingPool.checkPool(printProgressEvery=100)
 
         proteinGroupCounts = np.zeros(
@@ -135,39 +162,41 @@ class LFQIntensityColumns(ProteinGroupColumns):
 def _getLFQIntensities(
     precursor_list: List[precursor_quant.PrecursorQuant],
     experiment_to_idx_map: Dict[str, int],
-    postErrProbCutoff: float,
-    minPeptideRatiosLFQ: int = 2,
-    stabilizeLargeRatiosLFQ: bool = False,
-    numSilacChannels: int = 0,
+    post_err_prob_cutoff: float,
+    min_peptide_ratios_lfq: int = 2,
+    stabilize_large_ratios_lfq: bool = False,
+    fast_lfq_graph: Optional[nx.Graph] = None,
+    fast_lfq_min_samples: int = 10,
+    num_silac_channels: int = 0,
 ) -> List[float]:
     # in case of SILAC, we output LFQ intensites for each of the channels
     # only, not for the experiment (=sum over channels) itself, which is
     # what MQ does as well
-    numExperiments = len(experiment_to_idx_map) * max(1, numSilacChannels)
+    numExperiments = len(experiment_to_idx_map) * max(1, num_silac_channels)
 
     peptideIntensities, totalIntensity = _getPeptideIntensities(
         precursor_list,
         experiment_to_idx_map,
-        postErrProbCutoff,
-        numSilacChannels,
+        post_err_prob_cutoff,
+        num_silac_channels,
         numExperiments,
     )
     if len(peptideIntensities) == 0:
         return [0.0] * numExperiments
 
     logMedianPeptideRatios = _getLogMedianPeptideRatios(
-        peptideIntensities, minPeptideRatiosLFQ
+        peptideIntensities, min_peptide_ratios_lfq, fast_lfq_graph, fast_lfq_min_samples
     )
     if len(logMedianPeptideRatios) == 0:
         return [0.0] * numExperiments
 
-    if stabilizeLargeRatiosLFQ:
+    if stabilize_large_ratios_lfq:
         logMedianPeptideRatios = _applyLargeRatioStabilization(
             logMedianPeptideRatios,
             precursor_list,
             experiment_to_idx_map,
-            postErrProbCutoff,
-            numSilacChannels,
+            post_err_prob_cutoff,
+            num_silac_channels,
         )
 
     matrix, vector = _buildLinearSystem(logMedianPeptideRatios, numExperiments)
@@ -277,7 +306,10 @@ def _applyLargeRatioStabilization(
 
 
 def _getLogMedianPeptideRatios(
-    peptideIntensities: Dict[Tuple[str, int], List[float]], minPeptideRatiosLFQ: int
+    peptideIntensities: Dict[Tuple[str, int], List[float]],
+    minPeptideRatiosLFQ: int,
+    fast_lfq_graph: Optional[nx.Graph] = None,
+    fast_lfq_min_samples: int = 10,
 ) -> Dict[Tuple[int, int], float]:
     """
     :param peptideIntensities: rows are peptides, columns are experiments
@@ -299,6 +331,13 @@ def _getLogMedianPeptideRatios(
     # this for loop is the reason for quadratic runtime increase for more samples
     # (30 seconds per protein for 2400 samples and 600 peptides)
     for (idx_i, i, col_i), (idx_j, j, col_j) in itertools.combinations(cols, 2):
+        if (
+            fast_lfq_graph is not None
+            and len(valid_columns) >= fast_lfq_min_samples
+            and not fast_lfq_graph.has_edge(i, j)
+        ):
+            continue
+
         if valid_vals[idx_i, idx_j] < minPeptideRatiosLFQ:
             continue
 

@@ -14,7 +14,7 @@ from .parsers import tsv
 # for type hints only
 from .peptide_info import ProteinGroupPeptideInfos
 from .protein_groups import ProteinGroups
-from . import columns
+from .precursor_quant import PrecursorQuant
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class ProteinGroupResult:
     score: float = np.nan
     reverse: str = ""
     potentialContaminant: str = ""
-    precursorQuants: List[columns.PrecursorQuant] = field(default_factory=list)
+    precursorQuants: List[PrecursorQuant] = field(default_factory=list)
     extraColumns: List[float] = field(default_factory=list)
 
     def extend(self, e):
