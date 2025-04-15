@@ -63,17 +63,13 @@ def parse_evidence_file_single(
     for_quantification: bool = False,
     suppress_missing_peptide_warning: bool = False,
 ):
-    delimiter = tsv.get_delimiter(evidence_file)
-    with tsv.get_tsv_reader(evidence_file, delimiter) as reader:
-        headers = next(reader)
+    get_proteins = get_peptide_to_protein_mapper(
+        peptide_to_protein_map, score_type, suppress_missing_peptide_warning
+    )
 
-        get_proteins = get_peptide_to_protein_mapper(
-            peptide_to_protein_map, score_type, suppress_missing_peptide_warning
-        )
-
-        yield from score_type.get_evidence_parser()(
-            reader, headers, get_proteins, score_type, for_quantification=for_quantification
-        )
+    yield from score_type.get_evidence_parser()(
+        evidence_file, get_proteins, score_type, for_quantification=for_quantification
+    )
 
 
 def parse_evidence_file_multiple(

@@ -84,55 +84,57 @@ def get_percolator_column_idxs(headers: List[str]):
 
 
 def parse_percolator_out_file(
-    reader,
-    headers,
+    evidence_file: str,
     get_proteins,
     score_type: scoring_strategy.ProteinScoringStrategy,
     **kwargs,
 ):
-    (
-        _,
-        _,
-        pept_col,
-        score_col,
-        _,
-        post_err_prob_col,
-        protein_col,
-    ) = get_percolator_column_idxs(headers)
-    headers = list(map(str.lower, headers))
+    delimiter = tsv.get_delimiter(evidence_file)
+    with tsv.get_tsv_reader(evidence_file, delimiter) as reader:
+        headers = next(reader)
+        (
+            _,
+            _,
+            pept_col,
+            score_col,
+            _,
+            post_err_prob_col,
+            protein_col,
+        ) = get_percolator_column_idxs(headers)
+        headers = list(map(str.lower, headers))
 
-    if score_type.get_score_column() == "posterior_error_prob":
-        score_col = post_err_prob_col
+        if score_type.get_score_column() == "posterior_error_prob":
+            score_col = post_err_prob_col
 
-    logger.info("Parsing Percolator output file")
-    for line_idx, row in enumerate(reader):
-        if line_idx % 500000 == 0:
-            logger.info(f"    Reading line {line_idx}")
+        logger.info("Parsing Percolator output file")
+        for line_idx, row in enumerate(reader):
+            if line_idx % 500000 == 0:
+                logger.info(f"    Reading line {line_idx}")
 
-        modified_peptide = row[pept_col]
-        if line_idx == 0:
-            peptide_contains_flanks = modified_peptide.startswith(
-                "-."
-            ) and modified_peptide.endswith(".-")
+            modified_peptide = row[pept_col]
+            if line_idx == 0:
+                peptide_contains_flanks = modified_peptide.startswith(
+                    "-."
+                ) and modified_peptide.endswith(".-")
 
-        if peptide_contains_flanks:
-            modified_peptide = modified_peptide[2:-2]
+            if peptide_contains_flanks:
+                modified_peptide = modified_peptide[2:-2]
 
-        experiment = 1
-        score = float(row[score_col])
+            experiment = 1
+            score = float(row[score_col])
 
-        if is_native_percolator_file(headers):
-            proteins = row[protein_col:]
-        elif is_mokapot_file(headers):
-            proteins = row[protein_col].split("\t")
-        elif is_ms2rescore_file(headers):
-            proteins = eval(row[protein_col])
-        else:
-            raise ValueError("Could not deduce percolator output format from headers.")
+            if is_native_percolator_file(headers):
+                proteins = row[protein_col:]
+            elif is_mokapot_file(headers):
+                proteins = row[protein_col].split("\t")
+            elif is_ms2rescore_file(headers):
+                proteins = eval(row[protein_col])
+            else:
+                raise ValueError("Could not deduce percolator output format from headers.")
 
-        proteins = get_proteins(modified_peptide, proteins)
-        if proteins:
-            yield modified_peptide, proteins, experiment, score
+            proteins = get_proteins(modified_peptide, proteins)
+            if proteins:
+                yield modified_peptide, proteins, experiment, score
 
 
 def parse_percolator_out_file_to_dict(
