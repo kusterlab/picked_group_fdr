@@ -20,13 +20,34 @@ logger = logging.getLogger(__name__)
 
 
 def add_precursor_quants(
-    fragpipe_psm_file: str,
+    sage_psm_file: str,
     protein_group_results: results.ProteinGroupResults,
     protein_groups: pg.ProteinGroups,
     experimental_design: Optional[pd.DataFrame],
     discard_shared_peptides: bool,
     suppress_missing_peptide_warning: bool,
 ):
+    """Adds PSM-level info to precursor quants.
+
+    A two-step procedure is necessary to add precursor quants for Sage results
+    because lfq.tsv does not contain PSM-level information such as decoy status
+    and posterior error probability.
+
+    Args:
+        sage_psm_file (str): Sage results.sage.tsv file
+        protein_group_results (results.ProteinGroupResults): ProteinGroupResults
+            object to add PrecursorQuant objects to.
+        protein_groups (pg.ProteinGroups): ProteinGroups object to map peptides
+            to the correct protein group in ProteinGroupResults.
+        experimental_design (Optional[pd.DataFrame]): Pandas dataframe containing
+            a mapping from run names to experiments and fractions.
+        discard_shared_peptides (bool): Discard shared peptides.
+        suppress_missing_peptide_warning (bool): Suppress missing peptide warning.
+
+    Returns:
+        results.ProteinGroupResults: updated ProteinGroupResults object.
+        List[float]: list of posterior error probabilities.
+    """
     file_mapping = None
     if experimental_design is not None:
         protein_group_results.experiments = (
@@ -34,8 +55,8 @@ def add_precursor_quants(
         )
         file_mapping = parsers.get_file_mapping(experimental_design)
 
-    delimiter = tsv.get_delimiter(fragpipe_psm_file)
-    with tsv.get_tsv_reader(fragpipe_psm_file, delimiter) as reader:
+    delimiter = tsv.get_delimiter(sage_psm_file)
+    with tsv.get_tsv_reader(sage_psm_file, delimiter) as reader:
         headers = next(reader)
 
         get_proteins = lambda peptide, proteins: proteins
@@ -60,7 +81,9 @@ def add_precursor_quants(
                     )
                 continue
 
-            if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
+            if discard_shared_peptides and helpers.is_shared_peptide(
+                protein_group_idxs
+            ):
                 continue
 
             experiment, fraction = filename, -1
@@ -122,6 +145,26 @@ def update_precursor_quants_single(
     discard_shared_peptides: bool,
     suppress_missing_peptide_warning: bool,
 ):
+    """Add intensity values and MBR precursors from lfq.tsv to protein_group_results.
+
+    A two-step procedure is necessary to add precursor quants for Sage results
+    because lfq.tsv does not contain PSM-level information such as decoy status
+    and posterior error probability.
+
+    Args:
+        protein_group_results (results.ProteinGroupResults): ProteinGroupResults
+            object to add PrecursorQuant objects to.
+        protein_groups (pg.ProteinGroups): ProteinGroups object to map peptides
+            to the correct protein group in ProteinGroupResults.
+        sage_lfq_tsv (str): Sage lfq.tsv file containing intensity values including MBR hits.
+        experimental_design (Optional[pd.DataFrame]): Pandas dataframe containing
+            a mapping from run names to experiments and fractions.
+        discard_shared_peptides (bool): Discard shared peptides.
+        suppress_missing_peptide_warning (bool): Suppress missing peptide warning.
+
+    Returns:
+        results.ProteinGroupResults: updated ProteinGroupResults object.
+    """
     file_mapping = None
     if experimental_design is not None:
         file_mapping = parsers.get_file_mapping(experimental_design)
@@ -145,7 +188,9 @@ def update_precursor_quants_single(
                     )
                 continue
 
-            if discard_shared_peptides and helpers.is_shared_peptide(protein_group_idxs):
+            if discard_shared_peptides and helpers.is_shared_peptide(
+                protein_group_idxs
+            ):
                 continue
 
             for protein_group_idx in protein_group_idxs:
@@ -160,7 +205,10 @@ def update_precursor_quants_single(
                             pq.post_err_prob
                             < precursors_to_update.get(pq.experiment, (1.01, np.nan))[0]
                         ):
-                            precursors_to_update[pq.experiment] = (pq.post_err_prob, pq_idx)
+                            precursors_to_update[pq.experiment] = (
+                                pq.post_err_prob,
+                                pq_idx,
+                            )
 
                 for filename, intensity in intensities:
                     experiment, fraction = filename, -1
