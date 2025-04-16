@@ -11,6 +11,7 @@ def test_run_picked_group_fdr():
     args = argparse.Namespace(
         fasta="example.fasta",
         fasta_contains_decoys=False,
+        fasta_use_uniprot_id=False,
         gene_level=True,
         methods="method1,method2",
         figure_base_fn="figures",
@@ -43,7 +44,7 @@ def test_run_picked_group_fdr():
         picked_group_fdr.run_picked_group_fdr(args)
 
         # Assert that the necessary functions were called with the correct arguments
-        mock_get_annotations.assert_called_once_with("example.fasta", False, True)
+        mock_get_annotations.assert_called_once_with("example.fasta", False, True, False)
         mock_get_methods.assert_called_once_with("method1,method2", use_pseudo_genes)
         mock_requires_ptp_map.assert_called_once_with(method_configs)
         mock_get_ptp_map.assert_called_once_with(args, use_pseudo_genes)

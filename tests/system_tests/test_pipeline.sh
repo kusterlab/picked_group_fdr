@@ -2,7 +2,7 @@ DATA_DIR="data/lfq_example"
 RESULT_DIR="tests/system_tests/test_pipeline"
 
 # exit on first error
-set -e
+set -ex
 
 mkdir -p ${RESULT_DIR}
 

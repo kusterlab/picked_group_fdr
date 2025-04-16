@@ -4,6 +4,8 @@ from .parsers import fragpipe
 from .parsers import maxquant
 from .parsers import percolator
 from .parsers import sage
+from .parsers import diann
+
 from .quant import fragpipe as fragpipe_quant
 from .quant import maxquant as mq_quant
 from .quant import sage as sage_quant
@@ -155,3 +157,29 @@ class SageInput(ScoreOrigin):
 
     def long_description(self):
         return 'Sage'
+
+
+class DiannInput(ScoreOrigin):
+    def get_evidence_file(self, args):
+        return args.diann_reports
+
+    def get_evidence_parser(self):
+        return diann.parse_diann_report_file
+
+    def get_quantification_file(self, args):
+        return args.diann_reports
+
+    def get_quantification_parser(self):
+        return mq_quant.add_precursor_quants
+
+    def remaps_peptides_to_proteins(self):
+        return False
+
+    def can_do_quantification(self):
+        return True
+
+    def short_description(self):
+        return 'd'
+
+    def long_description(self):
+        return 'DIA-NN'

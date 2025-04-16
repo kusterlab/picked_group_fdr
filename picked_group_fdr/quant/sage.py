@@ -55,61 +55,57 @@ def add_precursor_quants(
         )
         file_mapping = parsers.get_file_mapping(experimental_design)
 
-    delimiter = tsv.get_delimiter(sage_psm_file)
-    with tsv.get_tsv_reader(sage_psm_file, delimiter) as reader:
-        headers = next(reader)
+    get_proteins = lambda peptide, proteins: proteins
 
-        get_proteins = lambda peptide, proteins: proteins
+    post_err_probs = []
+    parsed_experiments = set()
+    for (
+        peptide,
+        proteins,
+        filename,
+        post_err_prob,
+        charge,
+    ) in sage.parse_sage_results_file(
+        sage_psm_file, get_proteins, score_type=None, for_quantification=True
+    ):
+        protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 
-        post_err_probs = []
-        parsed_experiments = set()
-        for (
-            peptide,
-            proteins,
-            filename,
-            post_err_prob,
-            charge,
-        ) in sage.parse_sage_results_file(
-            reader, headers, get_proteins, score_type=None, for_quantification=True
+        if helpers.is_missing_in_protein_groups(protein_group_idxs):
+            if not suppress_missing_peptide_warning:
+                logger.debug(
+                    f"Could not find any of the proteins {proteins} in proteinGroups.txt"
+                )
+            continue
+
+        if discard_shared_peptides and helpers.is_shared_peptide(
+            protein_group_idxs
         ):
-            protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
+            continue
 
-            if helpers.is_missing_in_protein_groups(protein_group_idxs):
-                if not suppress_missing_peptide_warning:
-                    logger.debug(
-                        f"Could not find any of the proteins {proteins} in proteinGroups.txt"
-                    )
-                continue
+        experiment, fraction = filename, -1
+        if file_mapping:
+            experiment, fraction = file_mapping[filename]
+        elif experiment not in parsed_experiments:
+            parsed_experiments.add(experiment)
 
-            if discard_shared_peptides and helpers.is_shared_peptide(
-                protein_group_idxs
-            ):
-                continue
+        if not helpers.is_decoy(proteins):
+            post_err_probs.append((post_err_prob, filename, experiment, peptide))
 
-            experiment, fraction = filename, -1
-            if file_mapping:
-                experiment, fraction = file_mapping[filename]
-            elif experiment not in parsed_experiments:
-                parsed_experiments.add(experiment)
-
-            if not helpers.is_decoy(proteins):
-                post_err_probs.append((post_err_prob, filename, experiment, peptide))
-
-            for protein_group_idx in protein_group_idxs:
-                precursorQuant = PrecursorQuant(
-                    peptide=peptide,
-                    charge=charge,
-                    experiment=experiment,
-                    fraction=fraction,
-                    intensity=np.nan,
-                    post_err_prob=post_err_prob,
-                    tmt_intensities=None,  # TODO: add TMT support
-                    silac_intensities=None,  # TODO: add SILAC support
-                    evidence_id=-1,
-                )
-                protein_group_results[protein_group_idx].precursorQuants.append(
-                    precursorQuant
-                )
+        for protein_group_idx in protein_group_idxs:
+            precursorQuant = PrecursorQuant(
+                peptide=peptide,
+                charge=charge,
+                experiment=experiment,
+                fraction=fraction,
+                intensity=np.nan,
+                post_err_prob=post_err_prob,
+                tmt_intensities=None,  # TODO: add TMT support
+                silac_intensities=None,  # TODO: add SILAC support
+                evidence_id=-1,
+            )
+            protein_group_results[protein_group_idx].precursorQuants.append(
+                precursorQuant
+            )
 
     if len(parsed_experiments) > 0:
         protein_group_results.experiments.extend(sorted(list(parsed_experiments)))

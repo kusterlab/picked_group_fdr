@@ -2,7 +2,7 @@ DATA_DIR="data/sage_example"
 RESULT_DIR="tests/system_tests/test_sage"
 
 # exit on first error
-set -e
+set -ex
 
 mkdir -p ${RESULT_DIR}
 
@@ -21,7 +21,7 @@ python3 -u -m picked_group_fdr \
     --do_quant \
     --lfq_min_peptide_ratios 1 \
     --methods sage
-diff ${RESULT_DIR}/combined_protein.tsv ${RESULT_DIR}/combined_protein.reference.tsv
+diff -q ${RESULT_DIR}/combined_protein.tsv ${RESULT_DIR}/combined_protein.reference.tsv
 
 # Option 2: directly create proteinGroups.txt (MQ format) using lfq.tsv
 python3 -u -m picked_group_fdr \
@@ -31,14 +31,14 @@ python3 -u -m picked_group_fdr \
     --protein_groups_out ${RESULT_DIR}/proteinGroups_with_quant.tsv \
     --do_quant \
     --methods sage
-diff ${RESULT_DIR}/proteinGroups_with_quant.tsv ${RESULT_DIR}/proteinGroups_with_quant.reference.tsv
+diff -q ${RESULT_DIR}/proteinGroups_with_quant.tsv ${RESULT_DIR}/proteinGroups_with_quant.reference.tsv
 
 # Option 3: create proteinGroups.txt (MQ format) without quantification
 python3 -u -m picked_group_fdr \
     --sage_results ${sage_results_file} \
     --protein_groups_out ${RESULT_DIR}/proteinGroups.txt \
     --methods sage
-diff ${RESULT_DIR}/proteinGroups.txt ${RESULT_DIR}/proteinGroups.reference.txt
+diff -q ${RESULT_DIR}/proteinGroups.txt ${RESULT_DIR}/proteinGroups.reference.txt
 
 # Option 4: use intermediate proteinGroups.txt file (from Option 3) to create combined_protein.tsv (FragPipe format) using lfq.tsv
 python3 -u -m picked_group_fdr.pipeline.sage_quantification \
@@ -48,7 +48,7 @@ python3 -u -m picked_group_fdr.pipeline.sage_quantification \
     --sage_lfq_tsv ${sage_lfq_file} \
     --protein_groups_out ${RESULT_DIR}/combined_protein_from_proteinGroups.tsv \
     --output_format fragpipe
-diff ${RESULT_DIR}/combined_protein_from_proteinGroups.tsv ${RESULT_DIR}/combined_protein_from_proteinGroups.reference.tsv
+diff -q ${RESULT_DIR}/combined_protein_from_proteinGroups.tsv ${RESULT_DIR}/combined_protein_from_proteinGroups.reference.tsv
 
 # Option 5: use intermediate proteinGroups.txt (from Option 3) file to create proteinGroups.txt (MQ format) using lfq.tsv
 python3 -u -m picked_group_fdr.pipeline.sage_quantification \
@@ -57,4 +57,4 @@ python3 -u -m picked_group_fdr.pipeline.sage_quantification \
     --protein_groups ${RESULT_DIR}/proteinGroups.txt \
     --sage_lfq_tsv ${sage_lfq_file} \
     --protein_groups_out ${RESULT_DIR}/proteinGroups_with_quant_from_proteinGroups.tsv
-diff ${RESULT_DIR}/proteinGroups_with_quant_from_proteinGroups.tsv ${RESULT_DIR}/proteinGroups_with_quant_from_proteinGroups.reference.tsv
+diff -q ${RESULT_DIR}/proteinGroups_with_quant_from_proteinGroups.tsv ${RESULT_DIR}/proteinGroups_with_quant_from_proteinGroups.reference.tsv

@@ -44,10 +44,6 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
             columns.SummedIntensityAndIbaqColumns(
                 self.num_ibaq_peptides_per_protein, self.protein_group_fdr_threshold
             ),
-            columns.SequenceCoverageColumns(self.protein_sequences),
-            columns.EvidenceIdsColumns(),
-            columns.TMTIntensityColumns(),
-            columns.TriqlerIntensityColumns(self.params),
         ]
         if not self.skip_lfq:
             output_columns += [
@@ -59,4 +55,10 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
                     protein_group_fdr_threshold=self.protein_group_fdr_threshold,
                 )
             ]
+        output_columns += [
+            columns.SequenceCoverageColumns(self.protein_sequences),
+            columns.TMTIntensityColumns(),
+            columns.TriqlerIntensityColumns(self.params),
+            columns.EvidenceIdsColumns()
+        ]
         return output_columns

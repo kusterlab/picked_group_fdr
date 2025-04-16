@@ -20,6 +20,7 @@ from .score_origin import (
     PercolatorInput,
     PercolatorInputRemapped,
     SageInput,
+    DiannInput,
     ScoreOrigin,
 )
 
@@ -66,6 +67,8 @@ class ProteinScoringStrategy:
             self.score_origin = FragPipeInput()
         elif "Sage" in score_description:
             self.score_origin = SageInput()
+        elif "DIA-NN" in score_description:
+            self.score_origin = DiannInput()
         else:
             if "no_remap" in score_description:
                 self.score_origin = MaxQuantInputNoRemap()

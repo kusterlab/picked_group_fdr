@@ -107,6 +107,14 @@ def parse_args(argv):
     )
 
     apars.add_argument(
+        "--diann_reports",
+        default=None,
+        metavar="R",
+        nargs="+",
+        help="""DIA-NN report file(s) in .parquet or .tsv format.""",
+    )
+
+    apars.add_argument(
         "--protein_groups_out",
         default=None,
         metavar="PG",
@@ -229,7 +237,10 @@ def run_picked_group_fdr(args: argparse.Namespace) -> None:
     np.random.seed(1)
 
     protein_annotations, use_pseudo_genes = protein_annotation.get_protein_annotations(
-        args.fasta, args.fasta_contains_decoys, args.gene_level
+        args.fasta,
+        args.fasta_contains_decoys,
+        args.gene_level,
+        args.fasta_use_uniprot_id,
     )
     method_configs = methods.get_methods(args.methods, use_pseudo_genes)
 

@@ -262,7 +262,7 @@ def do_quantification(
 
     score_origin = score_type.score_origin.long_description().lower()
     if args.output_format == "auto":
-        if score_origin in ["maxquant", "fragpipe"]:
+        if score_origin in (item.value for item in writers.OutputFormat):
             args.output_format = score_origin
         else:
             args.output_format = "maxquant"
@@ -275,7 +275,7 @@ def do_quantification(
 
     protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,
-        args.output_format,
+        writers.OutputFormat(args.output_format),
         args,
         protein_annotations,
         parse_id,

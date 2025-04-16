@@ -155,16 +155,22 @@ def has_gene_names(
 
 
 def get_protein_annotations(
-    fasta: str, fasta_contains_decoys: bool, use_gene_level: bool
+    fasta: str,
+    fasta_contains_decoys: bool,
+    use_gene_level: bool,
+    fasta_use_uniprot_id: bool,
 ) -> Tuple[Dict[str, ProteinAnnotation], bool]:
     protein_annotations = dict()
     use_pseudo_genes = False
     if fasta is None:
         return protein_annotations, use_pseudo_genes
-    
+
     db = "target" if fasta_contains_decoys else "concat"
+    parse_id = digest.parse_until_first_space
+    if fasta_use_uniprot_id:
+        parse_id = parse_uniprot_id
     protein_annotations = get_protein_annotations_multiple(
-        fasta, db=db, parse_id=digest.parse_until_first_space
+        fasta, db=db, parse_id=parse_id
     )
     if use_gene_level:
         if has_gene_names(protein_annotations, min_ratio_with_genes=0.5):
