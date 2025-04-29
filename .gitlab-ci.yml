@@ -52,7 +52,8 @@ test:
     - CONTAINER_IMAGE=$REGISTRY/$PROJECT_PATH:$CI_COMMIT_SHORT_SHA
   services:
     - name: docker:19.03.0-dind
-      command: ["--experimental", "--security-opt", "seccomp=unconfined", "--privileged"]
+      command: ["--experimental", "--security-opt", "seccomp=unconfined"]
+      alias: docker
   script:
     - echo $CONTAINER_IMAGE
     - unzip data/lfq_example/evidence.zip -d data/lfq_example/
