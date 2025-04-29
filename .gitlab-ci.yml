@@ -52,9 +52,10 @@ test:
     - CONTAINER_IMAGE=$REGISTRY/$PROJECT_PATH:$CI_COMMIT_SHORT_SHA
   services:
     - name: docker:19.03.0-dind
-      command: ["--experimental", "--security-opt", "seccomp=unconfined"]
+      command: ["--experimental"]
       alias: docker
   script:
+    - unset DOCKER_HOST
     - echo $CONTAINER_IMAGE
     - unzip data/lfq_example/evidence.zip -d data/lfq_example/
     - make IMAGE=$CONTAINER_IMAGE DATA=$(pwd)/data/lfq_example/ all
