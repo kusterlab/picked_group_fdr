@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM python:3.9.22
 
 MAINTAINER Matthew The "matthew.the@tum.de"
 
@@ -11,9 +11,7 @@ LABEL documentation=https://gitlab.lrz.de/proteomics/picked_group_fdr
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get --no-install-recommends -y install \
-      git ca-certificates build-essential libssl-dev zlib1g-dev libbz2-dev \
-      libreadline-dev libsqlite3-dev curl llvm libncurses5-dev libncursesw5-dev \
-      xz-utils tk-dev libffi-dev liblzma-dev python-openssl && \
+      git && \
     rm -rf \
       /var/lib/apt/lists/* \
       /usr/share/doc \
@@ -22,29 +20,15 @@ RUN apt-get update && \
       /usr/share/locale \
       /usr/share/zoneinfo
 
-## PYENV FOR MODERN PYTHON
-# https://github.com/jprjr/docker-pyenv/blob/master/Dockerfile
-# This allows an easy installation
-ENV HOME  /root
-ENV PYENV_ROOT $HOME/.pyenv
-ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
-
-RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-##### THIS IS JUST FOR BEING INSIDE THE CONTAINER - NOT FOR INSTALLATION
-RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
-RUN echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-RUN echo 'eval "$(pyenv init -)"' >> ~/.bashrc
-
+ENV HOME=/root
 WORKDIR /root/
-RUN pyenv install 3.8.12
-RUN pyenv local 3.8.12
-RUN pyenv rehash
 
 # see https://github.com/python-poetry/poetry/issues/1427
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 
-RUN pip install -U pip
-RUN pip install poetry
+RUN pip install poetry==1.8.3
+# poetry uses virtualenvs by default -> we want global installation
+RUN poetry config virtualenvs.create false
 
 # urllib3 v2.0 only supports OpenSSL 1.1.1+
 RUN pip install urllib3==1.26.6
@@ -53,9 +37,7 @@ ADD pyproject.toml /root/pyproject.toml
 ADD poetry.lock /root/poetry.lock
 ADD README.md /root/
 ADD ./picked_group_fdr/ /root/picked_group_fdr
-
-# poetry uses virtualenvs by default -> we want global installation
-RUN poetry config virtualenvs.create false
+ADD ./tests/unit_tests/ /root/tests/unit_tests
 RUN poetry install --only main
 
 # for bootstrapping, see the "bootstrap" rule in the Makefile
