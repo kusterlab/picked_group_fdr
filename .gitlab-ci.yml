@@ -52,7 +52,7 @@ test:
     - CONTAINER_IMAGE=$REGISTRY/$PROJECT_PATH:$CI_COMMIT_SHORT_SHA
   services:
     - name: docker:19.03.0-dind
-      command: ["--experimental"]
+      command: ["--experimental", "--security-opt", "seccomp=unconfined"]
   script:
     - echo $CONTAINER_IMAGE
     - unzip data/lfq_example/evidence.zip -d data/lfq_example/
@@ -67,7 +67,7 @@ test:
 
 pytest:
   stage: test
-  image: python:3.8.12
+  image: python:3.9.22
   before_script:
     - pip install -U pip poetry
     - poetry config virtualenvs.create false
