@@ -409,13 +409,18 @@ def get_protein_group_results(
     # for razor peptide strategy
     score_type.set_peptide_counts_per_protein(peptide_info_list)
 
+    obsolete_protein_groups, obsolete_protein_group_peptide_infos = [], []
     for rescue_step in grouping_strategy.get_rescue_steps():
         if rescue_step:
             if not score_type.can_do_protein_group_rescue():
                 raise NotImplementedError(
                     "Cannot do rescue step for other score types than bestPEP"
                 )
-            protein_groups = grouping_strategy.rescue_protein_groups(
+            (
+                protein_groups,
+                obsolete_protein_groups,
+                obsolete_protein_group_peptide_infos,
+            ) = grouping_strategy.rescue_protein_groups(
                 peptide_info_list,
                 protein_group_results,
                 protein_group_fdr_threshold,
@@ -435,23 +440,16 @@ def get_protein_group_results(
             protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold
         )
 
-        if rescue_step and picked_strategy.short_description() == "pgT":
-            # see ProteinGroups.add_unseen_protein_groups for a detailed
-            # description of obsolete protein groups in picked group 
-            # target-decoy competition
-            (
-                protein_groups,
-                protein_group_peptide_infos,
-            ) = grouping_strategy.add_obsolete_protein_groups(
-                protein_groups, protein_group_peptide_infos
-            )
-
         (
             picked_protein_groups,
             picked_protein_group_peptide_infos,
             protein_scores,
         ) = picked_strategy.do_competition(
-            protein_groups, protein_group_peptide_infos, score_type
+            protein_groups,
+            protein_group_peptide_infos,
+            obsolete_protein_groups,
+            obsolete_protein_group_peptide_infos,
+            score_type,
         )
 
         reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(

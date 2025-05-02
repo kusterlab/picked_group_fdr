@@ -11,7 +11,7 @@ class TestPickedStrategy:
         picked_strategy = competition.PickedStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             picked_strategy.do_competition(
-                proteinGroupsSimple, proteinGroupPeptideInfosSimple, score_type
+                proteinGroupsSimple, proteinGroupPeptideInfosSimple, [], [], score_type
             )
         )
 
@@ -27,7 +27,7 @@ class TestPickedStrategy:
         picked_strategy = competition.PickedStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             picked_strategy.do_competition(
-                proteinGroupsNoGrouping, proteinGroupPeptideInfosNoGrouping, score_type
+                proteinGroupsNoGrouping, proteinGroupPeptideInfosNoGrouping, [], [], score_type
             )
         )
 
@@ -47,7 +47,7 @@ class TestPickedStrategy:
         picked_strategy = competition.PickedStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             picked_strategy.do_competition(
-                proteinGroupsUnordered, proteinGroupPeptideInfosUnordered, score_type
+                proteinGroupsUnordered, proteinGroupPeptideInfosUnordered, [], [], score_type
             )
         )
 
@@ -63,7 +63,7 @@ class TestPickedGroupStrategy:
         picked_strategy = competition.PickedGroupStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             picked_strategy.do_competition(
-                proteinGroupsSimple, proteinGroupPeptideInfosSimple, score_type
+                proteinGroupsSimple, proteinGroupPeptideInfosSimple, [], [], score_type
             )
         )
 
@@ -81,7 +81,7 @@ class TestPickedGroupStrategy:
         picked_strategy = competition.PickedGroupStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             picked_strategy.do_competition(
-                proteinGroupsNoGrouping, proteinGroupPeptideInfosNoGrouping, score_type
+                proteinGroupsNoGrouping, proteinGroupPeptideInfosNoGrouping, [], [], score_type
             )
         )
 
@@ -101,7 +101,7 @@ class TestPickedGroupStrategy:
         picked_strategy = competition.PickedGroupStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             picked_strategy.do_competition(
-                proteinGroupsUnordered, proteinGroupPeptideInfosUnordered, score_type
+                proteinGroupsUnordered, proteinGroupPeptideInfosUnordered, [], [], score_type
             )
         )
 
@@ -117,7 +117,7 @@ class TestClassicStrategy:
         classic_strategy = competition.ClassicStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             classic_strategy.do_competition(
-                proteinGroupsSimple, proteinGroupPeptideInfosSimple, score_type
+                proteinGroupsSimple, proteinGroupPeptideInfosSimple, [], [], score_type
             )
         )
 
@@ -133,7 +133,7 @@ class TestClassicStrategy:
         picked_strategy = competition.ClassicStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             picked_strategy.do_competition(
-                proteinGroupsNoGrouping, proteinGroupPeptideInfosNoGrouping, score_type
+                proteinGroupsNoGrouping, proteinGroupPeptideInfosNoGrouping, [], [], score_type
             )
         )
 
@@ -154,7 +154,7 @@ class TestClassicStrategy:
         classic_strategy = competition.ClassicStrategy()
         filtered_protein_groups, filtered_protein_group_scores, _ = (
             classic_strategy.do_competition(
-                proteinGroupsUnordered, proteinGroupPeptideInfosUnordered, score_type
+                proteinGroupsUnordered, proteinGroupPeptideInfosUnordered, [], [], score_type
             )
         )
 

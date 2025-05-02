@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Tuple
 import logging
 
 import numpy as np
@@ -52,11 +52,6 @@ class ProteinGroupingStrategy(ABC):
         old_protein_group_peptide_infos,
     ) -> ProteinGroups:
         pass
-
-    def add_obsolete_protein_groups(
-        self, protein_groups: ProteinGroups, protein_group_peptide_infos
-    ):
-        return protein_groups, protein_group_peptide_infos
 
     @abstractmethod
     def short_description(self, rescue_step):
@@ -146,8 +141,6 @@ class MQNativeGrouping(ProteinGroupingStrategy):
 
 class RescuedGrouping:
     score_cutoff: float
-    obsolete_protein_groups: ProteinGroups
-    obsolete_protein_group_peptide_infos: ProteinGroupPeptideInfos
 
     def rescue_protein_groups(
         self,
@@ -156,7 +149,7 @@ class RescuedGrouping:
         protein_group_fdr_threshold: float,
         old_protein_groups: ProteinGroups,
         old_protein_group_peptide_infos: ProteinGroupPeptideInfos,
-    ) -> ProteinGroups:
+    ) -> Tuple[ProteinGroups, ProteinGroups, ProteinGroupPeptideInfos]:
         score_cutoff = self._calculate_rescue_score_cutoff(
             protein_group_results, protein_group_fdr_threshold
         )
@@ -168,8 +161,8 @@ class RescuedGrouping:
             peptide_info_list_filtered
         )
         (
-            self.obsolete_protein_groups,
-            self.obsolete_protein_group_peptide_infos,
+            obsolete_protein_groups,
+            obsolete_protein_group_peptide_infos,
         ) = rescued_protein_groups.add_unseen_protein_groups(
             old_protein_groups, old_protein_group_peptide_infos
         )
@@ -177,7 +170,11 @@ class RescuedGrouping:
         logger.info(f"#protein groups before rescue: {len(old_protein_groups)}")
         logger.info(f"#protein groups after rescue: {len(rescued_protein_groups)}")
 
-        return rescued_protein_groups
+        return (
+            rescued_protein_groups,
+            obsolete_protein_groups,
+            obsolete_protein_group_peptide_infos,
+        )
 
     def get_rescue_steps(self) -> List[bool]:
         return [False, True]
@@ -221,20 +218,6 @@ class RescuedGrouping:
         )
 
         return updated_protein_groups
-
-    def add_obsolete_protein_groups(
-        self,
-        protein_groups: ProteinGroups,
-        protein_group_peptide_infos: ProteinGroupPeptideInfos,
-    ):
-        """Adds back obsolete protein groups and corresponding peptides.
-
-        see ProteinGroups.add_unseen_protein_groups for a detailed description
-        of obsolete protein groups.
-        """
-        protein_groups.extend(self.obsolete_protein_groups)
-        protein_group_peptide_infos.extend(self.obsolete_protein_group_peptide_infos)
-        return protein_groups, protein_group_peptide_infos
 
     def _filter_peptide_list_by_score_cutoff(
         self, peptide_info_list: PeptideInfoList, score_cutoff: float

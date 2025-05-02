@@ -60,8 +60,16 @@ class ProteinCompetitionStrategy(ABC):
         self,
         protein_groups: ProteinGroups,
         protein_group_peptide_infos: peptide_info.ProteinGroupPeptideInfos,
+        obsolete_protein_groups: ProteinGroups,
+        obsolete_protein_group_peptide_infos: peptide_info.ProteinGroupPeptideInfos,
         score_type: scoring_strategy.ProteinScoringStrategy,
     ) -> Tuple[ProteinGroups, List, List[float]]:
+        if self.short_description() == "pgT":
+            # see ProteinGroups.add_unseen_protein_groups for a detailed
+            # description of obsolete protein groups.
+            protein_groups.extend(obsolete_protein_groups)
+            protein_group_peptide_infos.extend(obsolete_protein_group_peptide_infos)
+
         protein_scores = map(score_type.calculate_score, protein_group_peptide_infos)
         is_obsolete = map(helpers.is_obsolete, protein_groups)
         score_group_tuples = list(
@@ -77,8 +85,6 @@ class ProteinCompetitionStrategy(ABC):
         # biases between groups with equal score, e.g. when all target protein groups
         # are listed above decoy protein groups. Additionally, always sort
         # target and decoy protein groups above their obsolete counterparts.
-        # see ProteinGroups.add_unseen_protein_groups for a detailed description
-        # of obsolete protein groups.
         np.random.shuffle(score_group_tuples)
         score_group_tuples = sorted(
             score_group_tuples, key=lambda x: (x[2], not x[3]), reverse=True

@@ -47,12 +47,14 @@ class TestRescuedSubsetGrouping:
         )
 
         protein_group_fdr = 0.01
-        protein_groups_after_rescue = rescued_subset_grouping.rescue_protein_groups(
-            peptideInfoListRescue,
-            proteinFdrResults,
-            protein_group_fdr,
-            protein_groups_before_rescue,
-            protein_group_peptide_infos,
+        protein_groups_after_rescue, _, _ = (
+            rescued_subset_grouping.rescue_protein_groups(
+                peptideInfoListRescue,
+                proteinFdrResults,
+                protein_group_fdr,
+                protein_groups_before_rescue,
+                protein_group_peptide_infos,
+            )
         )
         assert protein_groups_after_rescue == ProteinGroups(
             [["proteinA", "proteinB"], ["proteinC"]]
