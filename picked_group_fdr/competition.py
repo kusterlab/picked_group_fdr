@@ -75,7 +75,10 @@ class ProteinCompetitionStrategy(ABC):
 
         # shuffle protein_groups before sorting by protein score. This avoids
         # biases between groups with equal score, e.g. when all target protein groups
-        # are listed above decoy protein groups.
+        # are listed above decoy protein groups. Additionally, always sort
+        # target and decoy protein groups above their obsolete counterparts.
+        # see ProteinGroups.add_unseen_protein_groups for a detailed description
+        # of obsolete protein groups.
         np.random.shuffle(score_group_tuples)
         score_group_tuples = sorted(
             score_group_tuples, key=lambda x: (x[2], not x[3]), reverse=True
@@ -102,9 +105,11 @@ class ProteinCompetitionStrategy(ABC):
                 (protein_group, protein_group_score_list, protein_score)
             )
 
-        self.reset()  # clears list of seen proteins
+        # clear list of seen proteins in case competition is performed multiple times
+        self.reset()
 
-        # shuffle and sort again to randomly order obsolete and regular protein groups with the same score
+        # shuffle and sort again to randomly order obsolete and regular protein
+        # groups with the same score
         np.random.shuffle(filtered_score_group_tuples)
         filtered_score_group_tuples = sorted(
             filtered_score_group_tuples, key=lambda x: x[2], reverse=True

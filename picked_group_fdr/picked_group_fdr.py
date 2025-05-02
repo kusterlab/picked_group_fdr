@@ -436,10 +436,13 @@ def get_protein_group_results(
         )
 
         if rescue_step and picked_strategy.short_description() == "pgT":
+            # see ProteinGroups.add_unseen_protein_groups for a detailed
+            # description of obsolete protein groups in picked group 
+            # target-decoy competition
             (
                 protein_groups,
                 protein_group_peptide_infos,
-            ) = grouping_strategy.update_protein_groups(
+            ) = grouping_strategy.add_obsolete_protein_groups(
                 protein_groups, protein_group_peptide_infos
             )
 
@@ -456,6 +459,7 @@ def get_protein_group_results(
         )
 
         # peptide-level score cutoff for counting number of peptides per protein
+        # this cutoff is computed above in score_type.collect_peptide_scores_per_protein()
         peptide_score_cutoff = (
             score_type.peptide_score_cutoff if rescue_step else float("inf")
         )

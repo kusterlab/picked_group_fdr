@@ -61,10 +61,10 @@ class TestRescuedSubsetGrouping:
     def test_scoring_threshold(self, proteinFdrResults):
         rescued_subset_grouping = grouping.RescuedSubsetGrouping()
         protein_group_fdr = 0.01
-        rescued_subset_grouping._calculate_rescue_score_cutoff(
+        score_cutoff = rescued_subset_grouping._calculate_rescue_score_cutoff(
             proteinFdrResults, protein_group_fdr
         )
-        assert rescued_subset_grouping.score_cutoff == 0.15
+        assert score_cutoff == 0.15
 
 
 @pytest.fixture
