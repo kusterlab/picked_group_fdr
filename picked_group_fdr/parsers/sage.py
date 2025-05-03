@@ -2,14 +2,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
 from . import tsv
-
-# for type hints only
-from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -68,14 +64,14 @@ lfq.tsv columns:
 def parse_sage_results_file(
     evidence_file: str,
     get_proteins,
-    score_type: Optional[scoring_strategy.ProteinScoringStrategy],
+    score_column: str,
     for_quantification: bool = False,
 ):
     delimiter = tsv.get_delimiter(evidence_file)
     with tsv.get_tsv_reader(evidence_file, delimiter) as reader:
         headers = next(reader)
 
-        use_post_err_prob = score_type is None or score_type.get_score_column() == "pep"
+        use_post_err_prob = score_column == "pep"
 
         pept_col = tsv.get_column_index(headers, "peptide")
         charge_col = tsv.get_column_index(headers, "charge")

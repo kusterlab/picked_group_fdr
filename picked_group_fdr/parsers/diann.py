@@ -91,7 +91,7 @@ https://github.com/vdemichev/DiaNN?tab=readme-ov-file#main-output-reference
 def parse_diann_report_file(
     evidence_file: str,
     get_proteins,
-    score_type: scoring_strategy.ProteinScoringStrategy,
+    score_column: str,
     for_quantification: bool = False,
     **kwargs,
 ):

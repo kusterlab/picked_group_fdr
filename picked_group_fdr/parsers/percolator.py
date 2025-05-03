@@ -8,9 +8,6 @@ from .modifications import FIXED_MODS_DICTS, FIXED_MODS_UNIMOD
 from . import modifications
 from . import tsv
 
-# for type hints only
-from .. import scoring_strategy
-
 logger = logging.getLogger(__name__)
 
 
@@ -86,7 +83,7 @@ def get_percolator_column_idxs(headers: List[str]):
 def parse_percolator_out_file(
     evidence_file: str,
     get_proteins,
-    score_type: scoring_strategy.ProteinScoringStrategy,
+    score_column: str,
     **kwargs,
 ):
     delimiter = tsv.get_delimiter(evidence_file)
@@ -103,7 +100,7 @@ def parse_percolator_out_file(
         ) = get_percolator_column_idxs(headers)
         headers = list(map(str.lower, headers))
 
-        if score_type.get_score_column() == "posterior_error_prob":
+        if score_column == "posterior_error_prob":
             score_col = post_err_prob_col
 
         logger.info("Parsing Percolator output file")

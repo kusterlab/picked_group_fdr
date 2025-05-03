@@ -66,7 +66,7 @@ def add_precursor_quants(
         post_err_prob,
         charge,
     ) in sage.parse_sage_results_file(
-        sage_psm_file, get_proteins, score_type=None, for_quantification=True
+        sage_psm_file, get_proteins, score_column="pep", for_quantification=True
     ):
         protein_group_idxs = protein_groups.get_protein_group_idxs(proteins)
 

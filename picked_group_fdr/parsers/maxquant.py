@@ -10,9 +10,6 @@ from . import tsv
 from .. import results  # TODO: get rid of this import
 from .. import writers  # TODO: get rid of this import
 
-# for type hints only
-from .. import scoring_strategy
-
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +17,7 @@ logger = logging.getLogger(__name__)
 def parse_mq_evidence_file(
     evidence_file: str,
     get_proteins,
-    score_type: scoring_strategy.ProteinScoringStrategy,
+    score_column: str,
     for_quantification: bool = False,
     **kwargs,
 ):
@@ -62,12 +59,8 @@ def parse_mq_evidence_file(
         protein_col = get_header_col(
             "leading proteins", required=True
         )  # all protein groups, each represented by the first protein in the group
-        if score_type.use_razor:
-            protein_col = get_header_col(
-                "leading razor protein", required=True
-            )  # best scoring protein group, represented by the first protein in the group
 
-        score_col = get_header_col(score_type.get_score_column(), required=True)
+        score_col = get_header_col(score_column, required=True)
 
         experiment_col = get_header_col("experiment")
         charge_col = get_header_col("charge", required=for_quantification)

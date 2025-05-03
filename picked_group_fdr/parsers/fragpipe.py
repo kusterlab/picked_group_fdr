@@ -8,7 +8,6 @@ from .. import writers
 from .. import helpers
 
 # for type hints only
-from .. import scoring_strategy
 from .. import results
 
 logger = logging.getLogger(__name__)
@@ -57,7 +56,7 @@ logger = logging.getLogger(__name__)
 def parse_fragpipe_psm_file(
     evidence_file: str,
     get_proteins,
-    score_type: scoring_strategy.ProteinScoringStrategy,
+    score_column: str,
     **kwargs,
 ):
     delimiter = tsv.get_delimiter(evidence_file)
@@ -73,7 +72,7 @@ def parse_fragpipe_psm_file(
         protein_col = tsv.get_column_index(headers, "Protein")
         other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
 
-        if score_type.get_score_column() == "pep":
+        if score_column == "pep":
             score_col = post_err_prob_col
 
         logger.info("Parsing FragPipe psm.tsv file")
@@ -87,7 +86,7 @@ def parse_fragpipe_psm_file(
 
             experiment = 1
             score = float(row[score_col])
-            if score_type.get_score_column() == "pep":
+            if score_column == "pep":
                 score = 1 - score + 1e-16
 
             proteins = [row[protein_col]]

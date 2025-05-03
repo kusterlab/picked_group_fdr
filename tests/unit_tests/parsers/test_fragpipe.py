@@ -45,9 +45,9 @@ class TestParseFragpipePsmFile:
             return proteins
 
         evidence_file = "psm.tsv"
-        score_type = ProteinScoringStrategy("bestPEP")
+        score_column = "pep"
 
-        results = list(parse_fragpipe_psm_file(evidence_file, get_proteins, score_type))
+        results = list(parse_fragpipe_psm_file(evidence_file, get_proteins, score_column))
 
         assert results == [
             (
