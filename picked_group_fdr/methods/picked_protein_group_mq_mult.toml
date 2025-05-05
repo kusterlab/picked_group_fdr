@@ -1,0 +1,6 @@
+label = "Picked Protein Group FDR with multPEP"
+
+scoreType = "multPEP"
+grouping = "rescued_subset"
+sharedPeptides = "discard"
+pickedStrategy = "picked_group"
