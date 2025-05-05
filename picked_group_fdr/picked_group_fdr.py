@@ -21,11 +21,11 @@ from .digestion_params import (
 )
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
-from .peptide_info import PeptideInfoList
 
 # for type hints only
 from .plotter import Plotter, NoPlotter
 from .protein_groups import ProteinGroups
+from .peptide_info import PeptideInfoList, ProteinGroupPeptideInfos
 
 logger = logging.getLogger(__name__)
 
@@ -413,18 +413,22 @@ def get_protein_group_results(
     protein_group_results = ProteinGroupResults()
     protein_group_peptide_infos = []
     for rescue_step in grouping_strategy.get_rescue_steps():
-        protein_group_results, protein_groups, protein_group_peptide_infos, reported_qvals, observed_qvals = (
-            get_protein_group_results_single_step(
-                peptide_info_list,
-                method_config,
-                protein_group_results,
-                protein_groups,
-                protein_group_peptide_infos,
-                rescue_step,
-                keep_all_proteins,
-                protein_group_fdr_threshold,
-                psm_fdr_cutoff,
-            )
+        (
+            protein_group_results,
+            protein_groups,
+            protein_group_peptide_infos,
+            reported_qvals,
+            observed_qvals,
+        ) = get_protein_group_results_single_step(
+            peptide_info_list,
+            method_config,
+            protein_group_results,
+            protein_groups,
+            protein_group_peptide_infos,
+            rescue_step,
+            keep_all_proteins,
+            protein_group_fdr_threshold,
+            psm_fdr_cutoff,
         )
 
     plotter.set_series_label(method_config, rescue_step=rescue_step)
@@ -440,7 +444,7 @@ def get_protein_group_results_single_step(
     method_config: methods.MethodConfig,
     protein_group_results: ProteinGroupResults,
     protein_groups: ProteinGroups,
-    protein_group_peptide_infos,
+    protein_group_peptide_infos: ProteinGroupPeptideInfos,
     rescue_step: bool,
     keep_all_proteins: bool = False,
     protein_group_fdr_threshold: float = 0.01,
@@ -512,7 +516,13 @@ def get_protein_group_results_single_step(
         keep_all_proteins,
     )
 
-    return protein_group_results, protein_groups, protein_group_peptide_infos, reported_qvals, observed_qvals
+    return (
+        protein_group_results,
+        protein_groups,
+        protein_group_peptide_infos,
+        reported_qvals,
+        observed_qvals,
+    )
 
 
 if __name__ == "__main__":
