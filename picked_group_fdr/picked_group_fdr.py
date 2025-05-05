@@ -25,6 +25,7 @@ from .peptide_info import PeptideInfoList
 
 # for type hints only
 from .plotter import Plotter, NoPlotter
+from .protein_groups import ProteinGroups
 
 logger = logging.getLogger(__name__)
 
@@ -396,7 +397,7 @@ def get_protein_group_results(
     if plotter is None:
         plotter = NoPlotter()
 
-    picked_strategy, score_type, grouping_strategy = (
+    _, score_type, grouping_strategy = (
         method_config.picked_strategy,
         method_config.score_type,
         method_config.grouping_strategy,
@@ -409,65 +410,21 @@ def get_protein_group_results(
     # for razor peptide strategy
     score_type.set_peptide_counts_per_protein(peptide_info_list)
 
-    obsolete_protein_groups, obsolete_protein_group_peptide_infos = [], []
+    protein_group_results = ProteinGroupResults()
+    protein_group_peptide_infos = []
     for rescue_step in grouping_strategy.get_rescue_steps():
-        if rescue_step:
-            if not score_type.can_do_protein_group_rescue():
-                raise NotImplementedError(
-                    "Cannot do rescue step for other score types than bestPEP"
-                )
-            (
-                protein_groups,
-                obsolete_protein_groups,
-                obsolete_protein_group_peptide_infos,
-            ) = grouping_strategy.rescue_protein_groups(
+        protein_group_results, protein_groups, protein_group_peptide_infos, reported_qvals, observed_qvals = (
+            get_protein_group_results_single_step(
                 peptide_info_list,
+                method_config,
                 protein_group_results,
-                protein_group_fdr_threshold,
                 protein_groups,
                 protein_group_peptide_infos,
+                rescue_step,
+                keep_all_proteins,
+                protein_group_fdr_threshold,
+                psm_fdr_cutoff,
             )
-
-        protein_group_peptide_infos = score_type.collect_peptide_scores_per_protein(
-            protein_groups,
-            peptide_info_list,
-            psm_fdr_cutoff,
-            suppress_missing_protein_warning=rescue_step,
-        )
-
-        # find optimal division factor for multPEP score
-        score_type.optimize_hyperparameters(
-            protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold
-        )
-
-        (
-            picked_protein_groups,
-            picked_protein_group_peptide_infos,
-            protein_scores,
-        ) = picked_strategy.do_competition(
-            protein_groups,
-            protein_group_peptide_infos,
-            obsolete_protein_groups,
-            obsolete_protein_group_peptide_infos,
-            score_type,
-        )
-
-        reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(
-            picked_protein_groups, protein_scores, protein_group_fdr_threshold
-        )
-
-        # peptide-level score cutoff for counting number of peptides per protein
-        # this cutoff is computed above in score_type.collect_peptide_scores_per_protein()
-        peptide_score_cutoff = (
-            score_type.peptide_score_cutoff if rescue_step else float("inf")
-        )
-        protein_group_results = ProteinGroupResults.from_protein_groups(
-            picked_protein_groups,
-            picked_protein_group_peptide_infos,
-            protein_scores,
-            reported_qvals,
-            peptide_score_cutoff,
-            keep_all_proteins,
         )
 
     plotter.set_series_label(method_config, rescue_step=rescue_step)
@@ -476,6 +433,86 @@ def get_protein_group_results(
     )
 
     return protein_group_results
+
+
+def get_protein_group_results_single_step(
+    peptide_info_list: PeptideInfoList,
+    method_config: methods.MethodConfig,
+    protein_group_results: ProteinGroupResults,
+    protein_groups: ProteinGroups,
+    protein_group_peptide_infos,
+    rescue_step: bool,
+    keep_all_proteins: bool = False,
+    protein_group_fdr_threshold: float = 0.01,
+    psm_fdr_cutoff: float = 0.01,
+) -> ProteinGroupResults:
+    picked_strategy, score_type, grouping_strategy = (
+        method_config.picked_strategy,
+        method_config.score_type,
+        method_config.grouping_strategy,
+    )
+
+    obsolete_protein_groups, obsolete_protein_group_peptide_infos = [], []
+    if rescue_step:
+        if not score_type.can_do_protein_group_rescue():
+            raise NotImplementedError(
+                "Cannot do rescue step for other score types than bestPEP"
+            )
+        (
+            protein_groups,
+            obsolete_protein_groups,
+            obsolete_protein_group_peptide_infos,
+        ) = grouping_strategy.rescue_protein_groups(
+            peptide_info_list,
+            protein_group_results,
+            protein_group_fdr_threshold,
+            protein_groups,
+            protein_group_peptide_infos,
+        )
+
+    protein_group_peptide_infos = score_type.collect_peptide_scores_per_protein(
+        protein_groups,
+        peptide_info_list,
+        psm_fdr_cutoff,
+        suppress_missing_protein_warning=rescue_step,
+    )
+
+    # find optimal division factor for multPEP score
+    score_type.optimize_hyperparameters(
+        protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold
+    )
+
+    (
+        picked_protein_groups,
+        picked_protein_group_peptide_infos,
+        protein_scores,
+    ) = picked_strategy.do_competition(
+        protein_groups,
+        protein_group_peptide_infos,
+        obsolete_protein_groups,
+        obsolete_protein_group_peptide_infos,
+        score_type,
+    )
+
+    reported_qvals, observed_qvals = fdr.calculate_protein_fdrs(
+        picked_protein_groups, protein_scores, protein_group_fdr_threshold
+    )
+
+    # peptide-level score cutoff for counting number of peptides per protein
+    # this cutoff is computed above in score_type.collect_peptide_scores_per_protein()
+    peptide_score_cutoff = (
+        score_type.peptide_score_cutoff if rescue_step else float("inf")
+    )
+    protein_group_results = ProteinGroupResults.from_protein_groups(
+        picked_protein_groups,
+        picked_protein_group_peptide_infos,
+        protein_scores,
+        reported_qvals,
+        peptide_score_cutoff,
+        keep_all_proteins,
+    )
+
+    return protein_group_results, protein_groups, protein_group_peptide_infos, reported_qvals, observed_qvals
 
 
 if __name__ == "__main__":
