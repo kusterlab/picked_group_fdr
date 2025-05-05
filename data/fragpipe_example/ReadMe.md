@@ -11,7 +11,10 @@ To run this example, follow these steps:
 
 **Download FragPipe result files**
 
-1. Download und unzip the `fragpipe.zip` file from this folder. It contains the necessary FragPipe results files needed to run this example. For the FragPipe settings used to generate these files, see step 4 in Option 2.
+1. Download und unzip the `fragpipe.zip` file from this folder to a folder named `fragpipe`. It contains the necessary FragPipe results files needed to run this example. For the FragPipe settings used to generate these files, see step 4 in Option 2.
+   ```
+   unzip fragpipe.zip -d fragpipe
+   ```
 
 **Running PickedGroupFDR**
 
