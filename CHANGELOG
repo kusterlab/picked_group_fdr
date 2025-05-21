@@ -1,5 +1,14 @@
-v0.9.0-rc
+v0.9.0
+- Bumped Python version to >=3.10,<3.14
 - Support for DIA-NN 2.x results (#25)
+- Add support for subset protein grouping for multPEP and other protein score types
+- Switch to local time for logging
+- Implement FastLFQ (#6)
+- Eliminate additional pass through precursorQuants for peptide_count columns
+- Move tsv reader outside of get_evidence_parser
+- Make docker job config compatible with new oktoberfest config format
+- Improve documentation for "obsolete" protein group competition
+- Only pass score_column to get_evidence_parser; remove option to parse razor proteins from evidence.txt
 
 v0.8.2
 - Fix GUI build
