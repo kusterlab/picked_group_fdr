@@ -2,7 +2,7 @@ DATA_DIR="data/fragpipe_example"
 RESULT_DIR="tests/system_tests/test_fragpipe"
 
 # exit on first error
-set -e
+set -ex
 
 mkdir -p ${RESULT_DIR}
 
@@ -27,7 +27,7 @@ python3 -u -m picked_group_fdr \
     --do_quant \
     --lfq_min_peptide_ratios 1 \
     --methods fragpipe
-diff ${RESULT_DIR}/combined_protein.tsv ${RESULT_DIR}/combined_protein.reference.tsv
+diff -q ${RESULT_DIR}/combined_protein.tsv ${RESULT_DIR}/combined_protein.reference.tsv
 
 # Option 2: create protein groups without quant
 python3 -u -m picked_group_fdr \
@@ -35,7 +35,7 @@ python3 -u -m picked_group_fdr \
     --fragpipe_psm ${fragpipe_psm_files} \
     --protein_groups_out ${RESULT_DIR}/proteinGroups.txt \
     --methods fragpipe
-diff ${RESULT_DIR}/proteinGroups.txt ${RESULT_DIR}/proteinGroups.reference.txt
+diff -q ${RESULT_DIR}/proteinGroups.txt ${RESULT_DIR}/proteinGroups.reference.txt
 
 # Option 3: use intermediate proteinGroups.txt (from Option 2) to create combined_protein.tsv using combined_ion.tsv from a previous IonQuant run
 python3 -u -m picked_group_fdr.pipeline.update_fragpipe_results \
@@ -44,7 +44,7 @@ python3 -u -m picked_group_fdr.pipeline.update_fragpipe_results \
     --protein_groups ${RESULT_DIR}/proteinGroups.txt \
     --combined_ion ${DATA_DIR}/fragpipe/combined_ion.tsv \
     --output_folder ${RESULT_DIR}_from_combined_ion
-diff ${RESULT_DIR}_from_combined_ion/combined_protein.tsv ${RESULT_DIR}_from_combined_ion/combined_protein.reference.tsv
+diff -q ${RESULT_DIR}_from_combined_ion/combined_protein.tsv ${RESULT_DIR}_from_combined_ion/combined_protein.reference.tsv
 
 # Option 4: update psm.tsv and protein.tsv using the intermediate proteinGroups.txt (from Option 2) to be requantified with IonQuant (see ./run_ionquant.sh)
 python3 -u -m picked_group_fdr.pipeline.update_fragpipe_results \
@@ -52,5 +52,5 @@ python3 -u -m picked_group_fdr.pipeline.update_fragpipe_results \
     --fragpipe_psm ${fragpipe_psm_files} \
     --protein_groups ${RESULT_DIR}/proteinGroups.txt \
     --output_folder ${RESULT_DIR}
-diff ${RESULT_DIR}/A1/protein.tsv ${RESULT_DIR}/A1/protein.reference.tsv
-diff ${RESULT_DIR}/A1/psm.tsv ${RESULT_DIR}/A1/psm.reference.tsv
+diff -q ${RESULT_DIR}/A1/protein.tsv ${RESULT_DIR}/A1/protein.reference.tsv
+diff -q ${RESULT_DIR}/A1/psm.tsv ${RESULT_DIR}/A1/psm.reference.tsv

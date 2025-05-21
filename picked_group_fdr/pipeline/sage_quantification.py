@@ -143,7 +143,7 @@ def main(argv):
 
     protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,
-        args.output_format,
+        writers.OutputFormat(args.output_format),
         args,
         protein_annotations,
         parse_id,

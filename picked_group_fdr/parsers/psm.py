@@ -5,7 +5,6 @@ import logging
 
 from .. import digest  # TODO: get rid of this import
 from .. import helpers
-from . import tsv
 
 # for type hints only
 from .. import scoring_strategy
@@ -20,9 +19,9 @@ def get_peptide_to_protein_mapper(
 ) -> Callable[[str, List[str]], List[str]]:
     """Returns a function that updates the list of proteins for a peptide.
 
-    In most cases, the returned function simply returns the same list of proteins as 
+    In most cases, the returned function simply returns the same list of proteins as
     were used as input. In some cases, the mapping from peptide to protein is not
-    accurate (e.g. MaxQuant) and a remapping is applied. Note that this is also the 
+    accurate (e.g. MaxQuant) and a remapping is applied. Note that this is also the
     place where razor peptide decisions are made.
 
     Args:
@@ -33,7 +32,8 @@ def get_peptide_to_protein_mapper(
     Returns:
         Callable[[str, List[str]], List[str]]: a function that maps a peptide and a list
             of proteins to an updated list of proteins.
-    """    
+    """
+
     def get_proteins(modified_peptide: str, tmp_proteins: List[str]):
         if score_type.remaps_peptides_to_proteins():
             peptide = helpers.remove_modifications(modified_peptide)
@@ -63,17 +63,16 @@ def parse_evidence_file_single(
     for_quantification: bool = False,
     suppress_missing_peptide_warning: bool = False,
 ):
-    delimiter = tsv.get_delimiter(evidence_file)
-    with tsv.get_tsv_reader(evidence_file, delimiter) as reader:
-        headers = next(reader)
+    get_proteins = get_peptide_to_protein_mapper(
+        peptide_to_protein_map, score_type, suppress_missing_peptide_warning
+    )
 
-        get_proteins = get_peptide_to_protein_mapper(
-            peptide_to_protein_map, score_type, suppress_missing_peptide_warning
-        )
-
-        yield from score_type.get_evidence_parser()(
-            reader, headers, get_proteins, score_type, for_quantification=for_quantification
-        )
+    yield from score_type.get_evidence_parser()(
+        evidence_file,
+        get_proteins,
+        score_type.get_score_column(),
+        for_quantification=for_quantification,
+    )
 
 
 def parse_evidence_file_multiple(

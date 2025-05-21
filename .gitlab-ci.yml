@@ -51,7 +51,7 @@ test:
     - PROJECT_PATH=$(echo $CI_PROJECT_PATH | tr '[:upper:]' '[:lower:]')
     - CONTAINER_IMAGE=$REGISTRY/$PROJECT_PATH:$CI_COMMIT_SHORT_SHA
   services:
-    - name: docker:19.03.0-dind
+    - name: docker:dind
       command: ["--experimental"]
   script:
     - echo $CONTAINER_IMAGE
@@ -67,7 +67,7 @@ test:
 
 pytest:
   stage: test
-  image: python:3.8.12
+  image: python:3.10.17
   before_script:
     - pip install -U pip poetry
     - poetry config virtualenvs.create false

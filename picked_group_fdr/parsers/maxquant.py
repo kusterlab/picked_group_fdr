@@ -10,18 +10,14 @@ from . import tsv
 from .. import results  # TODO: get rid of this import
 from .. import writers  # TODO: get rid of this import
 
-# for type hints only
-from .. import scoring_strategy
-
 
 logger = logging.getLogger(__name__)
 
 
 def parse_mq_evidence_file(
-    reader,
-    headers,
+    evidence_file: str,
     get_proteins,
-    score_type: scoring_strategy.ProteinScoringStrategy,
+    score_column: str,
     for_quantification: bool = False,
     **kwargs,
 ):
@@ -48,70 +44,70 @@ def parse_mq_evidence_file(
     - Intensity H (for SILAC)
     - Intensity M (optional, for SILAC)
     """
-    # convert headers to lowercase since MQ changes the capitalization frequently
-    headers = list(map(str.lower, headers))
+    delimiter = tsv.get_delimiter(evidence_file)
+    with tsv.get_tsv_reader(evidence_file, delimiter) as reader:
+        headers = next(reader)
 
-    get_header_col = tsv.get_header_col_func(headers)
-    get_header_cols_starting_with = tsv.get_header_cols_starting_with_func(headers)
+        # convert headers to lowercase since MQ changes the capitalization frequently
+        headers = list(map(str.lower, headers))
 
-    pept_col = get_header_col("modified sequence", required=True)
+        get_header_col = tsv.get_header_col_func(headers)
+        get_header_cols_starting_with = tsv.get_header_cols_starting_with_func(headers)
 
-    protein_col = get_header_col(
-        "leading proteins", required=True
-    )  # all protein groups, each represented by the first protein in the group
-    if score_type.use_razor:
+        pept_col = get_header_col("modified sequence", required=True)
+
         protein_col = get_header_col(
-            "leading razor protein", required=True
-        )  # best scoring protein group, represented by the first protein in the group
+            "leading proteins", required=True
+        )  # all protein groups, each represented by the first protein in the group
 
-    score_col = get_header_col(score_type.get_score_column(), required=True)
+        score_col = get_header_col(score_column, required=True)
 
-    experiment_col = get_header_col("experiment")
-    charge_col = get_header_col("charge", required=for_quantification)
+        experiment_col = get_header_col("experiment")
+        charge_col = get_header_col("charge", required=for_quantification)
 
-    intensity_col = get_header_col("intensity", required=for_quantification)
-    tmt_cols = get_header_cols_starting_with("reporter intensity ")
-    silac_cols = get_silac_cols(headers, get_header_col, for_quantification)
+        intensity_col = get_header_col("intensity", required=for_quantification)
+        tmt_cols = get_header_cols_starting_with("reporter intensity ")
+        silac_cols = get_silac_cols(headers, get_header_col, for_quantification)
 
-    raw_file_col = get_header_col("raw file", required=for_quantification)
-    fraction_col = get_header_col("fraction")
-    evidence_id_col = get_header_col("id", required=for_quantification)
+        raw_file_col = get_header_col("raw file", required=for_quantification)
+        fraction_col = get_header_col("fraction")
+        evidence_id_col = get_header_col("id", required=for_quantification)
 
-    logger.info("Parsing MaxQuant evidence.txt file")
-    for line_idx, row in enumerate(reader):
-        if line_idx % 500000 == 0:
-            logger.info(f"    Reading line {line_idx}")
+        logger.info("Parsing MaxQuant evidence.txt file")
+        for line_idx, row in enumerate(reader):
+            if line_idx % 500000 == 0:
+                logger.info(f"    Reading line {line_idx}")
 
-        modified_peptide = row[pept_col][1:-1]
-        proteins = get_proteins(modified_peptide, row[protein_col].split(";"))
-        if not proteins:
-            continue
+            modified_peptide = row[pept_col][1:-1]
+            proteins = get_proteins(modified_peptide, row[protein_col].split(";"))
+            if not proteins:
+                continue
 
-        experiment = "Experiment1"
-        if experiment_col >= 0:
-            experiment = row[experiment_col]
+            experiment = "Experiment1"
+            if experiment_col >= 0:
+                experiment = row[experiment_col]
 
-        score = float(row[score_col]) if len(row[score_col]) > 0 else float("nan")
+            score = float(row[score_col]) if len(row[score_col]) > 0 else float("nan")
 
-        if not for_quantification:
-            yield modified_peptide, proteins, experiment, score
-        else:
-            charge = int(row[charge_col])
-            intensity = (
-                float(row[intensity_col]) if len(row[intensity_col]) > 0 else 0.0
-            )
-            if fraction_col >= 0:
-                fraction = row[fraction_col]
+            if not for_quantification:
+                yield modified_peptide, proteins, experiment, score
             else:
-                fraction = -1
-            raw_file = row[raw_file_col]
-            tmt_intensities = [row[tmt_col] for tmt_col in tmt_cols]
-            silac_intensities = [
-                row[silac_col] if len(row[silac_col]) > 0 else 0
-                for silac_col in silac_cols
-            ]
-            evidence_id = int(row[evidence_id_col])
-            yield modified_peptide, proteins, charge, raw_file, experiment, fraction, intensity, score, tmt_intensities, silac_intensities, evidence_id
+                charge = int(row[charge_col])
+                intensity = (
+                    float(row[intensity_col]) if len(row[intensity_col]) > 0 else 0.0
+                )
+                if fraction_col >= 0:
+                    fraction = row[fraction_col]
+                else:
+                    fraction = -1
+                raw_file = row[raw_file_col]
+                tmt_intensities = [row[tmt_col] for tmt_col in tmt_cols]
+                silac_intensities = [
+                    row[silac_col] if len(row[silac_col]) > 0 else 0
+                    for silac_col in silac_cols
+                ]
+                evidence_id = int(row[evidence_id_col])
+                yield modified_peptide, proteins, charge, raw_file, experiment, fraction, intensity, score, tmt_intensities, silac_intensities, evidence_id
 
 
 def get_silac_cols(headers, get_header_col, for_quantification):

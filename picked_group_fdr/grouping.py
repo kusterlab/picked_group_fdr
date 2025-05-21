@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Tuple
 import logging
 
 import numpy as np
@@ -40,8 +40,8 @@ class ProteinGroupingStrategy(ABC):
     ) -> ProteinGroups:
         pass
 
-    def get_rescue_steps(self):
-        return [False]
+    def has_rescue_step(self) -> bool:
+        return False
 
     def rescue_protein_groups(
         self,
@@ -52,11 +52,6 @@ class ProteinGroupingStrategy(ABC):
         old_protein_group_peptide_infos,
     ) -> ProteinGroups:
         pass
-
-    def update_protein_groups(
-        self, protein_groups: ProteinGroups, protein_group_peptide_infos
-    ):
-        return protein_groups, protein_group_peptide_infos
 
     @abstractmethod
     def short_description(self, rescue_step):
@@ -146,8 +141,6 @@ class MQNativeGrouping(ProteinGroupingStrategy):
 
 class RescuedGrouping:
     score_cutoff: float
-    obsolete_protein_groups: ProteinGroups
-    obsolete_protein_group_peptide_infos: ProteinGroupPeptideInfos
 
     def rescue_protein_groups(
         self,
@@ -155,22 +148,36 @@ class RescuedGrouping:
         protein_group_results: ProteinGroupResults,
         protein_group_fdr_threshold: float,
         old_protein_groups: ProteinGroups,
-        old_protein_group_peptide_infos,
-    ) -> ProteinGroups:
-        self._calculate_rescue_score_cutoff(
+        old_protein_group_peptide_infos: ProteinGroupPeptideInfos,
+    ) -> Tuple[ProteinGroups, ProteinGroups, ProteinGroupPeptideInfos]:
+        score_cutoff = self._calculate_rescue_score_cutoff(
             protein_group_results, protein_group_fdr_threshold
         )
         peptide_info_list_filtered = self._filter_peptide_list_by_score_cutoff(
-            peptide_info_list
-        )
-        return self.merge_with_rescued_protein_groups(
-            peptide_info_list_filtered,
-            old_protein_groups,
-            old_protein_group_peptide_infos,
+            peptide_info_list, score_cutoff
         )
 
-    def get_rescue_steps(self) -> List[bool]:
-        return [False, True]
+        rescued_protein_groups = self.get_rescued_protein_groups(
+            peptide_info_list_filtered
+        )
+        (
+            obsolete_protein_groups,
+            obsolete_protein_group_peptide_infos,
+        ) = rescued_protein_groups.add_unseen_protein_groups(
+            old_protein_groups, old_protein_group_peptide_infos
+        )
+
+        logger.info(f"#protein groups before rescue: {len(old_protein_groups)}")
+        logger.info(f"#protein groups after rescue: {len(rescued_protein_groups)}")
+
+        return (
+            rescued_protein_groups,
+            obsolete_protein_groups,
+            obsolete_protein_group_peptide_infos,
+        )
+
+    def has_rescue_step(self) -> bool:
+        return True
 
     def short_description(self, rescue_step: bool) -> str:
         if rescue_step:
@@ -212,46 +219,20 @@ class RescuedGrouping:
 
         return updated_protein_groups
 
-    def update_protein_groups(
-        self,
-        protein_groups: ProteinGroups,
-        protein_group_peptide_infos: ProteinGroupPeptideInfos,
+    def _filter_peptide_list_by_score_cutoff(
+        self, peptide_info_list: PeptideInfoList, score_cutoff: float
     ):
-        protein_groups.extend(self.obsolete_protein_groups)
-        protein_group_peptide_infos.extend(self.obsolete_protein_group_peptide_infos)
-        return protein_groups, protein_group_peptide_infos
-
-    def merge_with_rescued_protein_groups(
-        self,
-        peptide_info_list: PeptideInfoList,
-        protein_groups: ProteinGroups,
-        protein_group_peptide_infos,
-    ) -> ProteinGroups:
-        new_protein_groups = self.get_rescued_protein_groups(peptide_info_list)
-        (
-            self.obsolete_protein_groups,
-            self.obsolete_protein_group_peptide_infos,
-        ) = new_protein_groups.add_unseen_protein_groups(
-            protein_groups, protein_group_peptide_infos
-        )
-
-        logger.info(f"#protein groups before rescue: {len(protein_groups)}")
-        logger.info(f"#protein groups after rescue: {len(new_protein_groups)}")
-
-        return new_protein_groups
-
-    def _filter_peptide_list_by_score_cutoff(self, peptide_info_list: PeptideInfoList):
         return {
             peptide: (score, proteins)
             for peptide, (score, proteins) in peptide_info_list.items()
-            if score < self.score_cutoff
+            if score < score_cutoff
         }
 
     def _calculate_rescue_score_cutoff(
         self,
         protein_group_results: ProteinGroupResults,
         protein_group_fdr_threshold: float,
-    ):
+    ) -> float:
         """Calculate PEP corresponding to protein_group_fdr_threshold.
         N.B. this only works if the protein score is bestPEP!"""
         identified_protein_scores = [
@@ -266,10 +247,11 @@ class RescuedGrouping:
             )
             identified_protein_scores = [pfr.score for pfr in protein_group_results]
 
-        self.score_cutoff = np.power(10, min(identified_protein_scores) * -1)
+        score_cutoff = np.power(10, min(identified_protein_scores) * -1)
         logger.info(
-            f"Rescuing threshold: protein score = {'{0:.3g}'.format(min(identified_protein_scores))}, peptide PEP = {'{0:.3g}'.format(self.score_cutoff)}"
+            f"Rescuing threshold: protein score = {'{0:.3g}'.format(min(identified_protein_scores))}, peptide PEP = {'{0:.3g}'.format(score_cutoff)}"
         )
+        return score_cutoff
 
 
 class RescuedSubsetGrouping(RescuedGrouping, SubsetGrouping):

@@ -8,6 +8,7 @@ from .triqler import TriqlerIntensityColumns
 from .sequence_coverage import SequenceCoverageColumns
 from .evidence_ids import EvidenceIdsColumns
 from .fragpipe_protein_annotations import FragpipeProteinAnnotationsColumns
+from .diann_protein_annotations import DiannProteinAnnotationsColumns
 from .protein_annotations import ProteinAnnotationsColumns
 from .protein_probability import ProteinProbabilityColumns
 from .top_peptide import TopPeptideProbabilityColumns

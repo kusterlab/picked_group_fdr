@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from typing import Callable, Dict, List
+from enum import Enum
 
 import pandas as pd
 
@@ -15,15 +16,21 @@ from ..protein_groups import ProteinGroups
 from .. import results
 
 
+class OutputFormat(Enum):
+    FRAGPIPE = "fragpipe"
+    MAXQUANT = "maxquant"
+    DIANN = "dia-nn"
+
+
 def get_protein_groups_output_writer(
     protein_group_results: results.ProteinGroupResults,
-    output_format: str,
+    output_format: OutputFormat,
     args: argparse.Namespace,
     protein_annotations: Dict[str, protein_annotation.ProteinAnnotation],
     parse_id: Callable,
     peptide_to_protein_maps: List[digest.PeptideToProteinMap],
 ):
-    if output_format == "fragpipe":
+    if output_format == OutputFormat.FRAGPIPE:
         protein_groups = ProteinGroups.from_protein_group_results(protein_group_results)
         protein_groups.create_index()
         return writers.FragPipeCombinedProteinWriter(
@@ -32,10 +39,11 @@ def get_protein_groups_output_writer(
             args.skip_lfq,
             args.lfq_min_peptide_ratios,
             args.lfq_stabilize_large_ratios,
+            args.fast_lfq,
             args.num_threads,
             args.protein_group_fdr_threshold,
         )
-    elif output_format == "maxquant":
+    elif output_format == OutputFormat.MAXQUANT:
         db = "target" if args.fasta_contains_decoys else "concat"
         protein_sequences = digest.get_protein_sequences(
             args.fasta, db=db, parse_id=parse_id
@@ -53,12 +61,22 @@ def get_protein_groups_output_writer(
             args.skip_lfq,
             args.lfq_min_peptide_ratios,
             args.lfq_stabilize_large_ratios,
+            args.fast_lfq,
             args.num_threads,
             triqler_params,
             args.protein_group_fdr_threshold,
         )
+    elif output_format == OutputFormat.DIANN:
+        return writers.DiannProteinGroupsWriter(
+            protein_annotations,
+            args.lfq_min_peptide_ratios,
+            args.lfq_stabilize_large_ratios,
+            args.fast_lfq,
+            args.num_threads,
+            args.protein_group_fdr_threshold,
+        )
     
-    raise ValueError(f"Unknown output format: {output_format}.")
+    raise ValueError(f"Unknown output format: {output_format.value}.")
 
 
 def init_triqler_params(experimental_design: pd.DataFrame):

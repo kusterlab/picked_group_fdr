@@ -35,7 +35,7 @@ jobs:
       - name: Create conda environment
         uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: 3.9
+          python-version: 3.10
           channels: conda-forge,defaults
           channel-priority: true
           activate-environment: picked_group_fdr_gui
@@ -43,9 +43,8 @@ jobs:
         shell: bash -el {0}
         run: |
           conda install -c conda-forge nomkl
-          conda install -c conda-forge libxml2=2.11.6 numpy=1.26.4 scipy pandas networkx pyqt pyinstaller bottleneck toml threadpoolctl
+          conda install -c conda-forge libxml2=2.11.6 numpy=1.26.4 scipy pandas networkx pyqt pyinstaller bottleneck toml threadpoolctl job-pool
           conda install -c bioconda mokapot triqler
-          pip install job-pool
       - name: Build exe and compress with UPX
         shell: bash -el {0}
         run: |

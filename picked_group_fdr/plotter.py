@@ -79,9 +79,9 @@ class Plotter:
         self._right_align_legend(legend)
         
         for tick in self.plt.gca().xaxis.get_major_ticks():
-            tick.label.set_fontsize(14) 
+            tick.label1.set_fontsize(14) 
         for tick in self.plt.gca().yaxis.get_major_ticks():
-            tick.label.set_fontsize(14) 
+            tick.label1.set_fontsize(14) 
             
         self.plt.tight_layout()
         
@@ -98,9 +98,9 @@ class Plotter:
         self._right_align_legend(legend)
         
         for tick in self.plt.gca().xaxis.get_major_ticks():
-            tick.label.set_fontsize(14) 
+            tick.label1.set_fontsize(14) 
         for tick in self.plt.gca().yaxis.get_major_ticks():
-            tick.label.set_fontsize(14) 
+            tick.label1.set_fontsize(14) 
         
         self.plt.tight_layout()
         
@@ -117,9 +117,9 @@ class Plotter:
         self._right_align_legend(legend)
         
         for tick in self.plt.gca().xaxis.get_major_ticks():
-            tick.label.set_fontsize(14) 
+            tick.label1.set_fontsize(14) 
         for tick in self.plt.gca().yaxis.get_major_ticks():
-            tick.label.set_fontsize(14) 
+            tick.label1.set_fontsize(14) 
         
         self.plt.tight_layout()
 

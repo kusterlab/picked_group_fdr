@@ -18,6 +18,7 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
         skip_lfq: bool,
         min_peptide_ratios_lfq: int,
         stabilize_large_ratios_lfq: bool,
+        fast_lfq: bool,
         num_threads: int,
         params: Dict[str, Any],
         protein_group_fdr_threshold: float = 0.01,
@@ -28,6 +29,7 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
         self.skip_lfq = skip_lfq
         self.min_peptide_ratios_lfq = min_peptide_ratios_lfq
         self.stabilize_large_ratios_lfq = stabilize_large_ratios_lfq
+        self.fast_lfq = fast_lfq
         self.num_threads = num_threads
         self.params = params
 
@@ -42,18 +44,21 @@ class MaxQuantProteinGroupsWriter(ProteinGroupsWriter):
             columns.SummedIntensityAndIbaqColumns(
                 self.num_ibaq_peptides_per_protein, self.protein_group_fdr_threshold
             ),
-            columns.SequenceCoverageColumns(self.protein_sequences),
-            columns.EvidenceIdsColumns(),
-            columns.TMTIntensityColumns(),
-            columns.TriqlerIntensityColumns(self.params),
         ]
         if not self.skip_lfq:
             output_columns += [
                 columns.LFQIntensityColumns(
-                    self.min_peptide_ratios_lfq,
-                    self.stabilize_large_ratios_lfq,
-                    self.num_threads,
-                    self.protein_group_fdr_threshold,
+                    min_peptide_ratios_lfq=self.min_peptide_ratios_lfq,
+                    stabilize_large_ratios_lfq=self.stabilize_large_ratios_lfq,
+                    fast_lfq=self.fast_lfq,
+                    num_threads=self.num_threads,
+                    protein_group_fdr_threshold=self.protein_group_fdr_threshold,
                 )
             ]
+        output_columns += [
+            columns.SequenceCoverageColumns(self.protein_sequences),
+            columns.TMTIntensityColumns(),
+            columns.TriqlerIntensityColumns(self.params),
+            columns.EvidenceIdsColumns()
+        ]
         return output_columns

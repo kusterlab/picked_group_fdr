@@ -180,6 +180,44 @@ def add_quant_arguments(apars) -> None:
     )
 
     apars.add_argument(
+        "--fast_lfq",
+        help="""Apply FastLFQ as described in the MaxLFQ paper. This creates a 
+                sparse graph with samples as nodes where each sample is 
+                connected to at least --fast_lfq_min_neighbors and on average
+                each sample is connected to --fast_lfq_avg_neighbors. When a
+                peptide is detected in at least --fast_lfq_min_samples, peptide 
+                ratios are only computed for nodes that have an edge between them. This
+                circumvents the quadratic increase in runtime with increasing
+                samples.""",
+        action="store_false",
+    )
+
+    apars.add_argument(
+        "--fast_lfq_min_neighbors",
+        default=3,
+        type=int,
+        metavar="N",
+        help="""Minimum number of neighbors in FastLFQ sample graph.""",
+    )
+
+    apars.add_argument(
+        "--fast_lfq_avg_neighbors",
+        default=6,
+        type=int,
+        metavar="N",
+        help="""Average number of neighbors in FastLFQ sample graph.""",
+    )
+
+    apars.add_argument(
+        "--fast_lfq_min_samples",
+        default=10,
+        type=int,
+        metavar="S",
+        help="""Minimum number of samples a protein needs to be detected in
+                to activate FastLFQ for the protein.""",
+    )
+
+    apars.add_argument(
         "--num_threads",
         default=1,
         type=int,
@@ -224,7 +262,7 @@ def do_quantification(
 
     score_origin = score_type.score_origin.long_description().lower()
     if args.output_format == "auto":
-        if score_origin in ["maxquant", "fragpipe"]:
+        if score_origin in (item.value for item in writers.OutputFormat):
             args.output_format = score_origin
         else:
             args.output_format = "maxquant"
@@ -237,7 +275,7 @@ def do_quantification(
 
     protein_groups_writer = writers.get_protein_groups_output_writer(
         protein_group_results,
-        args.output_format,
+        writers.OutputFormat(args.output_format),
         args,
         protein_annotations,
         parse_id,

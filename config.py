@@ -8,6 +8,12 @@ configDir = sys.argv[1]
 localDir = sys.argv[2]
 with open(os.path.join(configDir, 'config.json')) as f:
     config = json.load(f)
+    if "options" in config:
+        optionsConfig = config["options"]
+    elif "fastaDigestOptions" in config:
+        optionsConfig = config["fastaDigestOptions"]
+    else:
+        raise ValueError("Could not find \"option\" or \"fastaDigestOptions\" in config.json")
     
     if sys.argv[3] == "PERC_RESULT_FILES":
         if config["uploads"]["prosit_target.psms"] and config["uploads"]["prosit_decoy.psms"]:
@@ -23,31 +29,31 @@ with open(os.path.join(configDir, 'config.json')) as f:
     
     elif sys.argv[3] == "DIGEST_PARAMS":
         digest_params = []
-        if config["options"]["protease"]:
-            digest_params.append("--enzyme " + config["options"]["protease"])
+        if optionsConfig["protease"]:
+            digest_params.append("--enzyme " + optionsConfig["protease"])
         
-        if config["options"].get("digestion", False):
-            digest_params.append("--digestion " + config["options"]["digestion"])
+        if optionsConfig.get("digestion", False):
+            digest_params.append("--digestion " + optionsConfig["digestion"])
         
-        if config["options"]["minPeptideLength"]:
-            digest_params.append("--min-length " + str(config["options"]["minPeptideLength"]))
+        if optionsConfig["minPeptideLength"]:
+            digest_params.append("--min-length " + str(optionsConfig["minPeptideLength"]))
         
-        if config["options"]["maxPeptideLength"]:
-            digest_params.append("--max-length " + str(config["options"]["maxPeptideLength"]))
+        if optionsConfig["maxPeptideLength"]:
+            digest_params.append("--max-length " + str(optionsConfig["maxPeptideLength"]))
         
-        if config["options"]["specialAAs"]:
-            digest_params.append("--special-aas " + config["options"]["specialAAs"])
+        if optionsConfig["specialAAs"]:
+            digest_params.append("--special-aas " + optionsConfig["specialAAs"])
         else:
             digest_params.append("--special-aas \\\"\\\"")
             
-        if not isinstance(config["options"]["missedCleavages"], bool): # check for bool, as value can be 0 which also evaluates to False
-            digest_params.append("--cleavages " + str(config["options"]["missedCleavages"]))
+        if not isinstance(optionsConfig["missedCleavages"], bool): # check for bool, as value can be 0 which also evaluates to False
+            digest_params.append("--cleavages " + str(optionsConfig["missedCleavages"]))
             
         print(" ".join(digest_params))
     
     elif sys.argv[3] == "PICKED_GROUP_FDR_EXTRA_PARAMS":
-        if config["options"].get("minLFQPeptides", False):
-            print("--lfq_min_peptide_ratios " + str(config["options"]["minLFQPeptides"]))
+        if optionsConfig.get("minLFQPeptides", False):
+            print("--lfq_min_peptide_ratios " + str(optionsConfig["minLFQPeptides"]))
         else:
             print()
         

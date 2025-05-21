@@ -8,6 +8,7 @@ set -e
 ./tests/system_tests/test_quantification.sh
 ./tests/system_tests/test_fragpipe.sh
 ./tests/system_tests/test_sage.sh
+./tests/system_tests/test_diann.sh
 
 echo ""
 echo "All system tests passed"

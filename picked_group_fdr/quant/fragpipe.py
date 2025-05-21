@@ -28,6 +28,27 @@ def add_precursor_quants(
     discard_shared_peptides: bool,
     suppress_missing_peptide_warning: bool,
 ):
+    """Adds PSM-level info to precursor quants.
+
+    A two-step procedure is necessary to add precursor quants for FragPipe results
+    because combined_ion.tsv does not contain PSM-level information such as decoy status
+    and posterior error probability. We get this information from the psm.tsv files.
+
+    Args:
+        sage_psm_file (str): FragPipe psm.tsv file
+        protein_group_results (results.ProteinGroupResults): ProteinGroupResults
+            object to add PrecursorQuant objects to.
+        protein_groups (pg.ProteinGroups): ProteinGroups object to map peptides
+            to the correct protein group in ProteinGroupResults.
+        experimental_design (Optional[pd.DataFrame]): Pandas dataframe containing
+            a mapping from run names to experiments and fractions.
+        discard_shared_peptides (bool): Discard shared peptides.
+        suppress_missing_peptide_warning (bool): Suppress missing peptide warning.
+
+    Returns:
+        results.ProteinGroupResults: updated ProteinGroupResults object.
+        List[float]: list of posterior error probabilities.
+    """
     protein_group_results.experiments.append(experiment)
 
     delimiter = tsv.get_delimiter(fragpipe_psm_file)
@@ -103,6 +124,27 @@ def update_precursor_quants_single(
     discard_shared_peptides: bool,
     suppress_missing_peptide_warning: bool,
 ):
+    """Add intensity values and MBR precursors from combined_ion.tsv to protein_group_results.
+
+    A two-step procedure is necessary to add precursor quants for FragPipe results
+    because combined_ion.tsv does not contain PSM-level information such as decoy status
+    and posterior error probability. We got this information from the psm.tsv files,
+    see add_precursor_quants() function above.
+
+    Args:
+        protein_group_results (results.ProteinGroupResults): ProteinGroupResults
+            object to add PrecursorQuant objects to.
+        protein_groups (pg.ProteinGroups): ProteinGroups object to map peptides
+            to the correct protein group in ProteinGroupResults.
+        combined_ion_file (str): FragPipe combined_ion.tsv file containing intensity values including MBR hits.
+        experimental_design (Optional[pd.DataFrame]): Pandas dataframe containing
+            a mapping from run names to experiments and fractions.
+        discard_shared_peptides (bool): Discard shared peptides.
+        suppress_missing_peptide_warning (bool): Suppress missing peptide warning.
+
+    Returns:
+        results.ProteinGroupResults: updated ProteinGroupResults object.
+    """
     delimiter = tsv.get_delimiter(combined_ion_file)
     with tsv.get_tsv_reader(combined_ion_file, delimiter) as reader:
         headers = next(reader)

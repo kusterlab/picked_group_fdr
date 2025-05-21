@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "picked_group_fdr"
-version = "0.8.2"
+version = "0.9.0"
 description = "Scalable, accurate and sensitive protein group FDRs for large-scale mass spectrometry experiments"
 authors = ["Matthew The <matthew.the@tum.de>"]
 license= "Apache-2.0"
@@ -17,7 +17,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.12"
+python = ">=3.10,<3.14"
 numpy = ">=1.18"
 scipy = "^1.9"
 networkx = "^2.4"
@@ -29,6 +29,7 @@ Bottleneck = "^1.3.5"
 toml = "^0.10.2"
 pyqt5 = {version = "^5.15.7", optional = true}
 job-pool = ">=0.3.2"
+pyarrow = "^19.0.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

@@ -2,14 +2,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
 from . import tsv
-
-# for type hints only
-from .. import scoring_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -66,45 +62,48 @@ lfq.tsv columns:
 
 
 def parse_sage_results_file(
-    reader,
-    headers,
+    evidence_file: str,
     get_proteins,
-    score_type: Optional[scoring_strategy.ProteinScoringStrategy],
+    score_column: str,
     for_quantification: bool = False,
 ):
-    use_post_err_prob = score_type is None or score_type.get_score_column() == "pep"
+    delimiter = tsv.get_delimiter(evidence_file)
+    with tsv.get_tsv_reader(evidence_file, delimiter) as reader:
+        headers = next(reader)
 
-    pept_col = tsv.get_column_index(headers, "peptide")
-    charge_col = tsv.get_column_index(headers, "charge")
-    score_col = tsv.get_column_index(headers, "sage_discriminant_score")
-    filename_col = tsv.get_column_index(headers, "filename")
-    post_err_prob_col = tsv.get_column_index(headers, "posterior_error")
-    protein_col = tsv.get_column_index(headers, "proteins")
+        use_post_err_prob = score_column == "pep"
 
-    if use_post_err_prob:
-        score_col = post_err_prob_col
+        pept_col = tsv.get_column_index(headers, "peptide")
+        charge_col = tsv.get_column_index(headers, "charge")
+        score_col = tsv.get_column_index(headers, "sage_discriminant_score")
+        filename_col = tsv.get_column_index(headers, "filename")
+        post_err_prob_col = tsv.get_column_index(headers, "posterior_error")
+        protein_col = tsv.get_column_index(headers, "proteins")
 
-    logger.info("Parsing Sage results.sage.tsv file")
-    for line_idx, row in enumerate(reader):
-        if line_idx % 500000 == 0:
-            logger.info(f"    Reading line {line_idx}")
-
-        modified_peptide = row[pept_col] # example: FC[+57.0215]LPYRMDVEK
-        charge = int(row[charge_col])
-        filename = Path(row[filename_col]).stem
-        score = float(row[score_col])
         if use_post_err_prob:
-            # sage's posterior_error column is log10(PEP) transformed
-            score = np.power(10, score)
+            score_col = post_err_prob_col
 
-        proteins = row[protein_col].split(";")
+        logger.info("Parsing Sage results.sage.tsv file")
+        for line_idx, row in enumerate(reader):
+            if line_idx % 500000 == 0:
+                logger.info(f"    Reading line {line_idx}")
 
-        proteins = get_proteins(modified_peptide, proteins)
-        if proteins:
-            if for_quantification:
-                yield modified_peptide, proteins, filename, score, charge
-            else:
-                yield modified_peptide, proteins, filename, score
+            modified_peptide = row[pept_col] # example: FC[+57.0215]LPYRMDVEK
+            charge = int(row[charge_col])
+            filename = Path(row[filename_col]).stem
+            score = float(row[score_col])
+            if use_post_err_prob:
+                # sage's posterior_error column is log10(PEP) transformed
+                score = np.power(10, score)
+
+            proteins = row[protein_col].split(";")
+
+            proteins = get_proteins(modified_peptide, proteins)
+            if proteins:
+                if for_quantification:
+                    yield modified_peptide, proteins, filename, score, charge
+                else:
+                    yield modified_peptide, proteins, filename, score
 
 
 def parse_sage_lfq_file(reader, headers):

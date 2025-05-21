@@ -5,9 +5,10 @@ from .base import (
     ProteinGroupsWriter,
 )
 
-from .factory import get_protein_groups_output_writer
+from .factory import get_protein_groups_output_writer, OutputFormat
 
 from .minimal import MinimalProteinGroupsWriter
 from .maxquant import MaxQuantProteinGroupsWriter
 from .fragpipe_combined import FragPipeCombinedProteinWriter
 from .fragpipe_single import FragPipeSingleProteinWriter
+from .diann import DiannProteinGroupsWriter

@@ -47,6 +47,7 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
         skip_lfq: bool = False,
         min_peptide_ratios_lfq: int = 1,
         stabilize_large_ratios_lfq: bool = True,
+        fast_lfq: bool = False,
         num_threads: int = 1,
         protein_group_fdr_threshold: float = 0.01,
     ) -> None:
@@ -55,6 +56,7 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
         self.skip_lfq = skip_lfq
         self.min_peptide_ratios_lfq = min_peptide_ratios_lfq
         self.stabilize_large_ratios_lfq = stabilize_large_ratios_lfq
+        self.fast_lfq=fast_lfq
         self.num_threads = num_threads
 
         # only used for reporting number of protein groups at the given threshold
@@ -130,10 +132,11 @@ class FragPipeCombinedProteinWriter(ProteinGroupsWriter):
         if not self.skip_lfq:
             output_columns += [
                 columns.LFQIntensityColumns(
-                    self.min_peptide_ratios_lfq,
-                    self.stabilize_large_ratios_lfq,
-                    self.num_threads,
-                    self.protein_group_fdr_threshold,
+                    min_peptide_ratios_lfq=self.min_peptide_ratios_lfq,
+                    stabilize_large_ratios_lfq=self.stabilize_large_ratios_lfq,
+                    fast_lfq=self.fast_lfq,
+                    num_threads=self.num_threads,
+                    protein_group_fdr_threshold=self.protein_group_fdr_threshold,
                 )
             ]
         return output_columns

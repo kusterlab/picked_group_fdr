@@ -112,7 +112,7 @@ class ProteinGroups:
     ) -> Set[int]:
         if not self.valid_idx and check_idx_valid:
             raise Exception("Trying to get group index while index is invalid")
-        
+
         protein_group_idxs = set()
         for protein in proteins:
             if protein in self.protein_to_group_idx_map:
@@ -144,31 +144,72 @@ class ProteinGroups:
 
     def add_unseen_protein_groups(
         self,
-        protein_groups: ProteinGroups,
-        protein_group_peptide_infos: ProteinGroupPeptideInfos,
+        protein_groups_other: ProteinGroups,
+        protein_group_peptide_infos_other: ProteinGroupPeptideInfos,
     ):
-        """Add protein groups from another ProteinGroups object that have proteins
-        which are not already in a protein group of the current ProteinGroups object"""
-        identified_new_proteins = self.get_all_proteins()
+        """Adds missing protein groups from another ProteinGroups object.
+
+        Adds protein groups to the current ProteinGroups object from
+        protein_groups_other that have proteins which are not represented in a
+        protein group of the current ProteinGroups object.
+
+        Additionally, this function returns obsolete protein groups and
+        corresponding peptides needed for picked protein group competition.
+        Obsolete protein groups are protein groups from the original protein
+        grouping, i.e. before the rescuing step, that were merged in the
+        rescuing step due to removal of low-confident unique peptides. These are
+        needed for picked protein group competition using only leading proteins
+        (the default setting) and deal with the following situation:
+
+        protein groups before rescuing step:
+        - proteinA, #peptides: 10, bestPEP: 1e-5
+        - proteinB, #peptides: 3, bestPEP: 0.08
+        - REV__proteinA, #peptides: 2, bestPEP: 0.13
+        - REV__proteinB, #peptides: 2, bestPEP: 0.11
+
+        protein groups after rescuing step:
+        - proteinA;proteinB, #peptides: 5;1, bestPEP: 1e-5
+        - REV__proteinA, #peptides: 1, bestPEP: 0.13
+        - REV__proteinB, #peptides: 1, bestPEP: 0.11
+        - OBSOLETE__proteinA, #peptides: 10, bestPEP: 1e-5
+        - OBSOLETE__proteinB, #peptides: 3, bestPEP: 0.08
+
+        For the picked protein group competition, only the leading protein
+        (proteinA) is considered for the protein group proteinA;proteinB. The
+        regular picked target-decoy competition is replaced by a
+        target-decoy-obsolete competition. Without the obsolete protein group
+        OBSOLETE__proteinB, rev_proteinB would never receive competition and
+        will therefore always be retained. This leads to an overconservative FDR
+        estimate.
+
+        Obsolete protein groups are used for FDR calculation but not reported
+        in the proteinGroups.txt (see ProteinGroupResults.from_protein_groups).
+        """
+        identified_proteins = self.get_all_proteins()
         obsolete_protein_groups = ProteinGroups()
         obsolete_protein_group_peptide_infos = []
-        for protein_group, protein_group_score_list in zip(
-            protein_groups, protein_group_peptide_infos
+        for protein_group_other, protein_group_peptide_info_other in zip(
+            protein_groups_other, protein_group_peptide_infos_other
         ):
-            new_protein_group = list(
+            unseen_protein_group = list(
                 filter(
-                    lambda protein: protein not in identified_new_proteins,
-                    protein_group,
+                    lambda protein: protein not in identified_proteins,
+                    protein_group_other,
                 )
             )
-            if len(new_protein_group) > 0:
-                self.append(new_protein_group)
-            else:
+            if len(unseen_protein_group) == 0:
+                # all proteins in protein_group_other are already represented
+                # in a protein group in the current protein groups object.
                 obsolete_protein_group = list(
-                    map(lambda x: f"OBSOLETE__{x}", protein_group)
+                    map(lambda x: f"OBSOLETE__{x}", protein_group_other)
                 )
                 obsolete_protein_groups.append(obsolete_protein_group)
-                obsolete_protein_group_peptide_infos.append(protein_group_score_list)
+                obsolete_protein_group_peptide_infos.append(
+                    protein_group_peptide_info_other
+                )
+            else:
+                self.append(unseen_protein_group)
+
         self.create_index()
 
         return obsolete_protein_groups, obsolete_protein_group_peptide_infos

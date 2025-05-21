@@ -1,49 +1,29 @@
-from abc import ABC, abstractmethod
+from typing import Protocol, Callable
+import argparse
 
 from .parsers import fragpipe
 from .parsers import maxquant
 from .parsers import percolator
 from .parsers import sage
+from .parsers import diann
+
 from .quant import fragpipe as fragpipe_quant
 from .quant import maxquant as mq_quant
 from .quant import sage as sage_quant
 
 
-class ScoreOrigin(ABC):
-    @abstractmethod
-    def get_evidence_file(self, args):
-        pass
-
-    @abstractmethod
-    def get_evidence_parser(self):
-        pass
-
-    @abstractmethod
-    def get_quantification_file(self, args):
-        pass
-
-    @abstractmethod
-    def get_quantification_parser(self):
-        pass
-
-    @abstractmethod
-    def remaps_peptides_to_proteins(self):
-        pass
-
-    @abstractmethod
-    def can_do_quantification(self):
-        pass
-
-    @abstractmethod
-    def short_description(self):
-        pass
-
-    @abstractmethod
-    def long_description(self):
-        pass
+class ScoreOrigin(Protocol):
+    def get_evidence_file(self, args: argparse.Namespace) -> str: ...
+    def get_evidence_parser(self) -> Callable: ...
+    def get_quantification_file(self, args: argparse.Namespace) -> str: ...
+    def get_quantification_parser(self) -> Callable: ...
+    def remaps_peptides_to_proteins(self) -> bool: ...
+    def can_do_quantification(self) -> bool: ...
+    def short_description(self) -> str: ...
+    def long_description(self) -> str: ...
 
 
-class PercolatorInput(ScoreOrigin):
+class PercolatorInput:
     def get_evidence_file(self, args):
         return args.perc_evidence
 
@@ -51,10 +31,14 @@ class PercolatorInput(ScoreOrigin):
         return percolator.parse_percolator_out_file
 
     def get_quantification_file(self, args):
-        raise NotImplementedError("Cannot perform quantification using Percolator input.")
+        raise NotImplementedError(
+            "Cannot perform quantification using Percolator input."
+        )
 
     def get_quantification_parser(self):
-        raise NotImplementedError("Cannot perform quantification using Percolator input.")
+        raise NotImplementedError(
+            "Cannot perform quantification using Percolator input."
+        )
 
     def remaps_peptides_to_proteins(self):
         return False
@@ -63,10 +47,10 @@ class PercolatorInput(ScoreOrigin):
         return False
 
     def short_description(self):
-        return 'p'
+        return "p"
 
     def long_description(self):
-        return 'Percolator'
+        return "Percolator"
 
 
 class PercolatorInputRemapped(PercolatorInput):
@@ -74,7 +58,7 @@ class PercolatorInputRemapped(PercolatorInput):
         return True
 
 
-class MaxQuantInput(ScoreOrigin):
+class MaxQuantInput:
     def get_evidence_file(self, args):
         return args.mq_evidence
 
@@ -94,10 +78,10 @@ class MaxQuantInput(ScoreOrigin):
         return True
 
     def short_description(self):
-        return 'm'
+        return "m"
 
     def long_description(self):
-        return 'MaxQuant'
+        return "MaxQuant"
 
 
 class MaxQuantInputNoRemap(MaxQuantInput):
@@ -105,7 +89,7 @@ class MaxQuantInputNoRemap(MaxQuantInput):
         return False
 
 
-class FragPipeInput(ScoreOrigin):
+class FragPipeInput:
     def get_evidence_file(self, args):
         return args.fragpipe_psm
 
@@ -125,13 +109,13 @@ class FragPipeInput(ScoreOrigin):
         return True
 
     def short_description(self):
-        return 'f'
+        return "f"
 
     def long_description(self):
-        return 'FragPipe'
+        return "FragPipe"
 
 
-class SageInput(ScoreOrigin):
+class SageInput:
     def get_evidence_file(self, args):
         return args.sage_results
 
@@ -151,7 +135,33 @@ class SageInput(ScoreOrigin):
         return True
 
     def short_description(self):
-        return 's'
+        return "s"
 
     def long_description(self):
-        return 'Sage'
+        return "Sage"
+
+
+class DiannInput:
+    def get_evidence_file(self, args):
+        return args.diann_reports
+
+    def get_evidence_parser(self):
+        return diann.parse_diann_report_file
+
+    def get_quantification_file(self, args):
+        return args.diann_reports
+
+    def get_quantification_parser(self):
+        return mq_quant.add_precursor_quants
+
+    def remaps_peptides_to_proteins(self):
+        return False
+
+    def can_do_quantification(self):
+        return True
+
+    def short_description(self):
+        return "d"
+
+    def long_description(self):
+        return "DIA-NN"

@@ -14,6 +14,8 @@ jump:
 	$(DOCKER_CMD) \
 		$(IMAGE) bash
 
+test_for_release: test integration_test pipeline_test system_test
+
 test:
 	python3 -m pytest --cov=picked_group_fdr --cov-report html --cov-report term tests/unit_tests
 
@@ -51,7 +53,7 @@ memory_profile:
 
 # --no-cache
 build: dependencies
-	docker build -f Dockerfile -t $(IMAGE) . || (exit 1)
+	docker build -f Dockerfile -t $(IMAGE) .
 
 bootstrap: DATA=/root/data
 bootstrap:
