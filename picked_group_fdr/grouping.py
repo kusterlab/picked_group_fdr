@@ -40,8 +40,8 @@ class ProteinGroupingStrategy(ABC):
     ) -> ProteinGroups:
         pass
 
-    def get_rescue_steps(self):
-        return [False]
+    def has_rescue_step(self) -> bool:
+        return False
 
     def rescue_protein_groups(
         self,
@@ -176,8 +176,8 @@ class RescuedGrouping:
             obsolete_protein_group_peptide_infos,
         )
 
-    def get_rescue_steps(self) -> List[bool]:
-        return [False, True]
+    def has_rescue_step(self) -> bool:
+        return True
 
     def short_description(self, rescue_step: bool) -> str:
         if rescue_step:

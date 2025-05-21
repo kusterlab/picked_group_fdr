@@ -11,7 +11,10 @@ To run this example, follow these steps:
 
 **Download Sage result files**
 
-1. Download and unzip the `sage.zip` file from this folder. It contains the necessary Sage results files needed to run this example. For the settings used to generate these files, see step 3 in Option 2.
+1. Download and unzip the `sage.zip` file from this folder to a folder named `sage`. It contains the necessary Sage results files needed to run this example. For the settings used to generate these files, see step 3 in Option 2.
+   ```
+   unzip sage.zip -d sage
+   ```
 
 **Running PickedGroupFDR**
 

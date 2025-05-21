@@ -3,7 +3,7 @@ import os
 import logging
 import argparse
 from timeit import default_timer as timer
-from typing import List, Dict, Union
+from typing import List, Dict, Optional, Union
 
 import numpy as np
 
@@ -21,11 +21,11 @@ from .digestion_params import (
 )
 from .results import ProteinGroupResults
 from .plotter import PlotterFactory
-from .peptide_info import PeptideInfoList
 
 # for type hints only
 from .plotter import Plotter, NoPlotter
 from .protein_groups import ProteinGroups
+from .peptide_info import PeptideInfoList, ProteinGroupPeptideInfos
 
 logger = logging.getLogger(__name__)
 
@@ -410,24 +410,48 @@ def get_protein_group_results(
     # for razor peptide strategy
     score_type.set_peptide_counts_per_protein(peptide_info_list)
 
-    protein_group_results = ProteinGroupResults()
-    protein_group_peptide_infos = []
-    for rescue_step in grouping_strategy.get_rescue_steps():
-        protein_group_results, protein_groups, protein_group_peptide_infos, reported_qvals, observed_qvals = (
-            get_protein_group_results_single_step(
-                peptide_info_list,
-                method_config,
-                protein_group_results,
-                protein_groups,
-                protein_group_peptide_infos,
-                rescue_step,
-                keep_all_proteins,
-                protein_group_fdr_threshold,
-                psm_fdr_cutoff,
-            )
+    if grouping_strategy.has_rescue_step():
+        method_config.score_type.save_protein_score_strategy()
+        method_config.score_type.set_protein_score_strategy("bestPEP")
+
+    (
+        protein_group_results,
+        protein_groups,
+        protein_group_peptide_infos,
+        reported_qvals,
+        observed_qvals,
+    ) = get_protein_group_results_single_step(
+        peptide_info_list,
+        method_config,
+        protein_groups,
+        keep_all_proteins=keep_all_proteins,
+        protein_group_fdr_threshold=protein_group_fdr_threshold,
+        psm_fdr_cutoff=psm_fdr_cutoff,
+    )
+
+    if grouping_strategy.has_rescue_step():
+        method_config.score_type.reset_protein_score_strategy()
+        (
+            protein_group_results,
+            _,
+            _,
+            reported_qvals,
+            observed_qvals,
+        ) = get_protein_group_results_single_step(
+            peptide_info_list,
+            method_config,
+            protein_groups,
+            protein_group_peptide_infos=protein_group_peptide_infos,
+            protein_group_results=protein_group_results,
+            rescue_step=True,
+            keep_all_proteins=keep_all_proteins,
+            protein_group_fdr_threshold=protein_group_fdr_threshold,
+            psm_fdr_cutoff=psm_fdr_cutoff,
         )
 
-    plotter.set_series_label(method_config, rescue_step=rescue_step)
+    plotter.set_series_label(
+        method_config, rescue_step=grouping_strategy.has_rescue_step()
+    )
     plotter.plot_qval_calibration_and_performance(
         reported_qvals, observed_qvals, absent_ratio=1.0
     )
@@ -438,14 +462,20 @@ def get_protein_group_results(
 def get_protein_group_results_single_step(
     peptide_info_list: PeptideInfoList,
     method_config: methods.MethodConfig,
-    protein_group_results: ProteinGroupResults,
     protein_groups: ProteinGroups,
-    protein_group_peptide_infos,
-    rescue_step: bool,
+    protein_group_peptide_infos: Optional[ProteinGroupPeptideInfos] = None,
+    protein_group_results: Optional[ProteinGroupResults] = None,
+    rescue_step: bool = False,
     keep_all_proteins: bool = False,
     protein_group_fdr_threshold: float = 0.01,
     psm_fdr_cutoff: float = 0.01,
 ) -> ProteinGroupResults:
+    if protein_group_peptide_infos is None:
+        protein_group_peptide_infos = []
+
+    if protein_group_results is None:
+        protein_group_results = ProteinGroupResults()
+
     picked_strategy, score_type, grouping_strategy = (
         method_config.picked_strategy,
         method_config.score_type,
@@ -512,7 +542,13 @@ def get_protein_group_results_single_step(
         keep_all_proteins,
     )
 
-    return protein_group_results, protein_groups, protein_group_peptide_infos, reported_qvals, observed_qvals
+    return (
+        protein_group_results,
+        protein_groups,
+        protein_group_peptide_infos,
+        reported_qvals,
+        observed_qvals,
+    )
 
 
 if __name__ == "__main__":

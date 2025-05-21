@@ -40,19 +40,9 @@ class ProteinScoringStrategy:
     peptide_counts_per_protein: Dict[str, int]
     best_peptide_score_per_protein: Dict[str, float]
 
-    def __init__(
-        self, score_description, mq_protein_groups_file=""
-    ):
-        if "multPEP" in score_description:
-            self.protein_score = MultPEPScore()
-        elif "bestPEP" in score_description:
-            self.protein_score = BestPEPScore()
-        elif "Andromeda" in score_description:
-            self.protein_score = BestAndromedaScore()
-        elif "MQ_protein" in score_description:
-            self.protein_score = MQProteinScore(mq_protein_groups_file)
-        else:
-            raise NotImplementedError
+    def __init__(self, score_description, mq_protein_groups_file=""):
+        self.protein_score = None
+        self.set_protein_score_strategy(score_description, mq_protein_groups_file)
 
         self.use_razor = "razor" in score_description
         self.use_shared_peptides = "with_shared" in score_description
@@ -75,6 +65,20 @@ class ProteinScoringStrategy:
             else:
                 self.score_origin = MaxQuantInput()
 
+    def set_protein_score_strategy(
+        self, score_description: str, mq_protein_groups_file: str = ""
+    ):
+        if "multPEP" in score_description:
+            self.protein_score = MultPEPScore()
+        elif "bestPEP" in score_description:
+            self.protein_score = BestPEPScore()
+        elif "Andromeda" in score_description:
+            self.protein_score = BestAndromedaScore()
+        elif "MQ_protein" in score_description:
+            self.protein_score = MQProteinScore(mq_protein_groups_file)
+        else:
+            raise NotImplementedError
+
     def get_evidence_file(self, args) -> str:
         return self.score_origin.get_evidence_file(args)
 
@@ -93,8 +97,17 @@ class ProteinScoringStrategy:
     def can_do_quantification(self) -> bool:
         return self.score_origin.can_do_quantification()
 
+    def save_protein_score_strategy(self) -> None:
+        self.protein_score_original = self.protein_score
+    
+    def reset_protein_score_strategy(self) -> None:
+        self.protein_score = self.protein_score_original
+
     def optimize_hyperparameters(
-        self, protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold: float
+        self,
+        protein_groups,
+        protein_group_peptide_infos,
+        protein_group_fdr_threshold: float,
     ) -> float:
         return self.protein_score.optimize_hyperparameters(
             protein_groups, protein_group_peptide_infos, protein_group_fdr_threshold

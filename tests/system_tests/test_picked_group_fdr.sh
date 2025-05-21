@@ -16,6 +16,16 @@ python3 -um picked_group_fdr --mq_evidence ${DATA_DIR}/evidence.txt \
     --do_quant | tee ${RESULT_DIR}/proteinGroups.log
 diff -q ${RESULT_DIR}/proteinGroups.txt ${RESULT_DIR}/proteinGroups.reference.txt
 
+# MaxQuant input multPEP
+python3 -um picked_group_fdr --mq_evidence ${DATA_DIR}/evidence.txt \
+    --fasta ${DATA_DIR}/db.fasta \
+    --enzyme trypsinp \
+    --min-length 6 \
+    --protein_groups_out ${RESULT_DIR}/proteinGroups_multPEP.txt \
+    --method picked_protein_group_mq_mult \
+    --do_quant | tee ${RESULT_DIR}/proteinGroups.log
+diff -q ${RESULT_DIR}/proteinGroups_multPEP.txt ${RESULT_DIR}/proteinGroups_multPEP.reference.txt
+
 # MaxQuant input 5% FDR
 python3 -um picked_group_fdr --mq_evidence ${DATA_DIR}/evidence.txt \
     --fasta ${DATA_DIR}/db.fasta \

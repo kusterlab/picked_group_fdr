@@ -13,6 +13,10 @@ To run this example, follow these steps:
 **Download DIA-NN result files**
 
 1. Download and unzip the [`diann.zip`](https://zenodo.org/records/15228406/files/diann.zip?download=1) file in this folder. It contains the necessary DIA-NN results files needed to run this example. For the settings used to generate these files, see step 3 in Option 2.
+   ```
+   wget -O diann.zip https://zenodo.org/records/15228406/files/diann.zip?download=1
+   unzip diann.zip
+   ```
 
 **Running PickedGroupFDR**
 
