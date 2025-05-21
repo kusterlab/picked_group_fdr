@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - 'rel-*'
+    branches:
+      - fix/gui-build
 
 jobs:
   build-windows:
@@ -35,7 +37,7 @@ jobs:
       - name: Create conda environment
         uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: 3.10
+          python-version: "3.10"
           channels: conda-forge,defaults
           channel-priority: true
           activate-environment: picked_group_fdr_gui
