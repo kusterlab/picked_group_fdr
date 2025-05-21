@@ -67,7 +67,7 @@ test:
 
 pytest:
   stage: test
-  image: python:3.9.22
+  image: python:3.10.17
   before_script:
     - pip install -U pip poetry
     - poetry config virtualenvs.create false

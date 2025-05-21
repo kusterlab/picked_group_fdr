@@ -1,4 +1,4 @@
-FROM python:3.9.22
+FROM python:3.10.17
 
 MAINTAINER Matthew The "matthew.the@tum.de"
 
