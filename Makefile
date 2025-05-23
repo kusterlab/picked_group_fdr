@@ -23,7 +23,13 @@ system_test:
 	tests/system_tests/test_all.sh
 
 integration_test:
-	python3 -um picked_group_fdr --mq_evidence $(DATA)/evidence.txt --fasta $(DATA)/db.fasta --enzyme trypsinp --min-length 6 --protein_groups_out ${DATA}/proteinGroups.txt --method picked_protein_group_mq_input --do_quant
+	python3 -um picked_group_fdr --mq_evidence $(DATA)/evidence.txt \
+		--fasta $(DATA)/db.fasta \
+		--enzyme trypsinp \
+		--min-length 6 \
+		--protein_groups_out ${DATA}/proteinGroups.txt \
+		--method picked_protein_group_mq_input \
+		--do_quant
 
 fragpipe_test:
 	cd data/fragpipe_example && ./run_picked_group_fdr.sh
@@ -31,10 +37,15 @@ fragpipe_test:
 sage_test:
 	cd data/sage_example && ./run_picked_group_fdr.sh
 
+rm_previous_results:
+	rm -rf $(DATA)/percolator
+
+# testing the docker pipeline without docker
 pipeline_test: DOCKER_CMD=
 pipeline_test: IMAGE=
 pipeline_test: LOCAL_DIR=$(DATA)
-pipeline_test: all
+pipeline_test: OUT_DIR_LOCAL=$(DATA)
+pipeline_test: rm_previous_results all
 
 performance:
 	python3 -m pytest -s tests/performance_tests/test_lfq.py
@@ -67,42 +78,86 @@ prepayload_setup_create_folder: rm_err_file
 	$(DOCKER_CMD) \
 		$(IMAGE) mkdir -p -m 777 $(OUT_DIR_LOCAL)/percolator || (echo "1" > $(DATA)err.out; exit 1)
 
+# inside the docker, we need to call python through bash because the default shell (/bin/sh) results in a permission denied error
 tab: prepayload_setup_create_folder
 ifeq ($(PROSIT_FLAG),)
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "python3 -u -m picked_group_fdr.pipeline.andromeda2pin $(MQ_EVIDENCE_FILE) --outputTab $(OUT_DIR_LOCAL)/percolator/andromeda.tab --databases \"$(LOCAL_DIR)/$(FASTA_FILE)\" $(DIGEST_PARAMS) > $(OUT_DIR_LOCAL)/percolator/andromeda2pin.log" || (echo "2" > $(DATA)err.out; exit 2)
+		$(IMAGE) bash -c "python3 -u -m picked_group_fdr.pipeline.andromeda2pin \
+			$(MQ_EVIDENCE_FILE) \
+			--outputTab $(OUT_DIR_LOCAL)/percolator/andromeda.tab \
+			--databases \"$(LOCAL_DIR)/$(FASTA_FILE)\" \
+			$(DIGEST_PARAMS) \
+			> $(OUT_DIR_LOCAL)/percolator/andromeda2pin.log"
 endif
 
 # calculating PEPs with Triqler within mokapot is very slow with OMP multithreading, so set this to 1 for now
 percolator: tab
 ifeq ($(PROSIT_FLAG),)
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr.pipeline.run_mokapot $(PERC_TEST_FDR) $(PERC_TRAIN_FDR) $(OUT_DIR_LOCAL)/percolator $(NUM_THREADS)" || (echo "3" > $(DATA)err.out; exit 3)
+		$(IMAGE) bash -c "OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr.pipeline.run_mokapot \
+			$(PERC_TEST_FDR) $(PERC_TRAIN_FDR) $(OUT_DIR_LOCAL)/percolator $(NUM_THREADS)"
 endif
 
 update_evidence: percolator
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "python3 -u -m picked_group_fdr.pipeline.update_evidence_from_pout --mq_evidence $(MQ_EVIDENCE_FILE) --perc_results $(PERC_RESULT_FILES) --mq_evidence_out $(OUT_DIR_LOCAL)/percolator/evidence.txt $(PROSIT_FLAG) > $(OUT_DIR_LOCAL)/percolator/update_evidence.log" || (echo "4" > $(DATA)err.out; exit 4)
+		$(IMAGE) bash -c "python3 -u -m picked_group_fdr.pipeline.update_evidence_from_pout \
+			--mq_evidence $(MQ_EVIDENCE_FILE) \
+			--perc_results $(PERC_RESULT_FILES) \
+			--mq_evidence_out $(OUT_DIR_LOCAL)/percolator/evidence.txt \
+			$(PROSIT_FLAG) \
+			> $(OUT_DIR_LOCAL)/percolator/update_evidence.log"
 
 picked_fdr: update_evidence
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr --mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt --protein_groups_out $(OUT_DIR_LOCAL)/percolator/proteinGroups.txt --do_quant --fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" --methods picked_protein_group_mq_input --num_threads $(NUM_THREADS) $(DIGEST_PARAMS) $(PICKED_GROUP_FDR_EXTRA_PARAMS) > $(OUT_DIR_LOCAL)/percolator/proteinGroups.log" || (echo "5" > $(DATA)err.out; exit 5)
+		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr \
+			--mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt \
+			--protein_groups_out $(OUT_DIR_LOCAL)/percolator/proteinGroups.txt \
+			--do_quant \
+			--fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" \
+			--methods picked_protein_group_mq_input \
+			--num_threads $(NUM_THREADS) \
+			$(DIGEST_PARAMS) \
+			$(PICKED_GROUP_FDR_EXTRA_PARAMS) \
+			> $(OUT_DIR_LOCAL)/percolator/proteinGroups.log"
 
 picked_fdr_gene_level: picked_fdr
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr --mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt --protein_groups_out $(OUT_DIR_LOCAL)/percolator/geneGroups.txt --do_quant --gene_level --fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" --methods picked_protein_group_mq_input --num_threads $(NUM_THREADS) $(DIGEST_PARAMS) $(PICKED_GROUP_FDR_EXTRA_PARAMS) --suppress_missing_peptide_warning > $(OUT_DIR_LOCAL)/percolator/geneGroups.log" || (echo "5" > $(DATA)err.out; exit 5)
+		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr \
+			--mq_evidence $(OUT_DIR_LOCAL)/percolator/evidence.txt \
+			--protein_groups_out $(OUT_DIR_LOCAL)/percolator/geneGroups.txt \
+			--do_quant \
+			--gene_level \
+			--fasta \"$(LOCAL_DIR)/$(FASTA_FILE)\" \
+			--methods picked_protein_group_mq_input \
+			--num_threads $(NUM_THREADS) \
+			$(DIGEST_PARAMS) \
+			$(PICKED_GROUP_FDR_EXTRA_PARAMS) \
+			--suppress_missing_peptide_warning \
+			> $(OUT_DIR_LOCAL)/percolator/geneGroups.log"
 
 # by popular demand: also produce an evidence.txt and proteinGroups.txt filtered at 1% FDR
 filter_results: picked_fdr_gene_level
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr.pipeline.filter_fdr_maxquant --mq_msms $(OUT_DIR_LOCAL)/percolator/evidence.txt --mq_msms_out $(OUT_DIR_LOCAL)/percolator/evidence_fdr0.01.txt --mq_protein_groups $(OUT_DIR_LOCAL)/percolator/proteinGroups.txt --mq_protein_groups_out $(OUT_DIR_LOCAL)/percolator/proteinGroups_fdr0.01.txt --fdr_cutoff 0.01 --psm_level_fdr > $(OUT_DIR_LOCAL)/percolator/filter_results.log" || (echo "6" > $(DATA)err.out; exit 6)
+		$(IMAGE) bash -c "OMP_DYNAMIC=FALSE OMP_NUM_THREADS=1 python3 -u -m picked_group_fdr.pipeline.filter_fdr_maxquant \
+			--mq_msms $(OUT_DIR_LOCAL)/percolator/evidence.txt \
+			--mq_msms_out $(OUT_DIR_LOCAL)/percolator/evidence_fdr0.01.txt \
+			--mq_protein_groups $(OUT_DIR_LOCAL)/percolator/proteinGroups.txt \
+			--mq_protein_groups_out $(OUT_DIR_LOCAL)/percolator/proteinGroups_fdr0.01.txt \
+			--fdr_cutoff 0.01 \
+			--psm_level_fdr \
+			> $(OUT_DIR_LOCAL)/percolator/filter_results.log"
 
 filter_results_gene_level: filter_results
 	$(DOCKER_CMD) \
-		$(IMAGE) bash -c "python3 -u -m picked_group_fdr.pipeline.filter_fdr_maxquant --mq_protein_groups $(OUT_DIR_LOCAL)/percolator/geneGroups.txt --mq_protein_groups_out $(OUT_DIR_LOCAL)/percolator/geneGroups_fdr0.01.txt --fdr_cutoff 0.01 --psm_level_fdr > $(OUT_DIR_LOCAL)/percolator/filter_results_gene_level.log" || (echo "6" > $(DATA)err.out; exit 6)
+		$(IMAGE) bash -c "python3 -u -m picked_group_fdr.pipeline.filter_fdr_maxquant \
+			--mq_protein_groups $(OUT_DIR_LOCAL)/percolator/geneGroups.txt \
+			--mq_protein_groups_out $(OUT_DIR_LOCAL)/percolator/geneGroups_fdr0.01.txt \
+			--fdr_cutoff 0.01 \
+			--psm_level_fdr \
+			> $(OUT_DIR_LOCAL)/percolator/filter_results_gene_level.log"
 
 compress: filter_results_gene_level
-	zip -j -r -9 "$(OUT_DIR)/results.zip" "$(OUT_DIR)/percolator/" || (echo "" > $(DATA)err.out; exit 7)
+	zip -j -r -9 "$(OUT_DIR)/results.zip" "$(OUT_DIR)/percolator/"
 
 all: compress
 
