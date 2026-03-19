@@ -8,7 +8,7 @@ We downloaded the LFQBench data set (6) from ProteomeXchange (PXD002952). Here, 
 
 To run this example, follow these steps:
 
-## Option 1: reuse previous Sage results
+## Option 1: reuse previous DIA-NN results
 
 **Download DIA-NN result files**
 
