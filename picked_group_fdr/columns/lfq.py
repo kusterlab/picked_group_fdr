@@ -313,6 +313,42 @@ def _applyLargeRatioStabilization(
     post_err_prob_cutoff: float,
     num_silac_channels: int,
 ) -> Dict[Tuple[int, int], float]:
+    """Stabilizes log median peptide ratios based on peptide count differences.
+
+    Applies ratio stabilization to account for situations where large differences
+    in peptide counts between experiments could lead to unreliable ratio estimates.
+    When one experiment has substantially more peptide identifications than another,
+    the median peptide ratio is either replaced or blended with the intensity-based
+    ratio.
+
+    Args:
+        log_median_peptide_ratios: Dictionary mapping experiment index pairs (i, j)
+            to their log-transformed median peptide ratios.
+        precursor_list: List of PrecursorQuant objects containing peptide MS/MS
+            identifications with intensities.
+        experiment_to_idx_map: Dictionary mapping experiment names to their indices.
+        post_err_prob_cutoff: Posterior error probability threshold for filtering
+            identifications. Only PSMs with PEP <= cutoff are included.
+        num_silac_channels: Number of SILAC heavy/light channels. 0 for label-free
+            quantification. When > 0, intensities are processed per channel.
+
+    Returns:
+        Dictionary with the same structure as log_median_peptide_ratios but with
+        stabilized log ratios. Experiments with zero peptide counts are skipped,
+        and ratios not present in the input dictionary are not added.
+
+    Notes:
+        Stabilization logic is applied based on the peptide count ratio between
+        experiments:
+        - Ratio > 5: Replace log median ratio with log(summed_intensity_1 /
+          summed_intensity_2)
+        - 2.5 < Ratio <= 5: Use weighted average of intensity-based log ratio
+          and original log median ratio, where weight increases with the
+          peptide count ratio
+        - Ratio <= 2.5: Keep original log median ratio unchanged
+
+        The peptide count ratio is computed as max(pc1, pc2) / min(pc1, pc2).
+    """
     summed_intensities = _get_intensities(
         precursor_list,
         experiment_to_idx_map,
@@ -324,7 +360,7 @@ def _applyLargeRatioStabilization(
     peptide_counts = _unique_peptide_counts_per_experiment(
         precursor_list, experiment_to_idx_map, post_err_prob_cutoff
     )
-    peptide_counts = np.repeat(peptide_counts, num_silac_channels)
+    peptide_counts = np.repeat(peptide_counts, max([1, num_silac_channels]))
     for (i, j), (si1, si2), (pc1, pc2) in zip(
         itertools.combinations(range(len(summed_intensities)), 2),
         itertools.combinations(summed_intensities, 2),
