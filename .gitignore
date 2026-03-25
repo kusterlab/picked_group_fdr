@@ -138,3 +138,5 @@ flamegraph.svg
 *.swp
 mprofile*.dat
 .qodo
+
+notebooks

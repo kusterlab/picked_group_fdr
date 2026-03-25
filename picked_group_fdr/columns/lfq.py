@@ -188,7 +188,13 @@ def _getLFQIntensities(
         peptideIntensities, min_peptide_ratios_lfq, fast_lfq_graph, fast_lfq_min_samples
     )
     if len(logMedianPeptideRatios) == 0:
-        return [0.0] * numExperiments
+        return _get_summed_intensity_with_min_peptides(
+            precursor_list,
+            experiment_to_idx_map,
+            post_err_prob_cutoff,
+            num_silac_channels,
+            min_peptide_ratios_lfq,
+        )
 
     if stabilize_large_ratios_lfq:
         logMedianPeptideRatios = _applyLargeRatioStabilization(
@@ -266,43 +272,77 @@ def _getPeptideIntensities(
     return peptideIntensities, totalIntensity
 
 
-def _applyLargeRatioStabilization(
-    logMedianPeptideRatios: Dict[Tuple[int, int], float],
+def _get_summed_intensity_with_min_peptides(
     precursor_list: List[precursor_quant.PrecursorQuant],
-    experimentToIdxMap: Dict[str, int],
-    postErrProbCutoff: float,
-    numSilacChannels: int,
+    experiment_to_idx_map: Dict[str, int],
+    post_err_prob_cutoff: float,
+    num_silac_channels: int,
+    min_peptide_ratios_lfq: int,
 ) -> Dict[Tuple[int, int], float]:
-    summedIntensities = _get_intensities(
-        precursor_list, experimentToIdxMap, postErrProbCutoff, numSilacChannels
+    """
+    Return summed intensity for proteins that only occur in a single
+    sample or where multiple peptides are detected for a protein, but
+    each peptide was only identified in a single sample
+    (see also https://github.com/kusterlab/picked_group_fdr/issues/16)
+    """
+    summed_intensities = _get_intensities(
+        precursor_list,
+        experiment_to_idx_map,
+        post_err_prob_cutoff,
+        num_silac_channels,
+        remove_silac_summed_intensity_columns=True,
     )
-    if numSilacChannels > 0:
-        # removes the column intensities per experiment with the SILAC
-        # channels summed up
-        del summedIntensities[:: (numSilacChannels + 1)]
 
-    peptideCounts = _unique_peptide_counts_per_experiment(
-        precursor_list, experimentToIdxMap, postErrProbCutoff
+    peptide_counts = _unique_peptide_counts_per_experiment(
+        precursor_list, experiment_to_idx_map, post_err_prob_cutoff
     )
-    peptideCounts = np.repeat(peptideCounts, numSilacChannels)
+    peptide_counts = np.repeat(peptide_counts, max([1, num_silac_channels]))
+    return [
+        summed_intensity if peptide_count >= min_peptide_ratios_lfq else 0.0
+        for summed_intensity, peptide_count in zip(
+            summed_intensities,
+            peptide_counts,
+        )
+    ]
+
+
+def _applyLargeRatioStabilization(
+    log_median_peptide_ratios: Dict[Tuple[int, int], float],
+    precursor_list: List[precursor_quant.PrecursorQuant],
+    experiment_to_idx_map: Dict[str, int],
+    post_err_prob_cutoff: float,
+    num_silac_channels: int,
+) -> Dict[Tuple[int, int], float]:
+    summed_intensities = _get_intensities(
+        precursor_list,
+        experiment_to_idx_map,
+        post_err_prob_cutoff,
+        num_silac_channels,
+        remove_silac_summed_intensity_columns=True,
+    )
+
+    peptide_counts = _unique_peptide_counts_per_experiment(
+        precursor_list, experiment_to_idx_map, post_err_prob_cutoff
+    )
+    peptide_counts = np.repeat(peptide_counts, num_silac_channels)
     for (i, j), (si1, si2), (pc1, pc2) in zip(
-        itertools.combinations(range(len(summedIntensities)), 2),
-        itertools.combinations(summedIntensities, 2),
-        itertools.combinations(peptideCounts, 2),
+        itertools.combinations(range(len(summed_intensities)), 2),
+        itertools.combinations(summed_intensities, 2),
+        itertools.combinations(peptide_counts, 2),
     ):
-        if pc1 == 0 or pc2 == 0 or (i, j) not in logMedianPeptideRatios:
+        if pc1 == 0 or pc2 == 0 or (i, j) not in log_median_peptide_ratios:
             continue
 
-        peptideCountRatio = _getMaxRatio(pc1, pc2)
-        if peptideCountRatio > 5:
-            logMedianPeptideRatios[(i, j)] = np.log(si1 / si2)
-        elif peptideCountRatio > 2.5:
-            w = (peptideCountRatio - 2.5) / 2.5
-            logMedianPeptideRatios[(i, j)] = (
-                w * np.log(si1 / si2) + (1 - w) * logMedianPeptideRatios[(i, j)]
+        peptide_count_ratio = _getMaxRatio(pc1, pc2)
+        if peptide_count_ratio > 5:
+            log_median_peptide_ratios[(i, j)] = np.log(si1 / si2)
+        elif peptide_count_ratio > 2.5:
+            w = (peptide_count_ratio - 2.5) / 2.5
+            log_median_peptide_ratios[(i, j)] = (
+                w * np.log(si1 / si2) + (1 - w) * log_median_peptide_ratios[(i, j)]
             )
 
-    return logMedianPeptideRatios
+    return log_median_peptide_ratios
 
 
 def _getLogMedianPeptideRatios(

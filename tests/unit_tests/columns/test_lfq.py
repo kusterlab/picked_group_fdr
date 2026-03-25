@@ -30,24 +30,24 @@ class TestGetLFQIntensities:
             [25.0, 10.0, 5.0, 0.0, 7.0],
         )
 
-    def test_getLFQIntensities_missingValuesZeroes(
+    def test_getLFQIntensities_missingValuesZeroes_fallBackSingleSampleProtein(
         self, peptideIntensityListMissingValuesZeroes, experimentToIdxMap
     ):
         np.testing.assert_almost_equal(
             _getLFQIntensities(
                 peptideIntensityListMissingValuesZeroes, experimentToIdxMap, 0.1, 1
             ),
-            [0.0, 0.0, 0.0],
+            [25.0, 0.0, 0.0],
         )
 
-    def test_getLFQIntensities_missingValuesNans(
+    def test_getLFQIntensities_missingValuesNans_fallBackSingleSampleProtein(
         self, peptideIntensityListMissingValuesNans, experimentToIdxMap
     ):
         np.testing.assert_almost_equal(
             _getLFQIntensities(
                 peptideIntensityListMissingValuesNans, experimentToIdxMap, 0.1, 1
             ),
-            [0.0, 0.0, 0.0],
+            [25.0, 0.0, 0.0],
         )
 
     def test_getLFQIntensities_missingValuesNans_minPeptideRatiosLFQ2(
