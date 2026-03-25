@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import collections
 import itertools
-from typing import List, Dict, Tuple, Optional
 import logging
 
 import networkx as nx
@@ -160,15 +159,15 @@ class LFQIntensityColumns(ProteinGroupColumns):
 
 
 def _get_lfq_intensities(
-    precursor_list: List[precursor_quant.PrecursorQuant],
-    experiment_to_idx_map: Dict[str, int],
+    precursor_list: list[precursor_quant.PrecursorQuant],
+    experiment_to_idx_map: dict[str, int],
     post_err_prob_cutoff: float,
     min_peptide_ratios_lfq: int = 2,
     stabilize_large_ratios_lfq: bool = False,
-    fast_lfq_graph: Optional[nx.Graph] = None,
+    fast_lfq_graph: nx.Graph | None = None,
     fast_lfq_min_samples: int = 10,
     num_silac_channels: int = 0,
-) -> List[float]:
+) -> list[float]:
     # in case of SILAC, we output LFQ intensites for each of the channels
     # only, not for the experiment (=sum over channels) itself, which is
     # what MQ does as well
@@ -216,12 +215,12 @@ def _get_lfq_intensities(
 
 
 def _get_peptide_intensities(
-    precursor_list: List[precursor_quant.PrecursorQuant],
-    experiment_to_idx_map: Dict[str, int],
+    precursor_list: list[precursor_quant.PrecursorQuant],
+    experiment_to_idx_map: dict[str, int],
     post_err_prob_cutoff: float,
     num_silac_channels: int,
     num_experiments: int,
-) -> Tuple[Dict[Tuple[str, int], List[float]], float]:
+) -> tuple[dict[tuple[str, int], list[float]], float]:
     """
     Collects all precursor intensities per experiment
     """
@@ -273,12 +272,12 @@ def _get_peptide_intensities(
 
 
 def _get_summed_intensity_with_min_peptides(
-    precursor_list: List[precursor_quant.PrecursorQuant],
-    experiment_to_idx_map: Dict[str, int],
+    precursor_list: list[precursor_quant.PrecursorQuant],
+    experiment_to_idx_map: dict[str, int],
     post_err_prob_cutoff: float,
     num_silac_channels: int,
     min_peptide_ratios_lfq: int,
-) -> Dict[Tuple[int, int], float]:
+) -> dict[tuple[int, int], float]:
     """
     Return summed intensity for proteins that only occur in a single
     sample or where multiple peptides are detected for a protein, but
@@ -307,12 +306,12 @@ def _get_summed_intensity_with_min_peptides(
 
 
 def _apply_large_ratio_stabilization(
-    log_median_peptide_ratios: Dict[Tuple[int, int], float],
-    precursor_list: List[precursor_quant.PrecursorQuant],
-    experiment_to_idx_map: Dict[str, int],
+    log_median_peptide_ratios: dict[tuple[int, int], float],
+    precursor_list: list[precursor_quant.PrecursorQuant],
+    experiment_to_idx_map: dict[str, int],
     post_err_prob_cutoff: float,
     num_silac_channels: int,
-) -> Dict[Tuple[int, int], float]:
+) -> dict[tuple[int, int], float]:
     """Stabilizes log median peptide ratios based on peptide count differences.
 
     Applies ratio stabilization to account for situations where large differences
@@ -382,11 +381,11 @@ def _apply_large_ratio_stabilization(
 
 
 def _get_log_median_peptide_ratios(
-    peptide_intensities: Dict[Tuple[str, int], List[float]],
+    peptide_intensities: dict[tuple[str, int], list[float]],
     min_peptide_ratios_lfq: int,
-    fast_lfq_graph: Optional[nx.Graph] = None,
+    fast_lfq_graph: nx.Graph | None = None,
     fast_lfq_min_samples: int = 10,
-) -> Dict[Tuple[int, int], float]:
+) -> dict[tuple[int, int], float]:
     """
     :param peptide_intensities: rows are peptides, columns are experiments
     :param min_peptide_ratios_lfq: minimum valid ratios needed to perform LFQ
@@ -435,8 +434,8 @@ def _get_max_ratio(pc1: float, pc2: float) -> float:
 
 
 def _build_linear_system(
-    log_median_peptide_ratios: Dict[Tuple[int, int], float], num_experiments: int
-) -> Tuple[np.array, np.array]:
+    log_median_peptide_ratios: dict[tuple[int, int], float], num_experiments: int
+) -> tuple[np.ndarray, np.ndarray]:
     num_ratios = len(log_median_peptide_ratios)
     rows, cols, vals = list(), list(), list()
     seen_columns = set()
@@ -477,7 +476,7 @@ def _build_linear_system(
     return matrix, vector
 
 
-def _solve_linear_system(matrix: csr_matrix, vector: np.array) -> np.array:
+def _solve_linear_system(matrix: csr_matrix, vector: np.ndarray) -> np.ndarray:
     intensities = np.exp(lsqr(matrix, vector)[0])
 
     zero_columns = np.array(matrix.astype(bool).sum(axis=0))[0] == 1
@@ -485,7 +484,7 @@ def _solve_linear_system(matrix: csr_matrix, vector: np.array) -> np.array:
     return intensities
 
 
-def _scale_equal_sum(intensities: np.array, total_intensity: float) -> List[float]:
+def _scale_equal_sum(intensities: np.ndarray, total_intensity: float) -> list[float]:
     """
     scale intensities such that the total sum stays the same as it was
     before
