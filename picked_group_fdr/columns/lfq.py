@@ -121,16 +121,16 @@ class LFQIntensityColumns(ProteinGroupColumns):
                 num_silac_channels,
             ]
             if self.num_threads > 1:
-                processingPool.applyAsync(_getLFQIntensities, args)
+                processingPool.applyAsync(_get_lfq_intensities, args)
             else:
                 if i % 100 == 0:
                     logger.info(f"Processing protein {i}/{len(protein_group_results)}")
-                allIntensities.append(_getLFQIntensities(*args))
+                allIntensities.append(_get_lfq_intensities(*args))
 
         if self.num_threads > 1:
             allIntensities = processingPool.checkPool(printProgressEvery=100)
 
-        proteinGroupCounts = np.zeros(
+        protein_group_counts = np.zeros(
             len(experiment_to_idx_map) * max(1, num_silac_channels), dtype="int"
         )
         for i, (pgr, intensities) in enumerate(
@@ -139,27 +139,27 @@ class LFQIntensityColumns(ProteinGroupColumns):
             pgr.extend(intensities)
 
             if pgr.qValue < self.protein_group_fdr_threshold:
-                proteinGroupCounts += np.array(
+                protein_group_counts += np.array(
                     [1 if intensity > 0 else 0 for intensity in intensities]
                 )
 
         logger.info(
             f"#Protein groups quantified ({self.protein_group_fdr_threshold*100:g}% protein group-level FDR, LFQ):"
         )
-        for experiment, numProteinGroups in zip(
+        for experiment, num_protein_groups in zip(
             experiment_to_idx_map.keys(),
-            helpers.chunks(proteinGroupCounts, max(1, num_silac_channels)),
+            helpers.chunks(protein_group_counts, max(1, num_silac_channels)),
         ):
             if num_silac_channels > 0:
-                for silacIdx, silacChannel in enumerate(silac_channels):
+                for silac_idx, silac_channel in enumerate(silac_channels):
                     logger.info(
-                        f"    {experiment} {silacChannel}: {numProteinGroups[silacIdx]}"
+                        f"    {experiment} {silac_channel}: {num_protein_groups[silac_idx]}"
                     )
             else:
-                logger.info(f"    {experiment}: {numProteinGroups[0]}")
+                logger.info(f"    {experiment}: {num_protein_groups[0]}")
 
 
-def _getLFQIntensities(
+def _get_lfq_intensities(
     precursor_list: List[precursor_quant.PrecursorQuant],
     experiment_to_idx_map: Dict[str, int],
     post_err_prob_cutoff: float,
@@ -172,22 +172,22 @@ def _getLFQIntensities(
     # in case of SILAC, we output LFQ intensites for each of the channels
     # only, not for the experiment (=sum over channels) itself, which is
     # what MQ does as well
-    numExperiments = len(experiment_to_idx_map) * max(1, num_silac_channels)
+    num_experiments = len(experiment_to_idx_map) * max(1, num_silac_channels)
 
-    peptideIntensities, totalIntensity = _getPeptideIntensities(
+    peptide_intensities, total_intensity = _get_peptide_intensities(
         precursor_list,
         experiment_to_idx_map,
         post_err_prob_cutoff,
         num_silac_channels,
-        numExperiments,
+        num_experiments,
     )
-    if len(peptideIntensities) == 0:
-        return [0.0] * numExperiments
+    if len(peptide_intensities) == 0:
+        return [0.0] * num_experiments
 
-    logMedianPeptideRatios = _getLogMedianPeptideRatios(
-        peptideIntensities, min_peptide_ratios_lfq, fast_lfq_graph, fast_lfq_min_samples
+    log_median_peptide_ratios = _get_log_median_peptide_ratios(
+        peptide_intensities, min_peptide_ratios_lfq, fast_lfq_graph, fast_lfq_min_samples
     )
-    if len(logMedianPeptideRatios) == 0:
+    if len(log_median_peptide_ratios) == 0:
         return _get_summed_intensity_with_min_peptides(
             precursor_list,
             experiment_to_idx_map,
@@ -197,45 +197,45 @@ def _getLFQIntensities(
         )
 
     if stabilize_large_ratios_lfq:
-        logMedianPeptideRatios = _applyLargeRatioStabilization(
-            logMedianPeptideRatios,
+        log_median_peptide_ratios = _apply_large_ratio_stabilization(
+            log_median_peptide_ratios,
             precursor_list,
             experiment_to_idx_map,
             post_err_prob_cutoff,
             num_silac_channels,
         )
 
-    matrix, vector = _buildLinearSystem(logMedianPeptideRatios, numExperiments)
+    matrix, vector = _build_linear_system(log_median_peptide_ratios, num_experiments)
     if len(vector) == 0:
-        return [0.0] * numExperiments
+        return [0.0] * num_experiments
 
-    intensities = _solveLinearSystem(matrix, vector)
-    intensities = _scaleEqualSum(intensities, totalIntensity)
+    intensities = _solve_linear_system(matrix, vector)
+    intensities = _scale_equal_sum(intensities, total_intensity)
 
     return intensities
 
 
-def _getPeptideIntensities(
+def _get_peptide_intensities(
     precursor_list: List[precursor_quant.PrecursorQuant],
-    experimentToIdxMap: Dict[str, int],
-    postErrProbCutoff: float,
-    numSilacChannels: int,
-    numExperiments: int,
+    experiment_to_idx_map: Dict[str, int],
+    post_err_prob_cutoff: float,
+    num_silac_channels: int,
+    num_experiments: int,
 ) -> Tuple[Dict[Tuple[str, int], List[float]], float]:
     """
     Collects all precursor intensities per experiment
     """
 
-    def filterMissingAndUnidentified(p: precursor_quant.PrecursorQuant):
+    def filter_missing_and_unidentified(p: precursor_quant.PrecursorQuant):
         return p.intensity > 0.0 and (
-            helpers.is_mbr(p.post_err_prob) or p.post_err_prob <= postErrProbCutoff
+            helpers.is_mbr(p.post_err_prob) or p.post_err_prob <= post_err_prob_cutoff
         )
 
-    precursor_list = filter(filterMissingAndUnidentified, precursor_list)
+    precursor_list = filter(filter_missing_and_unidentified, precursor_list)
 
     # for each (peptide, charge, experiment, fraction) tuple, sort the
     # lowest PEP (= most confident PSM) on top
-    def orderByPEP(p: precursor_quant.PrecursorQuant):
+    def order_by_pep(p: precursor_quant.PrecursorQuant):
         return (
             p.peptide,
             p.charge,
@@ -245,31 +245,31 @@ def _getPeptideIntensities(
             p.post_err_prob,
         )
 
-    precursor_list = sorted(precursor_list, key=orderByPEP)
+    precursor_list = sorted(precursor_list, key=order_by_pep)
 
-    peptideIntensities = collections.defaultdict(lambda: [0.0] * numExperiments)
-    totalIntensity = 0.0
-    prevExpFrac = (None, None)
-    prevPrecursor = (None, None)
+    peptide_intensities = collections.defaultdict(lambda: [0.0] * num_experiments)
+    total_intensity = 0.0
+    prev_exp_frac = (None, None)
+    prev_precursor = (None, None)
     for precursor in precursor_list:
-        expIdx = experimentToIdxMap[precursor.experiment]
+        exp_idx = experiment_to_idx_map[precursor.experiment]
         # for each (peptide, charge, experiment, fraction) tuple, only
         # use the intensity of the PSM with the lowest PEP (= most
         # confident PSM)
-        currPrecursor = (precursor.peptide, precursor.charge)
-        currExpFrac = (precursor.experiment, precursor.fraction)
-        if prevExpFrac != currExpFrac or prevPrecursor != currPrecursor:
-            if numSilacChannels > 0:
-                for silacIdx, silacIntensity in enumerate(precursor.silac_intensities):
-                    silacExpIdx = expIdx * numSilacChannels + silacIdx
-                    peptideIntensities[currPrecursor][silacExpIdx] += silacIntensity
-                    totalIntensity += silacIntensity
+        curr_precursor = (precursor.peptide, precursor.charge)
+        curr_exp_frac = (precursor.experiment, precursor.fraction)
+        if prev_exp_frac != curr_exp_frac or prev_precursor != curr_precursor:
+            if num_silac_channels > 0:
+                for silac_idx, silac_intensity in enumerate(precursor.silac_intensities):
+                    silac_exp_idx = exp_idx * num_silac_channels + silac_idx
+                    peptide_intensities[curr_precursor][silac_exp_idx] += silac_intensity
+                    total_intensity += silac_intensity
             else:
-                peptideIntensities[currPrecursor][expIdx] += precursor.intensity
-                totalIntensity += precursor.intensity
-            prevExpFrac = currExpFrac
-            prevPrecursor = currPrecursor
-    return peptideIntensities, totalIntensity
+                peptide_intensities[curr_precursor][exp_idx] += precursor.intensity
+                total_intensity += precursor.intensity
+            prev_exp_frac = curr_exp_frac
+            prev_precursor = curr_precursor
+    return peptide_intensities, total_intensity
 
 
 def _get_summed_intensity_with_min_peptides(
@@ -306,7 +306,7 @@ def _get_summed_intensity_with_min_peptides(
     ]
 
 
-def _applyLargeRatioStabilization(
+def _apply_large_ratio_stabilization(
     log_median_peptide_ratios: Dict[Tuple[int, int], float],
     precursor_list: List[precursor_quant.PrecursorQuant],
     experiment_to_idx_map: Dict[str, int],
@@ -369,7 +369,7 @@ def _applyLargeRatioStabilization(
         if pc1 == 0 or pc2 == 0 or (i, j) not in log_median_peptide_ratios:
             continue
 
-        peptide_count_ratio = _getMaxRatio(pc1, pc2)
+        peptide_count_ratio = _get_max_ratio(pc1, pc2)
         if peptide_count_ratio > 5:
             log_median_peptide_ratios[(i, j)] = np.log(si1 / si2)
         elif peptide_count_ratio > 2.5:
@@ -381,29 +381,29 @@ def _applyLargeRatioStabilization(
     return log_median_peptide_ratios
 
 
-def _getLogMedianPeptideRatios(
-    peptideIntensities: Dict[Tuple[str, int], List[float]],
-    minPeptideRatiosLFQ: int,
+def _get_log_median_peptide_ratios(
+    peptide_intensities: Dict[Tuple[str, int], List[float]],
+    min_peptide_ratios_lfq: int,
     fast_lfq_graph: Optional[nx.Graph] = None,
     fast_lfq_min_samples: int = 10,
 ) -> Dict[Tuple[int, int], float]:
     """
-    :param peptideIntensities: rows are peptides, columns are experiments
-    :param minPeptideRatiosLFQ: minimum valid ratios needed to perform LFQ
+    :param peptide_intensities: rows are peptides, columns are experiments
+    :param min_peptide_ratios_lfq: minimum valid ratios needed to perform LFQ
     returns: dictionary of (sample_i, sample_j) -> log(median(ratios))
     """
-    intensityMatrix = np.array(list(peptideIntensities.values()))
+    intensity_matrix = np.array(list(peptide_intensities.values()))
 
-    nonzeros_per_column = np.count_nonzero(intensityMatrix, axis=0)
-    valid_columns = np.argwhere(nonzeros_per_column >= minPeptideRatiosLFQ).flatten()
+    nonzeros_per_column = np.count_nonzero(intensity_matrix, axis=0)
+    valid_columns = np.argwhere(nonzeros_per_column >= min_peptide_ratios_lfq).flatten()
 
-    valid_counts_matrix = (intensityMatrix[:, valid_columns] > 0).astype(int)
+    valid_counts_matrix = (intensity_matrix[:, valid_columns] > 0).astype(int)
     valid_vals = np.dot(valid_counts_matrix.T, valid_counts_matrix)
 
     # replace zeroes by NaNs to automatically filter ratios with one missing value
-    intensityMatrix[intensityMatrix == 0] = np.nan
-    cols = [(idx, i, intensityMatrix[:, i]) for idx, i in enumerate(valid_columns)]
-    peptideRatios, experimentPairs = list(), list()
+    intensity_matrix[intensity_matrix == 0] = np.nan
+    cols = [(idx, i, intensity_matrix[:, i]) for idx, i in enumerate(valid_columns)]
+    peptide_ratios, experiment_pairs = list(), list()
     # this for loop is the reason for quadratic runtime increase for more samples
     # (30 seconds per protein for 2400 samples and 600 peptides)
     for (idx_i, i, col_i), (idx_j, j, col_j) in itertools.combinations(cols, 2):
@@ -414,19 +414,19 @@ def _getLogMedianPeptideRatios(
         ):
             continue
 
-        if valid_vals[idx_i, idx_j] < minPeptideRatiosLFQ:
+        if valid_vals[idx_i, idx_j] < min_peptide_ratios_lfq:
             continue
 
         ratios = col_i / col_j
         # vectorization of computing medians is 25% faster than computing
         # them in a loop here but requires more memory
-        peptideRatios.append(bn.nanmedian(ratios))
-        experimentPairs.append((i, j))
+        peptide_ratios.append(bn.nanmedian(ratios))
+        experiment_pairs.append((i, j))
 
-    return dict(zip(experimentPairs, np.log(peptideRatios)))
+    return dict(zip(experiment_pairs, np.log(peptide_ratios)))
 
 
-def _getMaxRatio(pc1: float, pc2: float) -> float:
+def _get_max_ratio(pc1: float, pc2: float) -> float:
     assert pc1 > 0 and pc2 > 0
     if pc1 < pc2:
         return pc2 / pc1
@@ -434,41 +434,41 @@ def _getMaxRatio(pc1: float, pc2: float) -> float:
         return pc1 / pc2
 
 
-def _buildLinearSystem(
-    logMedianPeptideRatios: Dict[Tuple[int, int], float], numExperiments: int
+def _build_linear_system(
+    log_median_peptide_ratios: Dict[Tuple[int, int], float], num_experiments: int
 ) -> Tuple[np.array, np.array]:
-    numRatios = len(logMedianPeptideRatios)
+    num_ratios = len(log_median_peptide_ratios)
     rows, cols, vals = list(), list(), list()
-    seenColumns = set()
-    for idx, (i, j) in enumerate(logMedianPeptideRatios.keys()):
+    seen_columns = set()
+    for idx, (i, j) in enumerate(log_median_peptide_ratios.keys()):
         rows.append(idx)
         cols.append(i)
         vals.append(1.0)
-        seenColumns.add(i)
+        seen_columns.add(i)
 
         rows.append(idx)
         cols.append(j)
         vals.append(-1.0)
-        seenColumns.add(j)
+        seen_columns.add(j)
 
     # anchor the (log) average and experiments without ratios to 0,
     # otherwise the matrix is ill-conditioned and least squares sometimes
     # does not converge
-    num_non_zero_columns = len(seenColumns)
-    zero_columns = [x for x in range(numExperiments) if x not in seenColumns]
+    num_non_zero_columns = len(seen_columns)
+    zero_columns = [x for x in range(num_experiments) if x not in seen_columns]
     num_zero_columns = len(zero_columns)
 
-    rows.extend([numRatios] * num_non_zero_columns)
-    cols.extend(list(seenColumns))
+    rows.extend([num_ratios] * num_non_zero_columns)
+    cols.extend(list(seen_columns))
     vals.extend([1.0] * num_non_zero_columns)
 
-    rows.extend(range(numRatios + 1, numRatios + 1 + num_zero_columns))
+    rows.extend(range(num_ratios + 1, num_ratios + 1 + num_zero_columns))
     cols.extend(zero_columns)
     vals.extend([1.0] * num_zero_columns)
 
     matrix = csr_matrix((vals, (rows, cols)), shape=(max(rows) + 1, max(cols) + 1))
     vector = np.array(
-        list(logMedianPeptideRatios.values()) + [0.0] * (num_zero_columns + 1)
+        list(log_median_peptide_ratios.values()) + [0.0] * (num_zero_columns + 1)
     )
 
     # np.savetxt("matrix.csv", matrix, delimiter="\t")
@@ -477,7 +477,7 @@ def _buildLinearSystem(
     return matrix, vector
 
 
-def _solveLinearSystem(matrix: csr_matrix, vector: np.array) -> np.array:
+def _solve_linear_system(matrix: csr_matrix, vector: np.array) -> np.array:
     intensities = np.exp(lsqr(matrix, vector)[0])
 
     zero_columns = np.array(matrix.astype(bool).sum(axis=0))[0] == 1
@@ -485,18 +485,18 @@ def _solveLinearSystem(matrix: csr_matrix, vector: np.array) -> np.array:
     return intensities
 
 
-def _scaleEqualSum(intensities: np.array, totalIntensity: float) -> List[float]:
+def _scale_equal_sum(intensities: np.array, total_intensity: float) -> List[float]:
     """
     scale intensities such that the total sum stays the same as it was
     before
 
     :param intensities: array of intensities per sample
-    :param totalIntensity: sum of intensities prior to method application
+    :param total_intensity: sum of intensities prior to method application
     :returns: array of intensities scaled such that sum equals
-              totalIntensity
+              total_intensity
     """
     intensity_sum = np.sum(intensities)
     if intensity_sum > 0:
-        return ((totalIntensity / intensity_sum) * intensities).tolist()
+        return ((total_intensity / intensity_sum) * intensities).tolist()
     else:
         return intensities.tolist()
