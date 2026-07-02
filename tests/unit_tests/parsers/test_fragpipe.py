@@ -1,5 +1,3 @@
-# Generation assisted by CodiumAI
-
 from picked_group_fdr.parsers.fragpipe import parse_fragpipe_psm_file
 from picked_group_fdr.scoring_strategy import ProteinScoringStrategy
 
@@ -10,7 +8,10 @@ from contextlib import nullcontext
 class TestParseFragpipePsmFile:
 
     # correctly parses a well-formed psm.tsv file with all required columns
-    def test_correctly_parses_well_formed_psm_tsv(self, mocker):
+    @pytest.mark.parametrize(
+        "probability_column", ["PeptideProphet Probability", "Probability"]
+    )
+    def test_correctly_parses_well_formed_psm_tsv(self, mocker, probability_column):
         # Mock the csv reader
         mocker.patch(
             "picked_group_fdr.parsers.tsv.get_tsv_reader",
@@ -22,7 +23,7 @@ class TestParseFragpipePsmFile:
                             "Peptide",
                             "Modified Peptide",
                             "SpectralSim",
-                            "PeptideProphet Probability",
+                            probability_column,
                             "Protein",
                             "Mapped Proteins",
                         ],
