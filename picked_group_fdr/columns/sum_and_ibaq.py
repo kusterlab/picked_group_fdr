@@ -27,10 +27,12 @@ def get_silac_channels(num_silac_channels: int):
 
 class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
     """Summed intensity & iBAQ"""
+
     num_ibaq_peptides_per_protein: Dict[str, int]
 
     def __init__(
-        self, num_ibaq_peptides_per_protein: Dict[str, int],
+        self,
+        num_ibaq_peptides_per_protein: Dict[str, int],
         protein_group_fdr_threshold: float = 0.01,
     ):
         self.num_ibaq_peptides_per_protein = num_ibaq_peptides_per_protein
@@ -66,12 +68,12 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
         post_err_prob_cutoff: float,
     ) -> None:
         logger.info("Doing quantification: summed peptide intensity")
-        
+
         experiment_to_idx_map = protein_group_results.get_experiment_to_idx_map()
         silac_channels = get_silac_channels(protein_group_results.num_silac_channels)
         num_silac_channels = len(silac_channels)
 
-        proteinGroupCounts = np.zeros(
+        protein_group_counts = np.zeros(
             len(experiment_to_idx_map) * (1 + num_silac_channels), dtype="int"
         )
         for pgr in protein_group_results:
@@ -82,62 +84,69 @@ class SummedIntensityAndIbaqColumns(ProteinGroupColumns):
                 num_silac_channels,
             )
 
-            totalIntensity = sum(intensities[:: num_silac_channels + 1])
-            pgr.append(totalIntensity)
+            total_intensity = sum(intensities[:: num_silac_channels + 1])
+            pgr.append(total_intensity)
             pgr.extend(intensities)
 
             if pgr.qValue < self.protein_group_fdr_threshold:
-                proteinGroupCounts += np.array(
+                protein_group_counts += np.array(
                     [1 if intensity > 0 else 0 for intensity in intensities]
                 )
 
             # iBAQ: divide intensity by number of (fully tryptic) theoretical peptides
-            numTheoreticalPeptides = [
+            num_theoretical_peptides = [
                 self.num_ibaq_peptides_per_protein[p] for p in pgr.proteinIds.split(";")
             ]
-            leadingProteinNumPeptides = max([1, numTheoreticalPeptides[0]])
-            pgr.append(";".join(map(str, numTheoreticalPeptides)))
-            pgr.append(totalIntensity / leadingProteinNumPeptides)
-            pgr.extend([i / leadingProteinNumPeptides for i in intensities])
+            leading_protein_num_peptides = max([1, num_theoretical_peptides[0]])
+            pgr.append(";".join(map(str, num_theoretical_peptides)))
+            pgr.append(total_intensity / leading_protein_num_peptides)
+            pgr.extend([i / leading_protein_num_peptides for i in intensities])
 
         logger.info(
             f"#Protein groups quantified ({self.protein_group_fdr_threshold*100:g}% protein group-level FDR, summed intensity / iBAQ):"
         )
-        for experiment, numProteinGroups in zip(
+        for experiment, num_protein_groups in zip(
             experiment_to_idx_map.keys(),
-            helpers.chunks(proteinGroupCounts, num_silac_channels + 1),
+            helpers.chunks(protein_group_counts, num_silac_channels + 1),
         ):
-            logger.info(f"    {experiment}: {numProteinGroups[0]}")
-            for silacIdx, silacChannel in enumerate(silac_channels):
+            logger.info(f"    {experiment}: {num_protein_groups[0]}")
+            for silac_idx, silac_channel in enumerate(silac_channels):
                 logger.info(
-                    f"    {experiment} {silacChannel}: {numProteinGroups[silacIdx+1]}"
+                    f"    {experiment} {silac_channel}: {num_protein_groups[silac_idx+1]}"
                 )
 
 
 def _get_intensities(
-    peptideIntensityList: List[precursor_quant.PrecursorQuant],
-    experimentToIdxMap,
-    postErrProbCutoff,
-    numSilacChannels,
+    peptide_intensity_list: List[precursor_quant.PrecursorQuant],
+    experiment_to_idx_map,
+    post_err_prob_cutoff,
+    num_silac_channels,
+    remove_silac_summed_intensity_columns: bool = False,
 ) -> List[float]:
-    intensities = [0.0] * (len(experimentToIdxMap) * (1 + numSilacChannels))
-    for precursor in peptideIntensityList:
+    intensities = [0.0] * (len(experiment_to_idx_map) * (1 + num_silac_channels))
+    for precursor in peptide_intensity_list:
         if np.isnan(precursor.intensity):
             continue
 
         if (
             helpers.is_mbr(precursor.post_err_prob)
-            or precursor.post_err_prob <= postErrProbCutoff
+            or precursor.post_err_prob <= post_err_prob_cutoff
         ):
             intensities[
-                experimentToIdxMap[precursor.experiment] * (1 + numSilacChannels)
+                experiment_to_idx_map[precursor.experiment] * (1 + num_silac_channels)
             ] += precursor.intensity
             if precursor.silac_intensities is not None:
-                for silacIdx, silacIntensity in enumerate(precursor.silac_intensities):
+                for silac_idx, silac_intensity in enumerate(
+                    precursor.silac_intensities
+                ):
                     intensities[
-                        experimentToIdxMap[precursor.experiment]
-                        * (1 + numSilacChannels)
-                        + silacIdx
+                        experiment_to_idx_map[precursor.experiment]
+                        * (1 + num_silac_channels)
+                        + silac_idx
                         + 1
-                    ] += silacIntensity
+                    ] += silac_intensity
+    if remove_silac_summed_intensity_columns and num_silac_channels > 0:
+        # removes the column intensities per experiment with the SILAC
+        # channels summed up
+        del intensities[:: (num_silac_channels + 1)]
     return intensities
