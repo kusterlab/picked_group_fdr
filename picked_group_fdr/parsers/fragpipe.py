@@ -68,7 +68,7 @@ def parse_fragpipe_psm_file(
         score_col = tsv.get_column_index(
             headers, "SpectralSim"
         )  # could also use Hyperscore
-        post_err_prob_col = get_probability_column(headers)
+        post_err_prob_col = tsv.get_column_index(headers, "PeptideProphet Probability")
         protein_col = tsv.get_column_index(headers, "Protein")
         other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
 
@@ -118,7 +118,7 @@ def parse_fragpipe_psm_file_for_protein_tsv(reader, headers):
     pept_col = tsv.get_column_index(headers, "Peptide")
     modpept_col = tsv.get_column_index(headers, "Modified Peptide")
     charge_col = tsv.get_column_index(headers, "Charge")
-    post_err_prob_col = get_probability_column(headers)
+    post_err_prob_col = tsv.get_column_index(headers, "PeptideProphet Probability")
     protein_col = tsv.get_column_index(headers, "Protein")
     other_proteins_col = tsv.get_column_index(headers, "Mapped Proteins")
     assigned_mods_col = tsv.get_column_index(headers, "Assigned Modifications")
@@ -236,14 +236,3 @@ def parse_fragpipe_combined_protein_file_row(row, cols, additional_headers):
         precursorQuants=[],
         extraColumns=[_get_field(x) for x in additional_headers],
     )
-
-
-def get_probability_column(headers: list[str]) -> int:
-    if "PeptideProphet Probability" in headers:
-        return tsv.get_column_index(headers, "PeptideProphet Probability")
-    elif "Probability" in headers:
-        return tsv.get_column_index(headers, "Probability")
-    else:
-        raise ValueError(
-            'Could not find "Probability" or "PeptideProphet Probability" column'
-        )

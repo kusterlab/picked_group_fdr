@@ -1,12 +1,3 @@
-v0.9.1
-- Check for "Probability" column in fragpipe result files in addition to the "PeptideProphet Probability"
-- Fix large ratio stabilization in LFQ
-- Fall back to summed intensity for proteins occurring in single sample (#16)
-- Fix GUI build
-- Monkey-patch mokapot for numpy.float_ compatibility
-- Update pytest to 9.0.2
-- Update FragPipe and DIA-NN example documentation
-
 v0.9.0
 - Bumped Python version to >=3.10,<3.14
 - Support for DIA-NN 2.x results (#25)
