@@ -14,7 +14,7 @@ class TestGetIntensities:
                 peptideIntensityListThreeFiles,
                 experimentToIdxMap,
                 0.1,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [25.0, 10.0, 5.0],
         )
@@ -27,7 +27,7 @@ class TestGetIntensities:
                 peptideIntensityListFiveFiles,
                 experimentToIdxMapFiveFiles,
                 0.1,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [25.0, 10.0, 5.0, 0.0, 7.0],
         )
@@ -40,7 +40,7 @@ class TestGetIntensities:
                 peptideIntensityListMissingValuesZeroes,
                 experimentToIdxMap,
                 0.1,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [25.0, 0.0, 0.0],
         )
@@ -53,7 +53,7 @@ class TestGetIntensities:
                 peptideIntensityListMissingValuesNans,
                 experimentToIdxMap,
                 0.1,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [25.0, 0.0, 0.0],
         )
@@ -66,7 +66,7 @@ class TestGetIntensities:
                 peptideIntensityListMultiplePeptides,
                 experimentToIdxMap,
                 0.1,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [40.0, 20.0, 10.0],
         )
@@ -79,7 +79,7 @@ class TestGetIntensities:
                 peptideIntensityListDuplicatePeptides,
                 experimentToIdxMap,
                 0.1,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [35.0, 10.0, 5.0],
         )
@@ -92,7 +92,7 @@ class TestGetIntensities:
                 peptideIntensityListMultipleFractions,
                 experimentToIdxMap,
                 0.1,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [35.0, 10.0, 5.0],
         )
@@ -100,7 +100,7 @@ class TestGetIntensities:
     def test_getIntensities_silac(self, peptideIntensityListSilac, experimentToIdxMap):
         np.testing.assert_almost_equal(
             _get_intensities(
-                peptideIntensityListSilac, experimentToIdxMap, 0.1, numSilacChannels=3
+                peptideIntensityListSilac, experimentToIdxMap, 0.1, num_silac_channels=3
             ),
             [35.0, 13.0, 17.0, 5.0, 10.0, 3.0, 4.0, 3.0, 5.0, 1.5, 2.5, 1.0],
         )
@@ -117,7 +117,7 @@ class TestGetIntensities:
                 peptideIntensityList,
                 experimentToIdxMap,
                 postErrProbCutoff,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [25.0, 10.0, 5.0],
         )
@@ -134,7 +134,7 @@ class TestGetIntensities:
                 peptideIntensityList,
                 experimentToIdxMap,
                 postErrProbCutoff,
-                numSilacChannels=0,
+                num_silac_channels=0,
             ),
             [0.0, 0.0, 0.0],
         )

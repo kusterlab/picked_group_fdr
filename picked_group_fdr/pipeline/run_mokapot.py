@@ -4,6 +4,12 @@ import logging
 import time
 import datetime
 
+import numpy as np
+
+# Monkey-patch np.float_ if it doesn't exist (mokapot <0.11)
+if not hasattr(np, 'float_'):
+    np.float_ = np.float64
+
 import mokapot
 from mokapot import __version__
 from mokapot.model import PercolatorModel
